@@ -1,0 +1,114 @@
+// ---------------------------------------------------------------------
+// brSkinBrushCreateMenuItems.mel
+//
+// Creates menu items for the smooth weights tool and the transfer
+// weights tool in the default Maya skin menu.
+//
+// ---------------------------------------------------------------------
+
+global proc brSkinBrushDeleteMenuItems()
+{
+    deleteUI brSkinBrushMenuDivider;
+    deleteUI brSkinBrushToolMenuItem;
+    deleteUI brSkinBrushToolOptionMenuItem;
+    deleteUI brTransferWeightsToolMenuItem;
+    deleteUI brTransferWeightsToolOptionMenuItem;
+}
+
+
+proc int mayaVersion()
+{
+    int $version = `about -apiVersion` / 100.0;
+    if ($version > 10000)
+        $version = $version / 100;
+    return $version;
+}
+
+
+global proc brSkinBrushAddMenuCommand()
+{
+    global string $gRigSkinningMenu;
+
+    if (`menu -ex $gRigSkinningMenu`)
+        menu -edit
+             -postMenuCommand "brSkinBrushCreateMenuItems"
+             $gRigSkinningMenu;
+
+    source dagMenuProc;
+}
+
+
+proc addMenuItems()
+{
+    string $ann = "Paint smooth skin cluster weights for the selection";
+
+    menuItem -label "Blur Skin Brush"
+             -annotation $ann
+             -image "brSkinBrush.svg"
+             -command "brSkinBrushToolCtx"
+             brSkinBrushToolMenuItem;
+    menuItem -optionBox 1
+             -annotation $ann
+             -image "brSkinBrush.svg"
+             -command "brSkinBrushToolCtx; toolPropertyWindow;"
+             brSkinBrushToolOptionMenuItem;
+
+}
+
+
+global proc brSkinBrushCreateMenuItems()
+{
+    global string $gRigSkinningMenu;
+
+    if (!`pluginInfo -query -loaded brSkinBrush`)
+        loadPlugin brSkinBrush;
+
+    int $version = `mayaVersion`;
+    string $menu = $gRigSkinningMenu;
+
+    if (!`menu -query -numberOfItems $menu`)
+        ChaSkinningMenu $menu;
+
+    setParent -menu $menu;
+    string $div = "";
+    if ($version >= 2015)
+        $div = "-dividerLabel \"Blur Brush Weights\" ";
+    eval("menuItem -divider 1 " + $div + "brSkinBrushMenuDivider");
+
+    addMenuItems;
+
+    // Replace the command attached to the menu with the Maya default
+    // command to update the menu content.
+    menu -edit
+         -postMenuCommand ("ChaSkinningMenu " + $menu)
+         $menu;
+}
+
+// ---------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2018 Ingo Clemens, brave rabbit
+// brSkinBrush and brTransferWeights are under the terms of the MIT
+// License
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// Author: Ingo Clemens    www.braverabbit.com
+// ---------------------------------------------------------------------

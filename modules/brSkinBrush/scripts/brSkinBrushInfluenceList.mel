@@ -1,0 +1,841 @@
+// ---------------------------------------------------------------------
+// brSkinBrushInfluenceList.mel
+//
+// This script creates and handles the influence list for the smooth
+// weights tool.
+//
+// ---------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------
+// search and filter
+// ---------------------------------------------------------------------
+
+//
+// Procedure Name:
+//      clearRecall
+//
+// Description:
+//      Remove the optionVars which help to recall the last selection
+//      and search filter.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+
+proc clearRecall()
+{
+    global string $gSkinBrushSearchString;
+    global string $gSkinBrushInfluenceSelection[];
+
+    $gSkinBrushSearchString = "";
+    $gSkinBrushInfluenceSelection = {};
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushSearchJointString
+//
+// Description:
+//      Go through the list of influences and check which items match
+//      one of the given search strings. All matching items will be set
+//      set to visible in the list.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushSearchJointString()
+{
+    global string $gSkinBrushSearchString;
+
+    string $query = `textFieldGrp -query -text brSkinBrushSearchField`;
+    /*
+    string $items[] = `treeView -query -children "" brSkinBrushJointTree`;
+
+    string $queryList[];
+    tokenize $query "+" $queryList;
+
+    for ($i in $items)
+    {
+        int $state = 0;
+        for ($q in $queryList)
+        {
+            if (`gmatch $i ("*" + $q + "*")`)
+                $state = 1;
+        }
+        treeView -edit -itemVisible $i $state brSkinBrushJointTree;
+    }
+    */
+    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.filterInfluences ()");
+
+    $gSkinBrushSearchString = $query;
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushClearSearch
+//
+// Description:
+//      Set all influence items in the list to visible and clear the
+//      search field.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushClearSearch()
+{
+    global string $gSkinBrushSearchString;
+    textFieldGrp -edit -text "" brSkinBrushSearchField;
+    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.filterInfluences ()");
+    /*
+    string $items[] = `treeView -query -children "" brSkinBrushJointTree`;
+
+
+    if (size($items) == 0)
+        return;
+
+    for ($i in $items)
+        treeView -edit -itemVisible $i 1 brSkinBrushJointTree;
+    */
+    $gSkinBrushSearchString = "";
+}
+
+global proc brSkinBrushAddJnt()
+{
+    print "brSkinBrushAddJnt";
+    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.addInfluences ()");    
+}
+
+
+
+// ---------------------------------------------------------------------
+// actions
+// ---------------------------------------------------------------------
+
+//
+// Procedure Name:
+//      brTransferWeightsSelectionChanged
+//
+// Description:
+//      Track the order of the influence selection in the list by
+//      matching the current and last selected influence with the names
+//      stored in the optionVars.
+//      Display the influence names in the source and destination
+//      fields.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+
+global proc int brSkinBrushSelectionChanged(string $item, int $state)
+{
+    print ($item+" " + $state+ " \n");
+    if ($state == 1){
+        brSkinBrushContext -edit -influenceName $item `currentCtx`;
+    }
+    return true;
+}
+
+/*
+global proc brSkinBrushSelectionChangedCommand()
+{
+    global string $gSkinBrushInfluenceSelection[];
+
+    $gSkinBrushInfluenceSelection = `treeView -query -selectItem brSkinBrushJointTree`;
+    
+    //treeView  -edit -clearSelection    brSkinBrushJointTree;
+    brSkinBrushContext -edit -influenceName $gSkinBrushInfluenceSelection[0] `currentCtx`;
+}
+*/
+//
+// Procedure Name:
+//      brSkinBrushSelectAffectedVertices
+//
+// Description:
+//      Select all vertices which are affected by the given influence.
+//
+// Input Arguments:
+//      string item         The name of the influence.
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushSelectAffectedVertices( string $item )
+{
+    global string $gSkinBrushMesh;
+    global string $gSkinBrushSkinCluster;
+
+    select -cl;
+    skinCluster -edit -selectInfluenceVerts $item $gSkinBrushSkinCluster;
+    doMenuComponentSelection($gSkinBrushMesh, "vertex");
+
+    if (!size(`ls -selection`))
+        select -replace $gSkinBrushMesh;
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushSelectAffectedVerticesFromMenu
+//
+// Description:
+//      Select vertices which are affected by the selected influence/s.
+//      This procedure is called when selecting the vertices based on
+//      the selected items in the influence list through the right-click
+//      menu. The procedure can be called in three different ways:
+//          1. add = 0; remove = 0 : Select affected vertices.
+//          2. add = 1; remove = 0 : Add affected vertices.
+//          3. add = 0; remove = 1 : Remove affected vertices.
+//
+// Input Arguments:
+//      int add             True, if the affected vertices should get
+//                          added to the current selection.
+//      int remove          True, if the affected vertices should get
+//                          removed from the current selection.
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushSelectAffectedVerticesFromMenu( int $add, int $remove )
+{
+    global string $gSkinBrushMesh;
+    global string $gSkinBrushSkinCluster;
+
+    string $joints[] = `treeView -query -selectItem brSkinBrushJointTree`;
+
+    if (!size($joints))
+        return;
+
+    string $cmd = "skinCluster -edit ";
+    for ($joint in $joints)
+    {
+        $cmd += "-selectInfluenceVerts ";
+        $cmd += $joint;
+        $cmd += " ";
+    }
+
+    if ($add)
+        $cmd += "-addToSelection ";
+    else if ($remove)
+        $cmd += "-removeFromSelection ";
+
+    $cmd += $gSkinBrushSkinCluster;
+    eval $cmd;
+
+    doMenuComponentSelection($gSkinBrushMesh, "vertex");
+
+    if (!size(`ls -selection`))
+        select -replace $gSkinBrushMesh;
+}
+
+// ---------------------------------------------------------------------
+// get the mesh selection and the skin cluster
+// ---------------------------------------------------------------------
+
+//
+// Procedure Name:
+//      getSkinCluster
+//
+// Description:
+//      Return the skin cluster name from the history of the given mesh.
+//
+// Input Arguments:
+//      string shape        The name of the mesh shape node.
+//
+// Return Value:
+//      string              The name of the skin cluster nocde.
+//
+proc string getSkinCluster( string $shape )
+{
+    string $hist[] =`listHistory -pruneDagObjects 1 -future 0 -interestLevel 2 $shape`;
+    if (size($hist) == 0)
+        return "";
+    for ($h in $hist)
+    {
+        if (`nodeType $h` == "skinCluster")
+            return $h;
+    }
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushGetSelection
+//
+// Description:
+//      Get the mesh shape node of the current selection. If the
+//      selection is valid get the skin cluster name and list the
+//      influences.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushGetSelection()
+{
+    global string $gSkinBrushMesh;
+    global string $gSkinBrushSkinCluster;
+
+    string $sel[] = `ls -selection -long`;
+    if (size($sel) == 0)
+    {
+        brSkinBrushClear;
+        return;
+    }
+
+    string $node[];
+    tokenize $sel[0] "." $node;
+
+    string $skin;
+    if (`nodeType $node[0]` == "transform")
+    {
+        string $shape[] = `listRelatives -shapes -noIntermediate -fullPath $node[0]`;
+        if (size($shape) == 0 || `nodeType $shape[0]` != "mesh")
+        {
+            brSkinBrushClear;
+            return;
+        }
+        $node[0] = $shape[0];
+    }
+
+    if (`nodeType $node[0]` == "mesh")
+    {
+        $skin = getSkinCluster($node[0]);
+    }
+
+    if ($skin != "")
+    {
+        int $newMesh = 1;
+        if ($gSkinBrushMesh == $node[0])
+            $newMesh = 0;
+        $gSkinBrushMesh = $node[0];
+        $gSkinBrushSkinCluster = $skin;
+        brSkinBrushListInfluences($skin, $newMesh);
+    }
+    else
+        brSkinBrushClear;
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushClear
+//
+// Description:
+//      Clear the influence list.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushClear()
+{
+    global string $gSkinBrushMesh;
+
+    treeView -edit -removeAll brSkinBrushJointTree;
+    $gSkinBrushMesh = "";
+}
+
+
+// ---------------------------------------------------------------------
+// influence listing
+// ---------------------------------------------------------------------
+
+//
+// Procedure Name:
+//      brSkinBrushListInfluences
+//
+// Description:
+//      Get all influences of the given skin cluster and populate the
+//      list. Since filling the list with all influences can take some
+//      time, depending on the number of influences (simply adding the
+//      items to the list is a slow process by itself), the refresh is
+//      only triggered when a new mesh has been selected or when the
+//      number of influences has changed.
+//      Retrieving the influences and their parents for creating the
+//      list order is cloned from the paint skin cluster weights tool.
+//
+// Input Arguments:
+//      string skin         The name of the skin cluster.
+//      int newMesh         True, if the mesh is different from the
+//                          previous usage of the context.
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushListInfluences( string $skin, int $newMesh )
+{
+    print ("calling brSkinBrushListInfluences " + $skin + " newMesh ? " + $newMesh + "\n");
+
+    global string $gSkinBrushSearchString;
+    global string $gSkinBrushInfluenceSelection[];
+    global string $gSkinBrushJoints[];
+
+    int $refresh = 1;
+
+    string $joints[] = `skinCluster -query -influence $skin`;
+    if (!$newMesh && size($gSkinBrushJoints) == size($joints))
+        $refresh = 0;
+
+    if ($refresh)
+    {
+        $gSkinBrushJoints = $joints;
+
+        treeView -edit -removeAll brSkinBrushJointTree;
+
+        // The listing of influences has been extracted from the
+        // procedure skinClusterInflPopulate() in the file
+        // skinClusterInflMenu.mel to list the influences by hierarchy.
+        source skinClusterInflMenu;
+
+        string $inflList[];
+        string $inflListShortNames[];
+        int $inflListParentIndexes[];
+        int $inflTypes[];
+        int $sortList = 2;
+
+        skinClusterInflFindInfluenceNodes({$skin},
+                                          $inflList,
+                                          $inflListShortNames,
+                                          $inflListParentIndexes,
+                                          $inflTypes,
+                                          $sortList);
+
+        int $numInfls = size($inflList);
+        for ($i = 0; $i < $numInfls; $i ++)
+        {
+            string $infl = $inflList[$i];
+            string $inflParent = "";
+
+            if ($inflListParentIndexes[$i] >= 0)
+            {
+                $inflParent = $inflList[$inflListParentIndexes[$i]];
+            }
+
+            brSkinBrushAddInfluenceToList $infl $inflParent;
+        }
+
+        // Clear the last selection and search.
+        clearRecall;
+    }
+    // If the mesh hasn't changed since the last use of the tool try to
+    // recall the search and re-select the last selection.
+    else
+    {
+        if ($gSkinBrushSearchString != "")
+        {
+            textFieldGrp -edit -text $gSkinBrushSearchString brSkinBrushSearchField;
+            evalDeferred("brSkinBrushSearchJointString");
+        }
+
+        if (size($gSkinBrushInfluenceSelection))
+        {
+            // Store the last selection. Because re-selecting the
+            // previous selection causes the selection command of the
+            // list to get triggered which overwrites the last
+            // selection. This way a previous multi-selection turns into
+            // a single selection because items are re-selected one
+            // after another. If then the new selection is re-selected
+            // the next time there is only one item in the list.
+            string $temp[] = $gSkinBrushInfluenceSelection;
+
+            // Scroll the list to the first item of the previous
+            // selection.
+            if (`treeView -query -itemExists $temp[0] brSkinBrushJointTree`)
+                treeView -edit -showItem $temp[0] brSkinBrushJointTree;
+
+            // Re-select all items.
+            for ($item in $temp)
+            {
+                if (`treeView -query -itemExists $item brSkinBrushJointTree`)
+                    treeView -edit -selectItem $item 1 brSkinBrushJointTree;
+            }
+
+            // Save the previous selection.
+            $gSkinBrushInfluenceSelection = $temp;
+        }
+    }
+}
+
+
+//
+// Procedure Name:
+//      getLockImage
+//
+// Description:
+//      Return the name of the image for the lock icon depending on the
+//      lock state of the influence.
+//
+// Input Arguments:
+//      string item         The name of the influence.
+//
+// Return Value:
+//      string              The name of the lock image.
+//
+proc string getLockImage( string $item )
+{
+    string $lockImage = "Lock_OFF_grey.png";
+    if (`attributeQuery -n $item -exists "liw"`)
+    {
+        if (`getAttr($item + ".liw")`)
+            $lockImage = "Lock_ON.png";
+    }
+    return $lockImage;
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushAddInfluenceToList
+//
+// Description:
+//      Add the given item with the given parent to the influence list.
+//
+// Input Arguments:
+//      string item         The name of the influence.
+//      string parent       The name of the item parent in the list.
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushAddInfluenceToList( string $item, string $parent )
+{
+    string $lock = getLockImage($item);
+    treeView -edit
+             -addItem $item $parent
+             -pressCommand 1 brSkinBrushToggleLockState
+             -pressCommand 2 brSkinBrushPickColorItem
+             brSkinBrushJointTree;
+    treeView -edit
+             -image $item 1 $lock
+             brSkinBrushJointTree;
+
+    if (`attributeQuery -node $item -exists "wireColorRGB"`)
+    {
+        float  $theColor[] = `getAttr ($item+".wireColorRGB")` ;
+        treeView -edit -buttonTransparencyColor 
+                 $item 2 $theColor[0] $theColor[1] $theColor[2]
+                 brSkinBrushJointTree;
+    }
+}
+
+//
+// Procedure Name:
+//      toggleLockState
+//
+// Description:
+//      Invert the locked state for the list of given influences.
+//
+// Input Arguments:
+//      string[] joints     The list of influences.
+//
+// Return Value:
+//      None
+//
+proc toggleLockState( string $joints[] )
+{
+    for ($joint in $joints)
+    {
+        if (`attributeQuery -node $joint -exists "liw"`)
+        {
+            int $lock = `getAttr($joint + ".liw")`;
+            setAttr($joint + ".liw", !$lock);
+            string $image = getLockImage($joint);
+            treeView -edit -image $joint 1 $image brSkinBrushJointTree;
+        }
+    }
+    brSkinBrushContext -edit -refreshLocksJnts 1 `currentCtx`;
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushToggleLockState
+//
+// Description:
+//      Invert the locked state for either the given item passed by the
+//      button or all selected items in the list.
+//
+// Input Arguments:
+//      string button       The name of the influence the button belongs
+//                          to. If the procedure is called from the menu
+//                          this string is empty.
+//      int state           The state of the lock.
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushToggleLockState( string $button, int $state )
+{
+    string $joints[] = `treeView -query -selectItem brSkinBrushJointTree`;
+    if ($button != "")
+        toggleLockState({$button});
+    else
+        toggleLockState($joints);
+}
+
+global proc brSkinBrushPickColorItem( string $button, int $state )
+{
+    //string $joints[] = `treeView -query -selectItem brSkinBrushJointTree`;
+    print ("button is " + $button + "\n") ;
+    string $item = $button;
+    if (`attributeQuery -node $item -exists "wireColorRGB"`)
+    {
+        float  $theColor[] = `getAttr ($item+".wireColorRGB")` ;
+
+        python( "from PySide2 import QtGui, QtCore\ndef posiOfCursor () : \n\tthePos=QtGui.QCursor().pos()  - QtCore.QPoint (355,100)\n\treturn [thePos.x(), thePos.y()]\n");
+        int $posi[] =python( "posiOfCursor ()");
+
+        colorEditor -mini -position $posi[0] $posi[1] -rgbValue $theColor[0] $theColor[1] $theColor[2];
+        if (`colorEditor -query -result`) {
+            float $values[];
+            $values = `colorEditor -query -rgb`;
+            print ("treeView -edit -buttonTransparencyColor \"" + $item + "\" 2 " + $values[0] + " " + $values[1] + " " + $values[2] + " brSkinBrushJointTree;\n");
+            //$values = `colorEditor -query -hsv`;
+            //print ("HSV = " + $values[0] + " " + $values[1] + " " + $values[2] + "\n");
+                        
+            treeView -edit -buttonTransparencyColor 
+                     $item 2 $values[0] $values[1] $values[2]
+                     brSkinBrushJointTree;
+
+            setAttr ($item+".wireColorRGB") $values[0] $values[1] $values[2] ;            
+        } else {
+            print ("Editor was dismissed\n");
+        }
+    }
+    treeView -edit -buttonState $button 2 "buttonUp" brSkinBrushJointTree;
+    brSkinBrushContext -edit -refresh 1 `currentCtx`;
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushInvertLockState
+//
+// Description:
+//      Invert the locked state for all items in the list.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushInvertLockState()
+{
+    string $joints[] = `treeView -query -children "" brSkinBrushJointTree`;
+    toggleLockState($joints);
+}
+
+
+//
+// Procedure Name:
+//      brSkinBrushLockInfluence
+//
+// Description:
+//      Set the locked state for either all unselected, all selected
+//      or all items in the list.
+//
+// Input Arguments:
+//      int choice          The type of selection the state gets changed
+//                          for:
+//                              0: unselected
+//                              1: selected
+//                              2: all
+//      int state           The state of the lock.
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushLockInfluence( int $choice, int $state )
+{
+    string $sel[] = `treeView -query -selectItem brSkinBrushJointTree`;
+    string $all[] = `treeView -query -children "" brSkinBrushJointTree`;
+
+    string $joints[];
+    // unselected
+    if ($choice == 0)
+        $joints = stringArrayRemove($sel, $all);
+    // selected
+    else if ($choice == 1)
+        $joints = $sel;
+    // all
+    else if ($choice == 2)
+        $joints = $all;
+
+    for ($joint in $joints)
+    {
+        if (`attributeQuery -node $joint -exists "liw"`)
+        {
+            setAttr($joint + ".liw", $state);
+            string $image = getLockImage($joint);
+            treeView -edit -image $joint 1 $image brSkinBrushJointTree;
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------------
+// building the influence ui
+// ---------------------------------------------------------------------
+
+//
+// Procedure Name:
+//      brSkinBrushInfluenceList
+//
+// Description:
+//      Build all control items for the influence list in the tool
+//      settings window.
+//
+// Input Arguments:
+//      None
+//
+// Return Value:
+//      None
+//
+global proc brSkinBrushInfluenceList()
+{
+    frameLayout -label "Influences"
+                -labelIndent 3
+                -collapsable 1
+                -collapse (`optionVar -query "brSkinBrushInfluenceFrameState"`)
+                -marginWidth 5
+                -marginHeight 2
+                brSkinBrushInfluenceFrame;
+
+        string $influenceForm = `formLayout`;
+
+            textFieldGrp -label ""
+                         -placeholderText "search string. Use SPACE for combinations"
+                         -columnWidth2 0 135
+                         -columnAttach2 "left" "right"
+                         -columnOffset2 0 0
+                         -adjustableColumn2 2
+                         -tcc brSkinBrushSearchJointString
+                         brSkinBrushSearchField;
+            string $clearButton = `button -label "Clear"
+                                          -width 46
+                                          -height 15
+                                          -command
+                                          brSkinBrushClearSearch`;
+            checkBoxGrp -label "Hide locks" 
+                        -columnWidth2 62 10 
+                        -changeCommand brSkinBrushSearchJointString 
+                        brSkinBrushHideLockCheck;
+
+            button -label "Add" -command brSkinBrushAddJnt -height 15  -width 50 brSkinBrushAddJntButton;                
+            // ---------------------------------------------------------
+            // influence list
+            // ---------------------------------------------------------
+            treeView -height 200
+                     -numberOfButtons 2
+                     -attachButtonRight 0
+                     -allowDragAndDrop 1
+                     -allowReparenting 0
+                     //-selectionChangedCommand brSkinBrushSelectionChangedCommand
+                     -selectCommand brSkinBrushSelectionChanged
+                     -itemDblClickCommand brSkinBrushSelectAffectedVertices
+                     brSkinBrushJointTree;
+
+            popupMenu;
+                menuItem -label "Toggle Lock"
+                         -command "brSkinBrushToggleLockState(\"\", 0)";
+                menuItem -label "Invert All Locks"
+                         -command "brSkinBrushInvertLockState";
+                menuItem -divider 1;
+                menuItem -label "Lock Selected"
+                         -command "brSkinBrushLockInfluence(1, 1)";
+                menuItem -label "Unlock Selected"
+                         -command "brSkinBrushLockInfluence(1, 0)";
+                menuItem -label "Lock Unselected"
+                         -command "brSkinBrushLockInfluence(0, 1)";
+                menuItem -label "Unlock Unselected"
+                         -command "brSkinBrushLockInfluence(0, 0)";
+                menuItem -divider 1;
+                menuItem -label "Lock All"
+                         -command "brSkinBrushLockInfluence(2, 1)";
+                menuItem -label "Unlock All"
+                         -command "brSkinBrushLockInfluence(2, 0)";
+                menuItem -divider 1;
+                menuItem -label "Select Affected Vertices"
+                         -command "brSkinBrushSelectAffectedVerticesFromMenu(0, 0)";
+                menuItem -label "Add Affected Vertices To Selection"
+                         -command "brSkinBrushSelectAffectedVerticesFromMenu(1, 0)";
+                menuItem -label "Remove Affected Vertices From Selection"
+                         -command "brSkinBrushSelectAffectedVerticesFromMenu(0, 1)";
+
+            formLayout -edit
+
+                       -attachForm brSkinBrushSearchField "top" 2
+                       -attachForm brSkinBrushSearchField "left" 0
+
+                       -attachForm $clearButton "top" 2
+                       -attachForm $clearButton "right" 0
+
+                       -attachForm brSkinBrushHideLockCheck "left" 0
+                       -attachForm brSkinBrushHideLockCheck "bottom" 0
+
+                       //-attachForm brSkinBrushAddJntButton "right" 0
+                       -attachControl brSkinBrushAddJntButton "left" 2 brSkinBrushHideLockCheck
+                       -attachForm brSkinBrushAddJntButton "bottom" 0
+
+                       -attachForm brSkinBrushJointTree "left" 0
+                       -attachForm brSkinBrushJointTree "right" 0
+
+                       -attachControl brSkinBrushSearchField "right" 0 $clearButton
+
+                       -attachControl brSkinBrushJointTree "top" 2 brSkinBrushSearchField
+                       -attachControl brSkinBrushJointTree "bottom" 2 brSkinBrushHideLockCheck
+                       $influenceForm;
+
+        setParent ..;
+
+    setParent ..;
+    checkBoxGrp -e -columnWidth2 62 10 brSkinBrushHideLockCheck;
+}
+
+// ---------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2018 Ingo Clemens, brave rabbit
+// brSkinBrush is under the terms of the MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// Author: Ingo Clemens    www.braverabbit.com
+// ---------------------------------------------------------------------

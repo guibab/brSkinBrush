@@ -1,0 +1,160 @@
+// ---------------------------------------------------------------------
+// brSkinBrushOptionValues.mel
+//
+// This script retrieves the values from the context when the tool
+// settings are initialized.
+//
+// ---------------------------------------------------------------------
+
+proc setupScriptJob()
+{
+    scriptJob -event "NewSceneOpened" "global string $gSkinBrushMesh; $gSkinBrushMesh = \"\"";
+    scriptJob -event "SceneOpened" "global string $gSkinBrushMesh; $gSkinBrushMesh = \"\"";
+}
+
+
+global proc brSkinBrushOptionValues( string $toolName )
+{
+    float $floatVals[];
+    float $floatVal;
+    int $intVal;
+
+    //$intVal = eval("brSkinBrushContext -query -affectSelected " + $toolName);
+    //checkBoxGrp -edit -value1 $intVal brSkinBrushAffectSelectedCheck;
+    
+    //$intVal = eval("brSkinBrushContext -query -fractionOversampling " + $toolName);
+    //checkBoxGrp -edit -value1 $intVal brSkinBrushFractionOversamplingCheck;
+
+    //$intVal = eval("brSkinBrushContext -query -oversampling " + $toolName);
+    //intSliderGrp -edit -value $intVal brSkinBrushOversampling;
+
+    //$floatVal = eval("brSkinBrushContext -query -range " + $toolName);
+    //floatSliderGrp -edit -value $floatVal brSkinBrushRange;
+
+    //$intVal = eval("brSkinBrushContext -query -volume " + $toolName);
+    //checkBoxGrp -edit -value1 $intVal brSkinBrushVolumeCheck;
+
+    $floatVals[0] = eval("brSkinBrushContext -query -colorR " + $toolName);
+    $floatVals[1] = eval("brSkinBrushContext -query -colorG " + $toolName);
+    $floatVals[2] = eval("brSkinBrushContext -query -colorB " + $toolName);
+    colorSliderGrp -edit -rgbValue $floatVals[0] $floatVals[1] $floatVals[2] brSkinBrushBrushColorSlider;
+
+    $intVal = eval("brSkinBrushContext -query -curve " + $toolName);
+    brSkinBrushSetSymbolCheckBox $intVal;
+
+    $intVal = eval("brSkinBrushContext -query -depth " + $toolName);
+    intSliderGrp -edit -value $intVal brSkinBrushDepth;
+
+    $intVal = eval("brSkinBrushContext -query -depthStart " + $toolName);
+    intSliderGrp -edit -value $intVal brSkinBrushDepthStart;
+
+    $intVal = eval("brSkinBrushContext -query -drawBrush " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushDrawBrushCheck;
+
+    $intVal = eval("brSkinBrushContext -query -drawRange " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushDrawRangeCheck;
+
+    $intVal = eval("brSkinBrushContext -query -ignoreLock " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushIgnoreLockCheck;
+
+    $intVal = eval("brSkinBrushContext -query -keepShellsTogether " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushKeepShellsTogetherCheck;
+
+    $intVal = eval("brSkinBrushContext -query -lineWidth " + $toolName);
+    intFieldGrp -edit -value1 $intVal brSkinBrushLineWidthField;
+
+    $intVal = eval("brSkinBrushContext -query -message " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushMessageType;
+
+    $floatVal = eval("brSkinBrushContext -query -size " + $toolName);
+    floatSliderGrp -edit -value $floatVal brSkinBrushSize;
+
+    $intVal = eval("brSkinBrushContext -query -commandIndex " + $toolName);
+    string $collectionItemArray [] = `radioCollection -q -collectionItemArray brSkinBrushCommandRbCollection`;
+    radioCollection -edit -select $collectionItemArray[$intVal] brSkinBrushCommandRbCollection;
+    
+    if ($intVal == 4 ){// if smooth --
+        $floatVal = eval("brSkinBrushContext -query -smoothStrength " + $toolName);
+        floatSliderGrp -edit -value $floatVal brSkinBrushStrength;
+    }else{
+        $floatVal = eval("brSkinBrushContext -query -strength " + $toolName);
+        floatSliderGrp -edit -value $floatVal brSkinBrushStrength;
+    }
+
+    $floatVal = eval("brSkinBrushContext -query -tolerance " + $toolName);
+    floatSliderGrp -edit -value $floatVal brSkinBrushTolerance;
+
+    $intVal = eval("brSkinBrushContext -query -undersampling " + $toolName);
+    intFieldGrp -edit -value1 $intVal brSkinBrushBrushUndersamplingField;
+
+    $intVal = eval("brSkinBrushContext -query -postSetting " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushPostSettingCheck;
+    
+    $intVal = eval("brSkinBrushContext -query -stepLine " + $toolName);
+    intSliderGrp -edit -value $intVal brSkinBrushStepLineField;
+
+    $intVal = eval("brSkinBrushContext -query -coverage " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushCoverageCheck;
+
+    $intVal = eval("brSkinBrushContext -query -soloColor " + $toolName) + 1;
+    radioButtonGrp -edit -select $intVal  brSkinBrushColorModeRbg;
+
+    $intVal = eval("brSkinBrushContext -query -soloColorType " + $toolName) + 1;
+    radioButtonGrp -edit -select $intVal  brSkinBrushSoloColorTypeRbg;
+
+    brSkinBrushVolumeToggle(eval("brSkinBrushContext -query -volume " + $toolName));
+}
+
+
+global proc brSkinBrushValues( string $toolName )
+{
+    string $icon = "brSkinBrush.svg";
+    string $help = "";
+    toolPropertySetCommon $toolName $icon $help;
+
+    frameLayout -edit -enable 1 -collapse 0 brSkinBrushFrame;
+    brSkinBrushOptionValues $toolName;
+
+    toolPropertySelect brSkinBrush;
+
+    // Set up the script job for clearing the $gSkinBrushMesh global
+    // when creating a new scene or opening a scene.
+    global int $gSkinBrushInit;
+    if (!$gSkinBrushInit)
+    {
+        setupScriptJob;
+        $gSkinBrushInit = 1;
+    }
+
+    brSkinBrushGetSelection;
+
+    //print "CALLING THE TOOL\n";
+}
+
+// ---------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2018 Ingo Clemens, brave rabbit
+// brSkinBrush is under the terms of the MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// Author: Ingo Clemens    www.braverabbit.com
+// ---------------------------------------------------------------------

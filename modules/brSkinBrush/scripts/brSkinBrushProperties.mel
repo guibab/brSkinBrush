@@ -1,0 +1,739 @@
+// ---------------------------------------------------------------------
+// brSkinBrushProperties.mel
+//
+// This script defines the layout and callbacks for the tool settings
+// window.
+//
+// ---------------------------------------------------------------------
+
+global proc brSkinBrushSetSymbolCheckBox( int $button )
+{
+    string $items[] = `rowColumnLayout -query -childArray brSkinBrushCurveColumn`;
+    stringArrayRemoveAtIndex(0, $items);
+
+    for ($i = 0; $i < size($items); $i ++)
+    {
+        if ($button == $i)
+            symbolCheckBox -edit -value 1 $items[$i];
+        else
+            symbolCheckBox -edit -value 0 $items[$i];
+    }
+
+    brSkinBrushContext -edit -curve $button `currentCtx`;
+}
+
+
+global proc brSkinBrushSetBrushColor()
+{
+    float $color[] = `colorSliderGrp -query -rgbValue brSkinBrushBrushColorSlider`;
+    brSkinBrushContext -edit -colorR $color[0] -colorG $color[1] -colorB $color[2] `currentCtx`;
+}
+
+
+global proc brSkinBrushVolumeToggle( int $state )
+{
+    $state = !$state;
+
+    intSliderGrp -edit -enable $state brSkinBrushDepthStart;
+    intSliderGrp -edit -enable $state brSkinBrushDepth;
+    checkBoxGrp -edit -enable (1 - $state) brSkinBrushDrawRangeCheck;
+    checkBoxGrp -edit -enable $state brSkinBrushKeepShellsTogetherCheck;
+    floatSliderGrp -edit -enable $state brSkinBrushTolerance;
+}
+
+
+global proc brSkinBrushSetLayoutCollapseState( string $layout, int $state )
+{
+    optionVar -intValue ($layout + "State") $state;
+}
+
+
+global proc brSkinBrushReset()
+{
+    optionVar -remove "brSkinBrushContext1";
+
+    optionVar -remove "brSkinBrushSurfaceFrameState";
+    //optionVar -remove "brSkinBrushVolumeFrameState";
+    optionVar -remove "brSkinBrushDisplayFrameState";
+    optionVar -remove "brSkinBrushAdvancedFrameState";
+    optionVar -remove "brSkinBrushHotkeyFrameState";
+    optionVar -remove "brSkinBrushCommandFrameState";
+
+    optionVar -remove "brSkinBrushEnableAdvanced";
+    optionVar -remove "brSkinBrushHideAnnotations";
+}
+
+
+proc addAnnotations()
+{
+    /*
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kAffectSelected"))
+                brSkinBrushAffectSelectedCheck;
+    */
+    colorSliderGrp -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kColor"))
+                   brSkinBrushBrushColorSlider;
+    symbolCheckBox -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kCurveNone"))
+                   brSkinBrushNoneButton;
+    symbolCheckBox -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kCurveLinear"))
+                   brSkinBrushLinearButton;
+    symbolCheckBox -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kCurveSmooth"))
+                   brSkinBrushSmoothButton;
+    symbolCheckBox -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kCurveNarrow"))
+                   brSkinBrushNarrowButton;
+    intSliderGrp -edit
+                 -annotation (uiRes("m_brSkinBrushProperties.kDepth"))
+                 brSkinBrushDepth;
+    intSliderGrp -edit
+                 -annotation (uiRes("m_brSkinBrushProperties.kDepthStart"))
+                 brSkinBrushDepthStart;
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kDrawBrush"))
+                brSkinBrushDrawBrushCheck;
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kDrawRange"))
+                brSkinBrushDrawRangeCheck;
+    button -edit
+           -annotation (uiRes("m_brSkinBrushProperties.kFlood"))
+           brSkinBrushFloodButton;
+
+    button -edit
+           -annotation (uiRes("m_brSkinBrushProperties.kRefresh"))
+           brSkinBrushRefreshButton;
+
+    button -edit
+           -annotation (uiRes("m_brSkinBrushProperties.kPickInfluence"))
+           brSkinBrushPickInfluenceButton;
+
+    button -edit
+           -annotation (uiRes("m_brSkinBrushProperties.kPickMaxInfluence"))
+           brSkinBrushPickMaxInfluenceButton;
+
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kIgnoreLock"))
+                brSkinBrushIgnoreLockCheck;
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kKeepShellsTogether"))
+                brSkinBrushKeepShellsTogetherCheck;
+    intFieldGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kLineWidth"))
+                brSkinBrushLineWidthField;
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kMessage"))
+                brSkinBrushMessageType;
+    /*            
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kFractionOversampling"))
+                brSkinBrushFractionOversamplingCheck;
+    intSliderGrp -edit
+                 -annotation (uiRes("m_brSkinBrushProperties.kOversampling"))
+                 brSkinBrushOversampling;
+    floatSliderGrp -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kRange"))
+                   brSkinBrushRange;
+    */
+    floatSliderGrp -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kSize"))
+                   brSkinBrushSize;
+    floatSliderGrp -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kStrength"))
+                   brSkinBrushStrength;
+    floatSliderGrp -edit
+                   -annotation (uiRes("m_brSkinBrushProperties.kTolerance"))
+                   brSkinBrushTolerance;
+    intFieldGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kUndersampling"))
+                brSkinBrushBrushUndersamplingField;
+    /*
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kVolume"))
+                brSkinBrushVolumeCheck;
+    */
+    intSliderGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kStepLine"))
+                brSkinBrushStepLineField;
+
+
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kCoverage"))
+                brSkinBrushCoverageCheck;
+
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kAnnotations"))
+                brSkinBrushDisplayTipsCheck;
+
+    checkBoxGrp -edit
+                -annotation (uiRes("m_brSkinBrushProperties.kPostSetting"))
+                brSkinBrushPostSettingCheck;
+
+}
+
+
+proc deleteAnnotations()
+{
+    //checkBoxGrp -edit -annotation "" brSkinBrushAffectSelectedCheck;
+    colorSliderGrp -edit -annotation "" brSkinBrushBrushColorSlider;
+    symbolCheckBox -edit -annotation "" brSkinBrushNoneButton;
+    symbolCheckBox -edit -annotation "" brSkinBrushLinearButton;
+    symbolCheckBox -edit -annotation "" brSkinBrushSmoothButton;
+    symbolCheckBox -edit -annotation "" brSkinBrushNarrowButton;
+    intSliderGrp -edit -annotation "" brSkinBrushDepth;
+    intSliderGrp -edit -annotation "" brSkinBrushDepthStart;
+    checkBoxGrp -edit -annotation "" brSkinBrushDrawBrushCheck;
+    checkBoxGrp -edit -annotation "" brSkinBrushDrawRangeCheck;
+    button -edit -annotation "" brSkinBrushFloodButton;
+    button -edit -annotation "" brSkinBrushRefreshButton;
+    //checkBoxGrp -edit -annotation "" brSkinBrushFractionOversamplingCheck;
+    checkBoxGrp -edit -annotation "" brSkinBrushIgnoreLockCheck;
+    checkBoxGrp -edit -annotation "" brSkinBrushKeepShellsTogetherCheck;
+    intFieldGrp -edit -annotation "" brSkinBrushLineWidthField;
+    checkBoxGrp -edit -annotation "" brSkinBrushMessageType;
+    //intSliderGrp -edit -annotation "" brSkinBrushOversampling;
+    //floatSliderGrp -edit -annotation "" brSkinBrushRange;
+    floatSliderGrp -edit -annotation "" brSkinBrushSize;
+    floatSliderGrp -edit -annotation "" brSkinBrushStrength;
+    floatSliderGrp -edit -annotation "" brSkinBrushTolerance;
+    intFieldGrp -edit -annotation "" brSkinBrushBrushUndersamplingField;
+    //checkBoxGrp -edit -annotation "" brSkinBrushVolumeCheck;
+
+    intSliderGrp -edit -annotation "" brSkinBrushStepLineField;
+    checkBoxGrp -edit -annotation "" brSkinBrushCoverageCheck;
+    button -edit -annotation "" brSkinBrushPickInfluenceButton;
+    button -edit -annotation "" brSkinBrushPickMaxInfluenceButton;
+    
+    checkBoxGrp -edit -annotation "" brSkinBrushDisplayTipsCheck;
+    checkBoxGrp -edit -annotation "" brSkinBrushPostSettingCheck;
+}
+
+
+proc int annotationsState()
+{
+    if (`optionVar -exists "brSkinBrushHideAnnotations"`)
+        return `optionVar -query "brSkinBrushHideAnnotations"`;
+    return 1;
+}
+
+
+global proc brSkinBrushToggleAnnotations()
+{
+    if (annotationsState())
+        addAnnotations;
+    else
+        deleteAnnotations;
+}
+
+global proc brSkinBrushSetRefresh (){
+    print "brSkinBrushSetRefresh \n";
+    //string $joints[] = `treeView -query -children "" brSkinBrushJointTree`;
+    global string $gSkinBrushMesh;
+    if ($gSkinBrushMesh !="NOPEofNOPE")
+        $gSkinBrushMesh ="NOPEofNOPE";
+    else 
+        $gSkinBrushMesh ="NOPEofNOPE2";
+        
+    brSkinBrushGetSelection ();
+    brSkinBrushContext -edit -refresh 1 `currentCtx`;
+}
+
+global proc brSkinBrushSetCallbacks( string $parent )
+{
+    colorSliderGrp -edit
+                   -changeCommand "brSkinBrushSetBrushColor"
+                   brSkinBrushBrushColorSlider;
+    symbolCheckBox -edit
+                   -changeCommand "brSkinBrushSetSymbolCheckBox 0"
+                   brSkinBrushNoneButton;
+    symbolCheckBox -edit
+                   -changeCommand "brSkinBrushSetSymbolCheckBox 1"
+                   brSkinBrushLinearButton;
+    symbolCheckBox -edit
+                   -changeCommand "brSkinBrushSetSymbolCheckBox 2"
+                   brSkinBrushSmoothButton;
+    symbolCheckBox -edit
+                   -changeCommand "brSkinBrushSetSymbolCheckBox 3"
+                   brSkinBrushNarrowButton;
+    intSliderGrp -edit
+                 -changeCommand "brSkinBrushContext -edit -depth `intSliderGrp -query -value brSkinBrushDepth` `currentCtx`;"
+                 brSkinBrushDepth;
+    intSliderGrp -edit
+                 -changeCommand "brSkinBrushContext -edit -depthStart `intSliderGrp -query -value brSkinBrushDepthStart` `currentCtx`;"
+                 brSkinBrushDepthStart;
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -drawBrush #1 `currentCtx`;"
+                brSkinBrushDrawBrushCheck;
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -drawRange #1 `currentCtx`;"
+                brSkinBrushDrawRangeCheck;
+    button -edit
+           -command "brSkinBrushContext -edit -flood `floatSliderGrp -query -value brSkinBrushStrength` `currentCtx`;"
+           brSkinBrushFloodButton;
+
+    button -edit
+           -command "setAttr -type \"Int32Array\"  \".lockedVertices\" 0; brSkinBrushContext -edit -refresh 1 `currentCtx`;"
+           brSkinBrushClearLocksButton;           
+
+    button -edit
+           -command brSkinBrushSetRefresh
+           brSkinBrushRefreshButton;
+
+    button -edit
+           -command "brSkinBrushContext -edit -pickMaxInfluence 1 `currentCtx`;"
+           brSkinBrushPickMaxInfluenceButton;
+
+    button -edit
+           -command "brSkinBrushContext -edit -pickInfluence 1 `currentCtx`;"
+           brSkinBrushPickInfluenceButton;
+
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -ignoreLock #1 `currentCtx`;"
+                brSkinBrushIgnoreLockCheck;
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -keepShellsTogether #1 `currentCtx`;"
+                brSkinBrushKeepShellsTogetherCheck;
+    intFieldGrp -edit
+                -changeCommand "brSkinBrushContext -edit -lineWidth #1 `currentCtx`;"
+                brSkinBrushLineWidthField;
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -message #1 `currentCtx`;"
+                brSkinBrushMessageType;
+    /*
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -affectSelected #1 `currentCtx`;"
+                brSkinBrushAffectSelectedCheck;
+
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -fractionOversampling #1 `currentCtx`;"
+                brSkinBrushFractionOversamplingCheck;
+
+    intSliderGrp -edit
+                 -changeCommand "brSkinBrushContext -edit -oversampling `intSliderGrp -query -value brSkinBrushOversampling` `currentCtx`;"
+                 brSkinBrushOversampling;
+    
+    floatSliderGrp -edit
+                   -changeCommand "brSkinBrushContext -edit -range `floatSliderGrp -query -value brSkinBrushRange` `currentCtx`;"
+                   brSkinBrushRange;
+
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushVolumeToggle #1; brSkinBrushContext -edit -volume #1 `currentCtx`;"
+                brSkinBrushVolumeCheck;
+
+    frameLayout -edit
+                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushVolumeFrame\", 1)")
+                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushVolumeFrame\", 0)")            
+                brSkinBrushVolumeFrame;
+    */
+    floatSliderGrp -edit
+                   -changeCommand "brSkinBrushContext -edit -size `floatSliderGrp -query -value brSkinBrushSize` `currentCtx`;"
+                   brSkinBrushSize;
+    floatSliderGrp -edit
+                   -changeCommand "brSkinBrushContext -edit -strength `floatSliderGrp -query -value brSkinBrushStrength` `currentCtx`;"
+                   brSkinBrushStrength;
+    floatSliderGrp -edit
+                   -changeCommand "brSkinBrushContext -edit -tolerance `floatSliderGrp -query -value brSkinBrushTolerance` `currentCtx`;"
+                   brSkinBrushTolerance;
+    intFieldGrp -edit
+                -changeCommand "brSkinBrushContext -edit -undersampling #1 `currentCtx`;"
+                brSkinBrushBrushUndersamplingField;
+
+    intSliderGrp -edit
+                -changeCommand "brSkinBrushContext -edit -stepLine #1 `currentCtx`;"
+                brSkinBrushStepLineField;
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushVolumeToggle #1; brSkinBrushContext -edit -coverage #1 `currentCtx`;"
+                brSkinBrushCoverageCheck;
+
+    checkBoxGrp -edit
+                -changeCommand "brSkinBrushContext -edit -postSetting #1 `currentCtx`;"
+                brSkinBrushPostSettingCheck;
+
+    frameLayout -edit
+                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushInfluenceFrame\", 1)")
+                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushInfluenceFrame\", 0)")
+                brSkinBrushInfluenceFrame;
+    
+    frameLayout -edit
+                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushSurfaceFrame\", 1)")
+                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushSurfaceFrame\", 0)")
+                brSkinBrushSurfaceFrame;
+
+    frameLayout -edit
+                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushDisplayFrame\", 1)")
+                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushDisplayFrame\", 0)")
+                brSkinBrushDisplayFrame;
+    frameLayout -edit
+                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushAdvancedFrame\", 1)")
+                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushAdvancedFrame\", 0)")
+                brSkinBrushAdvancedFrame;
+    frameLayout -edit
+                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushHotkeyFrame\", 1)")
+                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushHotkeyFrame\", 0)")
+                brSkinBrushHotkeyFrame;
+
+    checkBoxGrp -edit
+                -changeCommand "optionVar -intValue \"brSkinBrushHideAnnotations\" #1; brSkinBrushToggleAnnotations;"
+                brSkinBrushDisplayTipsCheck;
+
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 0 `currentCtx`;" brSkinBrushAddRb;
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 1 `currentCtx`;" brSkinBrushRemoveRb;
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 2 `currentCtx`;" brSkinBrushAddPercentRb;
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 3 `currentCtx`;" brSkinBrushAbsoluteRb;
+
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 4 `currentCtx`; floatSliderGrp -edit -value `brSkinBrushContext -query -smoothStrength \"brSkinBrushContext1\"` brSkinBrushStrength ;" brSkinBrushSmoothRb; //smooth    
+    radioButton -edit -offCommand "floatSliderGrp -edit -value `brSkinBrushContext -query -strength \"brSkinBrushContext1\"` brSkinBrushStrength ;" brSkinBrushSmoothRb; //smooth
+
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 5 `currentCtx`;" brSkinBrushSharpenRb;
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 6 `currentCtx`;" brSkinBrushLockVerticesRb;
+    radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 7 `currentCtx`;" brSkinBrushUnLockVerticesRb;
+
+    radioButtonGrp -edit -onCommand1 "brSkinBrushContext -edit -soloColor 0 `currentCtx`;" brSkinBrushColorModeRbg;
+    radioButtonGrp -edit -onCommand2 "brSkinBrushContext -edit -soloColor 1 `currentCtx`;" brSkinBrushColorModeRbg;
+
+    radioButtonGrp -edit -onCommand1 "brSkinBrushContext -edit -soloColorType 0 `currentCtx`;" brSkinBrushSoloColorTypeRbg;
+    radioButtonGrp -edit -onCommand2 "brSkinBrushContext -edit -soloColorType 1 `currentCtx`;" brSkinBrushSoloColorTypeRbg;
+    radioButtonGrp -edit -onCommand3 "brSkinBrushContext -edit -soloColorType 2 `currentCtx`;" brSkinBrushSoloColorTypeRbg;
+}
+
+global proc brSkinBrushProperties()
+{
+    setUITemplate -pushTemplate OptionsTemplate;
+
+    string $parent = `toolPropertyWindow -query -location`;
+    setParent $parent;
+
+    // The tool settings start with a column layout. It's important that
+    // the layout name matches the tool name.
+    columnLayout brSkinBrush;
+
+        frameLayout -label "General Settings"
+                    -labelIndent 3
+                    -collapsable 1
+                    -collapse 0
+                    -marginWidth 2
+                    -marginHeight 2
+                    brSkinBrushFrame;
+
+            rowColumnLayout -numberOfColumns 5
+                            -columnWidth 1 57
+                            -columnOffset 1 "right" 8
+                            brSkinBrushCurveColumn;
+                text -label "Curve" -align "right";
+                symbolCheckBox  -height 38
+                                -onImage "brSkinBrushNone.png"
+                                -offImage "brSkinBrushNoneOff.png"
+                                -ann "No falloff"
+                                brSkinBrushNoneButton;
+                symbolCheckBox  -height 38
+                                -onImage "brSkinBrushLinear.png"
+                                -offImage "brSkinBrushLinearOff.png"
+                                -ann "Linear falloff"
+                                brSkinBrushLinearButton;
+                symbolCheckBox  -height 38
+                                -onImage "brSkinBrushSmooth.png"
+                                -offImage "brSkinBrushSmoothOff.png"
+                                -ann "Smooth falloff"
+                                brSkinBrushSmoothButton;
+                symbolCheckBox  -height 38
+                                -onImage "brSkinBrushNarrow.png"
+                                -offImage "brSkinBrushNarrowOff.png"
+                                -ann "Narrow falloff"
+                                brSkinBrushNarrowButton;
+            setParent ..;
+
+            floatSliderGrp -label "Size"
+                           -precision 3
+                           -maxValue 100
+                           -columnWidth 1 55
+                           brSkinBrushSize;
+            floatSliderGrp -label "Strength"
+                           -precision 3
+                           -columnWidth 1 55
+                           brSkinBrushStrength;
+            //checkBoxGrp -label "Affect Selected" brSkinBrushAffectSelectedCheck;
+            checkBoxGrp -label "Ignore Lock" brSkinBrushIgnoreLockCheck;
+
+            /*
+            separator -style "none";
+
+            intSliderGrp -label "Oversampling"
+                         -minValue 1
+                         -maxValue 10
+                         brSkinBrushOversampling;
+            checkBoxGrp -label "Fraction Oversampling" brSkinBrushFractionOversamplingCheck;
+            */
+
+            separator -style "none" -w 350;
+
+            rowColumnLayout -numberOfColumns 5
+                            -columnWidth 1 5
+                            -columnWidth 2 100
+                            -columnWidth 3 10
+                            -columnWidth 4 100
+                            -columnWidth 5 5;
+                columnLayout; setParent .. ;
+                button -label "Flood -- " brSkinBrushFloodButton;                
+                columnLayout; setParent .. ;
+                button -label "Refresh" brSkinBrushRefreshButton;                
+                columnLayout; setParent ..;
+            setParent .. ;
+
+            brSkinBrushInfluenceList;
+
+            // the Command -----------
+            frameLayout -label "Command Options"
+                        -labelIndent 3
+                        -collapsable 1
+                        -collapse (`optionVar -query "brSkinBrushCommandFrameState"`)
+                        -marginWidth 5
+                        -marginHeight 5
+                        brSkinBrushDisplayFrame;
+
+
+                //frameLayout -label "Command";
+                rowColumnLayout -numberOfColumns 5
+                                -columnWidth 1 2
+                                -columnWidth 2 100
+                                -columnWidth 3 100    
+                                -columnWidth 4 100
+                                -columnWidth 5 2;
+
+                radioCollection brSkinBrushCommandRbCollection;                
+                
+                columnLayout; setParent .. ;            
+                radioButton -label "Add" brSkinBrushAddRb;
+                radioButton -label "Remove" brSkinBrushRemoveRb;
+                radioButton -label "AddPercent" brSkinBrushAddPercentRb;
+                columnLayout; setParent .. ;
+
+                columnLayout; setParent .. ;
+                radioButton -label "Absolute" brSkinBrushAbsoluteRb;
+                radioButton -label "Smooth" brSkinBrushSmoothRb;
+                radioButton -label "Sharpen" brSkinBrushSharpenRb;
+                columnLayout; setParent .. ;
+                
+                columnLayout; setParent .. ;
+                radioButton -label "LockVertices" brSkinBrushLockVerticesRb;
+                radioButton -label "UnLockVertices" brSkinBrushUnLockVerticesRb;
+                button -label "clear locks" brSkinBrushClearLocksButton;
+                columnLayout; setParent .. ;
+                columnLayout; setParent .. ;
+                setParent ..; //setParent ..;
+
+                separator -style "none";
+
+                radioButtonGrp -numberOfRadioButtons 2 
+                    -columnWidth3 90 80 80 
+                    -label "Color mode :  " -labelArray2 "Multi Color" "Solo Color"  brSkinBrushColorModeRbg ;
+                radioButtonGrp -numberOfRadioButtons 3 
+                    -columnWidth4 90 60 50 50 
+                    -label "Solo Color :  " -labelArray3 "White" "Lava" "Influence" brSkinBrushSoloColorTypeRbg;
+
+                separator -style "none";
+
+                rowColumnLayout -numberOfColumns 5
+                                -columnWidth 1 5
+                                -columnWidth 2 100
+                                -columnWidth 3 10
+                                -columnWidth 4 100
+                                -columnWidth 5 5;
+                    columnLayout; setParent .. ;
+                    button -label "Pick Max Influence" brSkinBrushPickMaxInfluenceButton;
+                    columnLayout; setParent .. ;
+                    button -label "Select  Influence"    brSkinBrushPickInfluenceButton;
+                    columnLayout; setParent ..;
+                setParent .. ;
+
+                intSliderGrp -label "TMP step Line" -minValue 1 -maxValue 30  brSkinBrushStepLineField;            
+                checkBoxGrp -label "180 Coverage" brSkinBrushCoverageCheck;
+                checkBoxGrp -label "post setting" brSkinBrushPostSettingCheck;                
+
+            setParent ..;
+
+            frameLayout -label "Smoothing Options"
+                        -labelIndent 3
+                        -collapsable 1
+                        -collapse (`optionVar -query "brSkinBrushSurfaceFrameState"`)
+                        -marginWidth 5
+                        -marginHeight 5
+                        brSkinBrushSurfaceFrame;
+
+                intSliderGrp -label "Depth Start"
+                             -minValue 1
+                             -maxValue 5
+                             brSkinBrushDepthStart;
+                intSliderGrp -label "Depth"
+                             -minValue 1
+                             -maxValue 20
+                             brSkinBrushDepth;
+                checkBoxGrp -label "Keep Shells Together" brSkinBrushKeepShellsTogetherCheck;
+                floatSliderGrp -label "Tolerance"
+                               -precision 3
+                               -maxValue 1
+                               brSkinBrushTolerance;
+
+            setParent .. ;
+            /*
+            frameLayout -label "Volume Smoothing"
+                        -labelIndent 3
+                        -collapsable 1
+                        -collapse (`optionVar -query "brSkinBrushVolumeFrameState"`)
+                        -marginWidth 5
+                        -marginHeight 5
+                        brSkinBrushVolumeFrame;
+
+                checkBoxGrp -label "Volume" brSkinBrushVolumeCheck;
+                floatSliderGrp -label "Range"
+                               -precision 3
+                               -maxValue 1
+                               brSkinBrushRange;
+
+            setParent ..;
+            */
+
+        setParent ..;
+
+        frameLayout -label "Display Options"
+                    -labelIndent 3
+                    -collapsable 1
+                    -collapse (`optionVar -query "brSkinBrushDisplayFrameState"`)
+                    -marginWidth 5
+                    -marginHeight 5
+                    brSkinBrushDisplayFrame;
+
+            checkBoxGrp -label "Draw Brush" brSkinBrushDrawBrushCheck;
+            checkBoxGrp -label "Draw Range" brSkinBrushDrawRangeCheck;
+            colorSliderGrp -label "Brush Color" brSkinBrushBrushColorSlider;
+            intFieldGrp -label "Line Width" brSkinBrushLineWidthField;
+            separator -style "none";
+
+            checkBoxGrp -label "In-View Message" brSkinBrushMessageType;
+            checkBoxGrp -label "Tool Tips"
+                        -value1 `annotationsState`
+                        brSkinBrushDisplayTipsCheck;
+
+
+        frameLayout -label "Advanced"
+                    -labelIndent 3
+                    -collapsable 1
+                    -collapse (`optionVar -query "brSkinBrushAdvancedFrameState"`)
+                    -marginWidth 5
+                    -marginHeight 5
+                    -manage (`optionVar -query brSkinBrushEnableAdvanced`)
+                    brSkinBrushAdvancedFrame;
+
+            intFieldGrp -label "Undersampling" brSkinBrushBrushUndersamplingField;
+
+        setParent ..;
+
+        frameLayout -label "Hotkeys"
+                    -labelIndent 3
+                    -collapsable 1
+                    -collapse (`optionVar -query "brSkinBrushHotkeyFrameState"`)
+                    -marginWidth 5
+                    -marginHeight 5
+                    brSkinBrushHotkeyFrame;
+
+            rowColumnLayout -numberOfColumns 2
+                            -columnWidth 1 80
+                            -columnWidth 2 260
+                            -columnSpacing 2 10;
+
+                text -align "right" -font boldLabelFont -label "LMB:";
+                text -align "left" -label "Drag to smooth" -wordWrap true;
+
+                // For some reason the separation is off between the
+                // first and second row. Using the blank text as an
+                // invisible separator.
+                text -label "" -height 7;
+                text -label "" -height 7;
+
+                text -align "right" -font boldLabelFont -label "MMB:";
+                text -align "left" -label "Drag left/right to adjust brush size" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "MMB:";
+                text -align "left" -label "Drag up/down to adjust brush strength" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "Ctrl + MMB:";
+                text -align "left" -label "Fine control for adjusting size and strength" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "Shift + LMB:";
+                text -align "left" -label "Remove or unlock skin" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "Ctrl + LMB:";
+                text -align "left" -label "Smooth Skin" -wordWrap true;
+                /*
+                text -align "right" -font boldLabelFont -label "Shift + Ctrl + LMB:";
+                text -align "left" -label "Click to clear vertex selection" -wordWrap true;
+                */
+                text -align "right" -font boldLabelFont -label "U:";
+                text -align "left" -label "marking menu of options" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "D:";
+                text -align "left" -label "pick influence" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "D + ALT:";
+                text -align "left" -label "pick highest influence" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "W + ALT:";
+                text -align "left" -label "toggle wirefrane" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "S + ALT:";
+                text -align "left" -label "toggle soloMode" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "M + ALT:";
+                text -align "left" -label "mirror active" -wordWrap true;
+
+                text -align "right" -font boldLabelFont -label "X + ALT:";
+                text -align "left" -label "toggle joints XRay" -wordWrap true;
+            setParent ..;
+
+        setParent ..;
+
+    setParent ..;
+
+    setUITemplate -popTemplate;
+
+    radioButtonGrp -e  -columnWidth3 90 80 80   brSkinBrushColorModeRbg ;
+    radioButtonGrp -e  -columnWidth4 90 60 50 50  brSkinBrushSoloColorTypeRbg;
+
+
+    brSkinBrushSetCallbacks $parent;
+
+    brSkinBrushToggleAnnotations;
+    //for the size
+    workspaceControl -e -collapse 1 ToolSettings;    
+    workspaceControl -e -minimumWidth 320 -initialWidth 320 -resizeWidth 320 -widthProperty free ToolSettings;    
+    workspaceControl -e -raise -collapse 0  ToolSettings;
+}
+
+// ---------------------------------------------------------------------
+// MIT License
+//
+// Copyright (c) 2018 Ingo Clemens, brave rabbit
+// brSkinBrush is under the terms of the MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// Author: Ingo Clemens    www.braverabbit.com
+// ---------------------------------------------------------------------
