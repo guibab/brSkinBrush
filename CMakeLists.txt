@@ -3,11 +3,17 @@ project(brSkinBrush)
 
 SET(MAYA_VERSION 2018 CACHE STRING "Maya version number")
 SET(SOURCE_FILES 
-    "pluginMain.cpp" 
-    "skinBrushTool.cpp"    
+    "functions.h" 
+	"setOverloads.h"
+	"skinBrushFlags.h"
     "skinBrushTool.h"
     "functions.cpp" 
-    "functions.h" 
+    "pluginMain.cpp" 
+	"skinBrushCmd.cpp" 
+	"skinBrushContext.cpp" 
+	"skinBrushContextSetFlags.cpp" 
+	"skinBrushLegacy.cpp" 
+    "skinBrushTool.cpp"    
 )
 
 FIND_PACKAGE(OpenGL REQUIRED)
