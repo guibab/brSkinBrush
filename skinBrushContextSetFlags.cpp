@@ -143,6 +143,12 @@ void SkinBrushContext::setVolume(bool value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
+void SkinBrushContext::setUSeMeshColor(bool value) {
+    useMeshColor = value;
+    MGlobal::displayInfo(MString("setUSeMeshColor CALLED ") + value);
+    MToolsInfo::setDirtyFlag(*this);
+}
+
 void SkinBrushContext::setStepLine(int value) {
     stepsToDrawLineVal = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -156,29 +162,57 @@ void SkinBrushContext::setCommandIndex(int value) {
 
 void SkinBrushContext::setSoloColor(int value) {
     // MGlobal::displayInfo(MString("setSoloColor CALLED ") + value);
-    if (soloColorVal != value) {
-        soloColorVal = value;
-        MString currentColorSet = meshFn.currentColorSetName();  // set multiColor as current Color
+    // if (soloColorVal != value) {
+    soloColorVal = value;
+    MString currentColorSet = meshFn.currentColorSetName();  // set multiColor as current Color
 
-        if (soloColorVal == 1) {  // solo
-            if (currentColorSet != this->soloColorSet)
-                meshFn.setCurrentColorSetName(this->soloColorSet);
-            editSoloColorSet();
+    if (soloColorVal == 1) {  // solo
+        // if (currentColorSet != this->soloColorSet)
+        meshFn.setCurrentColorSetName(this->soloColorSet);
+        editSoloColorSet(true);
+    } else {
+        // if (currentColorSet != this->fullColorSet)
+        meshFn.setCurrentColorSetName(this->fullColorSet);  // , &this->colorSetMod);
+    }
+    MToolsInfo::setDirtyFlag(*this);
+    //}
+}
+
+void SkinBrushContext::maya2019RefreshColors(bool toggle) {
+    view = M3dView::active3dView();
+    // first swap
+    if (toggle) toggleColorState = !toggleColorState;
+
+    if (!toggle || toggleColorState) {
+        if (soloColorVal == 1) {
+            meshFn.setCurrentColorSetName(this->soloColorSet2);
         } else {
-            if (currentColorSet != this->fullColorSet)
-                meshFn.setCurrentColorSetName(this->fullColorSet);  // , &this->colorSetMod);
+            meshFn.setCurrentColorSetName(this->fullColorSet2);
         }
-        MToolsInfo::setDirtyFlag(*this);
+        view.refresh(false, true);
+    }
+    if (!toggle || !toggleColorState) {
+        if (soloColorVal == 1) {
+            meshFn.setCurrentColorSetName(this->soloColorSet);
+        } else {
+            meshFn.setCurrentColorSetName(this->fullColorSet);
+        }
+        view.refresh(false, true);
     }
 }
 
 void SkinBrushContext::setSoloColorType(int value) {
-    // MGlobal::displayInfo(MString("setSoloColorType CALLED ") + value);
+    if (verbose) MGlobal::displayInfo(MString("setSoloColorType CALLED ") + value);
 
     if (soloColorTypeVal != value) {
         soloColorTypeVal = value;
         // here we do the redraw
-        editSoloColorSet();
+        editSoloColorSet(false);
+
+#if MAYA_API_VERSION >= 201900
+        maya2019RefreshColors();
+#endif
+
         MToolsInfo::setDirtyFlag(*this);
     }
 }
@@ -239,7 +273,17 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
         }
         if (verbose) MGlobal::displayInfo(msg);
         // here we do the redraw
-        editSoloColorSet();
+
+        if (soloColorVal == 1) {  // solo IF NOT IT CRASHES on a first pick before paint
+            MString currentColorSet = meshFn.currentColorSetName();  // get current soloColor
+            if (currentColorSet != this->soloColorSet)
+                meshFn.setCurrentColorSetName(this->soloColorSet);
+            editSoloColorSet(false);
+        }
+
+#if MAYA_API_VERSION >= 201900
+        maya2019RefreshColors();
+#endif
     }
     // MToolsInfo::setDirtyFlag(*this);
     // if (selectInUI) MToolsInfo::setDirtyFlag(*this);
@@ -319,6 +363,9 @@ int SkinBrushContext::getStepLine() { return stepsToDrawLineVal; }
 int SkinBrushContext::getCommandIndex() { return commandIndex; }
 
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
+
+bool SkinBrushContext::getUseMeshColors() { return useMeshColor; }
+
 int SkinBrushContext::getSoloColorType() { return soloColorTypeVal; }
 
 bool SkinBrushContext::getCoverage() { return coverageVal; }
@@ -337,9 +384,10 @@ MString SkinBrushContext::getInfluenceName() {
 }
 
 MString SkinBrushContext::getSkinClusterName() {
-    MString skinClusterName("FAILED - ");
     MFnDependencyNode skinDep(this->skinObj);
     return skinDep.name();
 }
+
+MString SkinBrushContext::getMeshName() { return this->meshDag.fullPathName(); }
 
 bool SkinBrushContext::getPostSetting() { return postSetting; }

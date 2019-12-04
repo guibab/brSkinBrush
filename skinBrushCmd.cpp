@@ -4,14 +4,20 @@
 // ---------------------------------------------------------------------
 // command to create the context
 // ---------------------------------------------------------------------
-SkinBrushContextCmd::SkinBrushContextCmd() {}
+SkinBrushContextCmd::SkinBrushContextCmd() {
+    // MGlobal::displayInfo(MString("---------------- [SkinBrushContextCmd()]------------------"));
+}
 
 MPxContext* SkinBrushContextCmd::makeObj() {
+    // MGlobal::displayInfo(MString("---------------- [makeObj()]------------------"));
     smoothContext = new SkinBrushContext();
     return smoothContext;
 }
 
-void* SkinBrushContextCmd::creator() { return new SkinBrushContextCmd(); }
+void* SkinBrushContextCmd::creator() {
+    // MGlobal::displayInfo(MString("---------------- [creator()]------------------"));
+    return new SkinBrushContextCmd();
+}
 // ---------------------------------------------------------------------
 // pointers for the argument flags
 // ---------------------------------------------------------------------
@@ -53,6 +59,7 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kStepsLineFlag, kStepsLineLong, MSyntax::kLong);
     syn.addFlag(kCoverageFlag, kCoverageLong, MSyntax::kLong);
     syn.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
+
     syn.addFlag(kPickInfluenceFlag, kPickInfluenceFlagLong, MSyntax::kBoolean);
     syn.addFlag(kInfluenceIndexFlag, kInfluenceIndexFlagLong, MSyntax::kLong);
     syn.addFlag(kInfluenceNameFlag, kInfluenceNameFlagLong, MSyntax::kString);
@@ -61,6 +68,9 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kRefreshPtsNmsFlag, kRefreshPtsNmsFlagLong, MSyntax::kBoolean);
     syn.addFlag(kRefreshLocksJointsFlag, kRefreshLocksJointsFlagLong, MSyntax::kBoolean);
     syn.addFlag(kSkinClusterNameFlag, kSkinClusterNameFlagLong, MSyntax::kString);
+    syn.addFlag(kMeshNameFlag, kMeshNameFlagLong, MSyntax::kString);
+
+    syn.addFlag(kUseMeshColorFlag, kUseMeshColorFlagLong, MSyntax::kBoolean);
 
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
@@ -316,6 +326,12 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setCoverage(value);
     }
 
+    if (argData.isFlagSet(kUseMeshColorFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kUseMeshColorFlag, 0, value);
+        smoothContext->setUSeMeshColor(value);
+    }
+
     return status;
 }
 
@@ -384,9 +400,13 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
 
     if (argData.isFlagSet(kSkinClusterNameFlag)) setResult(smoothContext->getSkinClusterName());
 
+    if (argData.isFlagSet(kMeshNameFlag)) setResult(smoothContext->getMeshName());
+
     if (argData.isFlagSet(kCommandIndexFlag)) setResult(smoothContext->getCommandIndex());
 
     if (argData.isFlagSet(kSoloColorFlag)) setResult(smoothContext->getSoloColor());
+
+    if (argData.isFlagSet(kUseMeshColorFlag)) setResult(smoothContext->getUseMeshColors());
 
     if (argData.isFlagSet(kSoloColorTypeFlag)) setResult(smoothContext->getSoloColorType());
 

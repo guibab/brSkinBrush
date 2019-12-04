@@ -58,25 +58,36 @@ SkinBrushContext::SkinBrushContext() {
 }
 
 void SkinBrushContext::toolOnSetup(MEvent &) {
+    if (verbose)
+        MGlobal::displayInfo(
+            MString("---------------- [SkinBrushContext::toolOnSetup ()]------------------"));
+
     MStatus status = MStatus::kSuccess;
 
     setHelpString(helpString);
     setInViewMessage(true);
 
     MGlobal::executeCommand(enterToolCommandVal);
-    // command to check size of text for picking
-    MString cmd("from PySide2.QtGui import QFont, QFontMetrics\n");
-    cmd += MString("def fnFonts(txt) :\n");
-    cmd += MString("    sz = QFontMetrics(QFont(\"MS Shell Dlg 2\", 14)).boundingRect(txt) \n");
-    cmd += MString("    return [sz.width() + 2, sz.height() + 2]\n");
-    MGlobal::executePythonCommand(cmd);
 
+    MString cmdtoolOnSetupStart(
+        "from brSkinBrush_pythonFunctions import toolOnSetupStart\ntoolOnSetupStart()\n");
+    MGlobal::executePythonCommand(cmdtoolOnSetupStart);
+
+    // command to check size of text for picking
+    MString cmdFont("from brSkinBrush_pythonFunctions import fnFonts\n");
+    MGlobal::executePythonCommand(cmdFont);
+
+    MString cmdCatchEventsUI("import catchEventsUI\n");
+    cmdCatchEventsUI += MString("reload(catchEventsUI)\n");
+    cmdCatchEventsUI += MString("catchEventsUI.EVENTCATCHER = catchEventsUI.CatchEventsWidget()\n");
+    cmdCatchEventsUI += MString("catchEventsUI.EVENTCATCHER.open()\n");
+    MGlobal::executePythonCommand(cmdCatchEventsUI);
+
+    /*
     cmd = MString("import catchEventsUI\n");
-    cmd += MString(
-        "if not hasattr(catchEventsUI, \"EVENTCATCHER\") : catchEventsUI.EVENTCATCHER = "
-        "catchEventsUI.CatchEventsWidget()\n");
-    cmd += MString("catchEventsUI.EVENTCATCHER.open()\n");
-    MGlobal::executePythonCommand(cmd);
+    cmd += MString("if not hasattr(catchEventsUI, \"EVENTCATCHER\") : catchEventsUI.EVENTCATCHER =
+    catchEventsUI.CatchEventsWidget()\n"); cmd += MString("catchEventsUI.EVENTCATCHER.open()\n");
+    */
 
     // MGlobal::executeCommand("brSkinBrushClear();");
     this->pickMaxInfluenceVal = false;
@@ -85,12 +96,20 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     status = getMesh();
 
     if (!skinObj.isNull()) {
-        getListColorsJoints(skinObj, jointsColors);  // get the joints colors
-        status = fillArrayValues(skinObj, true);     // get the skin data and all the colors
+        getListColorsJoints(skinObj, jointsColors, verbose);  // get the joints colors
+        status = fillArrayValues(skinObj, true);  // get the skin data and all the colors
 
-        MGlobal::displayInfo(MString("nb found joints colors ") + jointsColors.length());
+        this->lockJoints = MIntArray(this->nbJoints, 0);
+        this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
+
+        getListLockJoints(skinObj, this->lockJoints);
+        getListLockVertices(skinObj, this->lockVertices);
+
+        if (verbose)
+            MGlobal::displayInfo(MString("nb found joints colors ") + jointsColors.length());
     } else {
         MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
+        abortAction();
         return;
     }
     // get face color assignments ----------
@@ -108,8 +127,19 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     if (currentColorSets.indexOf(this->fullColorSet) == -1)  // multiColor
         meshFn.createColorSetWithName(this->fullColorSet);
 
-    if (currentColorSets.indexOf(this->fullColorSet) == -1)  // soloColor
+    if (currentColorSets.indexOf(this->soloColorSet) == -1)  // soloColor
         meshFn.createColorSetWithName(this->soloColorSet);
+
+    if (currentColorSets.indexOf(this->fullColorSet2) == -1)  // multiColor
+        meshFn.createColorSetWithName(this->fullColorSet2);
+
+    if (currentColorSets.indexOf(this->soloColorSet2) == -1)  // soloColor
+        meshFn.createColorSetWithName(this->soloColorSet2);
+
+    /*
+    if (currentColorSets.indexOf(this->noColorSet) == -1)  // noColor
+            meshFn.createColorSetWithName(this->noColorSet);
+    */
 
     meshFn.setColors(this->multiCurrentColors, &this->fullColorSet);  // set the multi assignation
     meshFn.assignColors(fullVertexList, &this->fullColorSet);
@@ -117,18 +147,26 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     meshFn.setColors(this->soloCurrentColors, &this->soloColorSet);  // set the solo assignation
     meshFn.assignColors(fullVertexList, &this->soloColorSet);
 
+    meshFn.setColors(this->multiCurrentColors, &this->fullColorSet2);  // set the multi assignation
+    meshFn.assignColors(fullVertexList, &this->fullColorSet2);
+
+    meshFn.setColors(this->soloCurrentColors, &this->soloColorSet2);  // set the solo assignation
+    meshFn.assignColors(fullVertexList, &this->soloColorSet2);
+
+    /*
+    meshFn.setColors(this->soloCurrentColors, &this->noColorSet); // set the solo assignation
+    meshFn.assignColors(fullVertexList, &this->noColorSet);
+    */
+
     MString currentColorSet = meshFn.currentColorSetName();  // set multiColor as current Color
     if (soloColorVal == 1) {                                 // solo
         if (currentColorSet != this->soloColorSet)
             meshFn.setCurrentColorSetName(this->soloColorSet);
-        editSoloColorSet();
+        editSoloColorSet(true);
     } else {
         if (currentColorSet != this->fullColorSet)
             meshFn.setCurrentColorSetName(this->fullColorSet);  // , &this->colorSetMod);
     }
-    // this->colorSetMod.doIt();
-    meshFn.setDisplayColors(true);
-    // meshFn.createColorSetDataMesh(this->noColorSet); // for no colors
 
     // display the locks
     MColorArray multiEditColors, soloEditColors;
@@ -142,13 +180,20 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
 
+    meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+    meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+
+    MString cmdtoolOnSetupEnd(
+        "from brSkinBrush_pythonFunctions import toolOnSetupEnd\ntoolOnSetupEnd()\n");
+    MGlobal::executePythonCommand(cmdtoolOnSetupEnd);
+
+    meshFn.setDisplayColors(true);
+
     view = M3dView::active3dView();
-    view.refresh(true);
+    view.refresh(false, true);
 }
 
 void SkinBrushContext::toolOffCleanup() {
-    // meshFn.deleteColorSet(this->fullColorSet);// , &colorSetMod);
-    // this->colorSetMod.undoIt();
     setInViewMessage(false);
     MGlobal::executeCommand(exitToolCommandVal);
 
@@ -157,10 +202,9 @@ void SkinBrushContext::toolOffCleanup() {
         "if hasattr ( catchEventsUI,\"EVENTCATCHER\"): catchEventsUI.EVENTCATCHER.close()\n");
     MGlobal::executePythonCommand(cmd);
 
-    cmd = MString("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.rmvColorSets()");
+    cmd =
+        MString("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.toolOffCleanup()");
     MGlobal::executePythonCommand(cmd);
-
-    // MGlobal::executeCommand("brSkinBrushClear();");
 }
 
 void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }
@@ -195,16 +239,19 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     meshFn.setSomeColors(verticesIndices, multiEditColors, &this->fullColorSet);
     meshFn.setSomeColors(verticesIndices, soloEditColors, &this->soloColorSet);
 
+    meshFn.setSomeColors(verticesIndices, multiEditColors, &this->fullColorSet2);
+    meshFn.setSomeColors(verticesIndices, soloEditColors, &this->soloColorSet2);
+
     // refresh view and display
-    meshFn.setDisplayColors(true);
-    view.refresh(true);
+    // meshFn.setDisplayColors(true);
+    view.refresh(false, true);
 
     this->previousPaint.clear();
 }
 
 void SkinBrushContext::refresh() {
     MStatus status;
-    if (verbose) MGlobal::displayInfo(" - REFRESH -");
+    if (verbose) MGlobal::displayInfo(" - REFRESH In CPP -");
     // refresh skinCluster
     //
     refreshPointsNormals();
@@ -212,8 +259,8 @@ void SkinBrushContext::refresh() {
     if (!skinObj.isNull()) {
         // Get the skin cluster node from the history of the mesh.
         getListLockJoints(skinObj, this->lockJoints);
-        getListColorsJoints(skinObj, this->jointsColors);           // get the joints colors
-        status = getListLockVertices(skinObj, this->lockVertices);  // problem ?
+        getListColorsJoints(skinObj, this->jointsColors, this->verbose);  // get the joints colors
+        status = getListLockVertices(skinObj, this->lockVertices);        // problem ?
         if (MS::kSuccess != status) {
             MGlobal::displayError(MString("error getListLockVertices"));
         }
@@ -228,6 +275,9 @@ void SkinBrushContext::refresh() {
     meshFn.setColors(this->multiCurrentColors, &this->fullColorSet);  // set the multi assignation
     meshFn.setColors(this->soloCurrentColors, &this->soloColorSet);   // set the solo assignation
 
+    meshFn.setColors(this->multiCurrentColors, &this->fullColorSet2);  // set the multi assignation
+    meshFn.setColors(this->soloCurrentColors, &this->soloColorSet2);   // set the solo assignation
+
     // display the locks ----------------------
     MColorArray multiEditColors, soloEditColors;
     MIntArray editVertsIndices;
@@ -238,19 +288,23 @@ void SkinBrushContext::refresh() {
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
 
-    if (soloColorVal == 1) editSoloColorSet();  // solo
+    meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+    meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+
+    if (soloColorVal == 1) editSoloColorSet(true);  // solo
 
     // refresh view and display
     meshFn.setDisplayColors(true);
 
     view = M3dView::active3dView();
-    view.refresh(true);
+    view.refresh(false, true);
+
+    maya2019RefreshColors();
 }
 
 // ---------------------------------------------------------------------
 // viewport 2.0
 // ---------------------------------------------------------------------
-
 int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
     MStatus stat;
     int lent = this->inflDagPaths.length();
@@ -470,25 +524,7 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
     drawManager.endDrawable();
     return MS::kSuccess;
 }
-/*
-MStatus SkinBrushContext::drawFeedback(MHWRender::MUIDrawManager& drawManager, const
-MHWRender::MFrameContext& context)
-{
-        // to draw the brush ring.
-        drawManager.beginDrawable();
 
-        drawManager.setColor(MColor(1.0,0,0));
-        drawManager.setLineWidth((float)lineWidthVal);
-
-        if (successFullHit)
-                drawManager.circle(surfacePoints[0], normalVector, sizeVal*1.2);
-
-        //MGlobal::displayInfo("MUIDrawManager drawFeedback");
-        drawManager.endDrawable();
-
-        return MS::kSuccess;
-}
-*/
 MStatus SkinBrushContext::doPress(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
                                   const MHWRender::MFrameContext &context) {
     selectionStatus = doPressCommon(event);
@@ -598,16 +634,12 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
 
     if (meshDag.node().isNull()) return MStatus::kNotFound;
 
+    view = M3dView::active3dView();
+
     if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
         this->pickMaxInfluenceVal = false;
         this->pickInfluenceVal = false;
-        /*
-        if (!this->tmpTestPrintClosestInfluence) { // debug
-                this->tmpTestPrintClosestInfluence = true;
-                getClosestInfluenceToCursor(this->screenX, this->screenY);
-                this->tmpTestPrintClosestInfluence = false;
-        }
-        */
+
         if (biggestInfluence != this->influenceIndex && biggestInfluence != -1) {
             setInfluenceIndex(biggestInfluence, true);  // true for select in UI
         }
@@ -627,6 +659,7 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
 
     // this->multiCurrentColors = MColorArray(this->numVertices, MColor(0.0, 0.0, 0.0, 1.0));
     // meshFn.setColors(this->multiCurrentColors, &this->fullColorSet);
+
     // meshFn.setDisplayColors(true);
 
     this->intensityValues = std::vector<float>(this->numVertices, 0);
@@ -634,7 +667,6 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     undersamplingSteps = 0;
     performBrush = false;
 
-    view = M3dView::active3dView();
     event.getPosition(this->screenX, this->screenY);
 
     // Get the size of the viewport and calculate the center for placing
@@ -692,7 +724,8 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
         surfacePointAdjust = this->centerOfBrush;
         worldVectorAdjust = this->worldVector;
     }
-
+    // precopy
+    maya2019RefreshColors();
     // -----------------------------------------------------------------
     // selection & current weights
     // -----------------------------------------------------------------
@@ -1201,10 +1234,6 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         }
     }
 
-    // Refresh the view to erase the drawn circle. This might not
-    // always be necessary but is just included to complete the process.
-    view.refresh(false, true);
-
     // If the smoothing has been performed send the current values to
     // the tool command along with the necessary data for undo and redo.
     // The same goes for the select mode.
@@ -1250,9 +1279,24 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
         meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
 
+        meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+        meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+
+        /*
+        // For Maya 2019 ---------------------------------
+        #if MAYA_API_VERSION >= 201900
+        if (soloColorVal == 1) {
+                meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->noColorSet);
+        }
+        else {
+                meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->noColorSet);
+        }
+        #endif
+        // end For Maya 2019 ---------------------------------
+        */
+
         // refresh view and display
-        meshFn.setDisplayColors(true);
-        view.refresh(true);
+        view.refresh(false, true);
 
         this->previousPaint.clear();
 
@@ -1305,6 +1349,10 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         // is not necessary since the the smoothing already has been
         // performed. There is no need to apply the values twice.
         cmd->finalize();
+    } else {
+        // Refresh the view to erase the drawn circle. This might not
+        // always be necessary but is just included to complete the process.
+        view.refresh(false, true);
     }
 }
 
@@ -1379,7 +1427,8 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
                 }
             }
             // now set the weights -----------------------------------------------------
-            doPruneWeight(theWeights, this->nbJoints, this->pruneWeight);
+            // doPruneWeight(theWeights, this->nbJoints, this->pruneWeight);
+
             // here we should normalize -----------------------------------------------------
 
             MIntArray objVertices;
@@ -1434,9 +1483,11 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
 // COLORS
 // ---------------------------------------------------------------------
 
-MStatus SkinBrushContext::editSoloColorSet() {
+MStatus SkinBrushContext::editSoloColorSet(bool doBlack) {
     MStatus status;
-    if (verbose) MGlobal::displayInfo(" editSoloColorSet CALL ");
+    if (verbose) MGlobal::displayInfo(" editSoloColorSet CALL NEW 3 ");
+    // meshFn.setCurrentColorSetName(this->noColorSet);
+
     MColorArray colToSet;
     MIntArray vtxToSet;
     for (unsigned int theVert = 0; theVert < this->numVertices; ++theVert) {
@@ -1445,7 +1496,8 @@ MStatus SkinBrushContext::editSoloColorSet() {
         // Mesh_X_HeadBody_Pc_Sd1_SdDsp_.vtx[20266] -  ") + val + MString(" - storeValue ") +
         // this->soloColorsValues[theVert]);
         bool isVtxLocked = this->lockVertices[theVert] == 1;
-        if (!(this->soloColorsValues[theVert] == 0 && val == 0)) {  // dont update the black
+        bool update = doBlack | !(this->soloColorsValues[theVert] == 0 && val == 0);
+        if (update) {  // dont update the black
             MColor soloColor = getASoloColor(val);
             this->soloCurrentColors[theVert] = soloColor;
             this->soloColorsValues[theVert] = val;
@@ -1457,10 +1509,16 @@ MStatus SkinBrushContext::editSoloColorSet() {
         }
     }
     meshFn.setSomeColors(vtxToSet, colToSet, &this->soloColorSet);
+    meshFn.setSomeColors(vtxToSet, colToSet, &this->soloColorSet2);
+
+    // meshFn.setCurrentColorSetName(this->soloColorSet);
 
     // don't know why but we need that ------------
     meshFn.setDisplayColors(true);
-    view.refresh(true);
+
+    view = M3dView::active3dView();
+    view.refresh(false, true);
+    // view.refresh(false, true);
     return status;
 }
 
@@ -1579,12 +1637,6 @@ MStatus SkinBrushContext::getMesh() {
     MObject skinClusterObj;
     status = getSkinCluster(meshDag, skinClusterObj);
     CHECK_MSTATUS_AND_RETURN_IT(status);
-    this->lockJoints = MIntArray(this->nbJoints, 0);
-    this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-
-    getListLockJoints(skinClusterObj, this->lockJoints);
-    getListLockVertices(skinClusterObj, this->lockVertices);
-
     // -----------------------------------------------------------------
     // get the paintable attribute
     // -----------------------------------------------------------------
@@ -2011,17 +2063,29 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
         this->multiCurrentColors.setLength(this->numVertices);
         // get values for array --
         for (unsigned int vertexIndex = 0; vertexIndex < this->numVertices; ++vertexIndex) {
-            MColor theColor;
+            MColor theColor(0.0, 0.0, 0.0);
             for (unsigned int indexInfluence = 0; indexInfluence < infCount;
                  indexInfluence++) {  // for each joint
                 double theWeight = this->skinWeightList[vertexIndex * infCount + indexInfluence];
 
                 if (doColors) {
                     theColor += this->jointsColors[indexInfluence] * theWeight;
+                    if ((verbose) && (vertexIndex == 144)) {
+                        MGlobal::displayInfo(MString(" jnt : [") + indexInfluence +
+                                             MString("] VTX 144 R: ") + theColor.r +
+                                             MString("  G: ") + theColor.g + MString("  B: ") +
+                                             theColor.b + MString("  "));
+                    }
                 }
             }
-            if (doColors)  // not store lock vert color
+            if (doColors) {  // not store lock vert color
                 this->multiCurrentColors[vertexIndex] = theColor;
+                if ((verbose) && (vertexIndex == 144)) {
+                    MGlobal::displayInfo(MString(" VTX 144 R: ") + theColor.r + MString("  G: ") +
+                                         theColor.g + MString("  B: ") + theColor.b +
+                                         MString("  "));
+                }
+            }
         }
     }
 
@@ -2029,7 +2093,6 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
 }
 
 /*
-
 MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
         MStatus status = MS::kSuccess;
         if (verbose) MGlobal::displayInfo(" FILLED ARRAY VALUES ");
@@ -2266,118 +2329,6 @@ bool SkinBrushContext::expandHit(int faceHit, MFloatPoint hitPoint,
     return foundHit;
 }
 
-/*
-bool SkinBrushContext::getClosestIndex(MEvent event)
-{
-        closestIndices.clear();
-        closestDistances.clear();
-
-        unsigned int i, j;
-
-    MPoint worldPoint;
-    event.getPosition(screenX, screenY);
-    view.viewToWorld(screenX, screenY, worldPoint, worldVector);
-
-    // Note: MMeshIsectAccelParams is not used on purpose to speed up
-    // the search for intersections. In particular cases (i.e. bend
-    // elbow with rigid weighting to smooth) the acceleration sometimes
-    // failed to detect the foremost intersection and instead returned
-    // the surface behind it as the first intersection causing the
-    // smoothing to appear on the back side of the mesh. Therefore the
-    // acceleration has been disabled.
-
-    MFloatPointArray hitPoints;
-    MFloatArray hitRayParams;
-    MIntArray hitFaces;
-
-        bool foundIntersect = meshFn.allIntersections(worldPoint,
-                                                  worldVector,
-                                                  NULL,
-                                                  NULL,
-                                                  true,
-                                                  MSpace::kWorld,
-                                                                                                  (float)9999,
-                                                  false,
-                                                                                                  &this->accelParams,
-                                                  true,
-                                                  hitPoints,
-                                                  &hitRayParams,
-                                                  &hitFaces,
-                                                  NULL,
-                                                  NULL,
-                                                  NULL);
-
-        MStatus stat;
-
-        //bool foundIntersect = meshFn.closestIntersection(worldPoint, worldVector, nullptr,
-nullptr, false, MSpace::kWorld,		9999, false, &this->accelParams, this->clickFloatPoint,
-&this->clickFloatPoint,		&hitFaces, nullptr, nullptr, nullptr, 0.0001f, &stat);
-
-
-        if (!foundIntersect)
-                //normalVector = worldVector;
-        return false;
-
-    surfacePoints.clear();
-    // Make sure that the depth value does not go below 0.
-    if (depthVal < 1) depthVal = 1;
-
-    // Make sure that the depth start value does not go below 0.
-    if (depthStartVal < 1) depthStartVal = 1;
-
-    // Define how many hit points need to be evaluated depending on the
-    // depth setting of the brush.
-    unsigned int numHits = hitRayParams.length();
-    unsigned int maxDepth = (unsigned)depthVal + (unsigned)depthStartVal - 1;
-    if (numHits > maxDepth) numHits = maxDepth;
-
-    // In volume mode only the first hit it required to make sure that
-    // the smoothing loop only runs once.
-    if (volumeVal)        numHits = 1;
-
-    // Store the closest distance to the mesh for the adjustment speed.
-    pressDistance = hitRayParams[0];
-
-    for (i = (unsigned)depthStartVal - 1; i < numHits; i ++)
-    {
-        surfacePoints.append(hitPoints[i]);
-        // If an intersection has been found go through the vertices of
-        // the intersected polygon and find the closest vertex.
-                MIntArray vertices = this->FaceToVertices[hitFaces[i]];
-
-        int closestIndex = 0;
-        float closestDistance = 0.0;
-        for (j = 0; j < vertices.length(); j ++)
-        {
-                        int ptIndex = vertices[j];
-                        MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3],
-this->mayaRawPoints[ptIndex * 3 + 1], this->mayaRawPoints[ptIndex * 3 + 2]);
-
-                        // here make a better distance computation
-            float delta = posPoint.distanceTo(hitPoints[i]);
-            // Find which index is closest and store it along with the
-            // distance.
-            if (j == 0 || closestDistance > delta)
-            {
-                closestIndex = vertices[j];
-                closestDistance = delta;
-            }
-        }
-
-        // Only indices which are within the brush radius are of
-        // interest.
-        if (closestDistance <= sizeVal)
-        {
-                        closestIndices.append(closestIndex);
-                        closestDistances.append(closestDistance);
-        }
-    }
-        // ----------- get normal for display ---------------------
-        meshFn.getClosestNormal(surfacePoints[0], normalVector);// , MSpace::kWorld,
-&closestPolygon); return true;
-}
-*/
-
 //
 // Description:
 //      Go through the all vertices which are closest to the cursor,
@@ -2566,18 +2517,18 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
         this->previousPaint = dicVertsDist;
 
         // do actually set colors -----------------------------------
-        if (this->soloColorVal == 0)
+        if (this->soloColorVal == 0) {
             meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
-        else
+            meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+        } else {
             meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
+            meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+        }
     } else {
         MIntArray volumeIndices = getVerticesInVolume();
     }
     // don't know why but we need that ------------
-    meshFn.setDisplayColors(true);
-    // setting the values
-    // valuesForAttribute.copy(paintArrayValues);
-
+    // meshFn.setDisplayColors(true);
     if (!this->postSetting) {
         // MGlobal::displayInfo("apply the skin stuff");
         // still have to deal with the colors damn it
@@ -2586,11 +2537,11 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             this->intensityValues = std::vector<float>(this->numVertices, 0);
             this->previousPaint.clear();
             this->skinValuesToSet.clear();
-
             // replace colors
         }
     }
-    view.refresh(true);
+    // view.refresh(false, true);
+    maya2019RefreshColors(true);
 
     return status;
 }
@@ -2613,8 +2564,6 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
 //
 MStatus SkinBrushContext::performSelect(MEvent event, MIntArray indices, MFloatArray distances) {
     MStatus status = MStatus::kSuccess;
-
-    unsigned int i;
 
     MFnSingleIndexedComponent comp;
     MObject compObj = comp.create(MFn::kMeshVertComponent);
@@ -2644,7 +2593,7 @@ MStatus SkinBrushContext::performSelect(MEvent event, MIntArray indices, MFloatA
         MGlobal::setActiveSelectionList(sel, MGlobal::kReplaceList);
     }
 
-    view.refresh(true);
+    view.refresh(false, true);
 
     return status;
 }

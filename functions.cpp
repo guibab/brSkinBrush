@@ -147,8 +147,11 @@ MStatus findOrigMesh(MObject& skinCluster, MObject& origMesh, bool verbose) {
     return MS::kSuccess;
 }
 
-MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors) {
+MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors, bool verbose) {
     MStatus stat;
+    if (verbose)
+        MGlobal::displayInfo(MString("---------------- [getListColorsJoints()]------------------"));
+
     /*
     MDagPathArray  listOfJoints;
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -160,34 +163,57 @@ MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors) {
     float color[3];
     MColorArray jointsColors(nbJoints);
     for (int i = 0; i < nbJoints; i++) {
-    MFnDagNode jnt(listOfJoints[i]);
-    //jnt = MFnDagNode (listOfJoints[iterator]);
-    MPlug lockInfluenceWeightsPlug = jnt.findPlug("wireColorRGB");
-    //MPlug lockInfluenceWeightsPlug(jnt, MFnDagNode::wireColorRGB);
+            MFnDagNode jnt(listOfJoints[i]);
+            //jnt = MFnDagNode (listOfJoints[iterator]);
+            MPlug lockInfluenceWeightsPlug = jnt.findPlug("wireColorRGB");
+            //MPlug lockInfluenceWeightsPlug(jnt, MFnDagNode::wireColorRGB);
 
-    color[0] = lockInfluenceWeightsPlug.child(0).asFloat();
-    color[1] = lockInfluenceWeightsPlug.child(1).asFloat();
-    color[2] = lockInfluenceWeightsPlug.child(2).asFloat();
+            color[0] = lockInfluenceWeightsPlug.child(0).asFloat();
+            color[1] = lockInfluenceWeightsPlug.child(1).asFloat();
+            color[2] = lockInfluenceWeightsPlug.child(2).asFloat();
 
-    jointsColors[i] = MColor(color);
-    //MString jointName = jnt.name();
+            jointsColors[i] = MColor(color);
+            //MString jointName = jnt.name();
     }
     */
+    if (verbose) {
+        MDagPathArray listOfJoints;
+        MFnSkinCluster theSkinCluster(skinCluster);
+        theSkinCluster.influenceObjects(listOfJoints, &stat);
+        int nbJoints = listOfJoints.length();
+        MStringArray allJointsNames;
+        MGlobal::displayInfo(MString(" nbJoints from skinCluster ") + nbJoints);
+        for (int i = 0; i < nbJoints; i++) {
+            MFnDagNode jnt(listOfJoints[i]);
+            MString jointName = jnt.name();
+            MGlobal::displayInfo(jointName + " " + i);
+        }
+    }
+    //----------------------------------------------------------------
 
     MFnDependencyNode skinClusterDep(skinCluster);
     MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor");
     int nbElements = influenceColor_plug.numElements();
-    // MGlobal::displayInfo(influenceColor_plug.name() + " - " +nbJoints);
     jointsColors.clear();
     MIntArray plugIndices;
     influenceColor_plug.getExistingArrayAttributeIndices(plugIndices);
     int nbJoints = plugIndices[plugIndices.length() - 1] + 1;
+    if (verbose)
+        MGlobal::displayInfo(influenceColor_plug.name() + " nbJoints [" + nbJoints +
+                             "] nbElements [" + nbElements + "]");
     jointsColors.setLength(nbJoints);
-    float black[4] = {0, 0, 0, 1};
+    float black[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    for (int i = 0; i < nbJoints; ++i) {
+        jointsColors.set(black, i);
+    }
     for (int i = 0; i < nbElements; ++i) {
+        // MGlobal::displayInfo(i);
         // weightList[i]
         MPlug colorPlug = influenceColor_plug.elementByPhysicalIndex(i);
         int logicalInd = colorPlug.logicalIndex();
+
+        logicalInd = i;  // fix colors bug on joints
+
         if (colorPlug.isConnected()) {
             MPlugArray connections;
             colorPlug.connectedTo(connections, true, false);
@@ -195,15 +221,23 @@ MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors) {
                 MPlug theConn = connections[0];
                 float element[4] = {theConn.child(0).asFloat(), theConn.child(1).asFloat(),
                                     theConn.child(2).asFloat(), 1};
+                if (verbose)
+                    MGlobal::displayInfo(colorPlug.name() + " " + element[0] + " " + element[1] +
+                                         " " + element[2]);
                 jointsColors.set(element, logicalInd);
-            } else
+            } else {
+                if (verbose)
+                    MGlobal::displayInfo(colorPlug.name() + " " + black[0] + " " + black[1] + " " +
+                                         black[2]);
                 jointsColors.set(black, logicalInd);
+            }
         } else {
             // MGlobal::displayInfo(colorPlug.name());
             float element[4] = {colorPlug.child(0).asFloat(), colorPlug.child(1).asFloat(),
                                 colorPlug.child(2).asFloat(), 1};
-            // MGlobal::displayInfo(colorPlug.name()+ " "+ element[0] + " " + element[1] + " " +
-            // element[2]);
+            if (verbose)
+                MGlobal::displayInfo(colorPlug.name() + " " + element[0] + " " + element[1] + " " +
+                                     element[2]);
             jointsColors.set(element, logicalInd);
         }
     }
@@ -376,13 +410,13 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     return stat;
 }
 
-MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currColors,
+MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currColors, bool verbose,
                       bool useMPlug) {
     MStatus stat;
     MFnDagNode skinClusterDag(skinCluster);
     MFnDependencyNode skinClusterDep(skinCluster);
     MColorArray jointsColors;
-    getListColorsJoints(skinCluster, jointsColors);
+    getListColorsJoints(skinCluster, jointsColors, verbose);
 
     if (!useMPlug) {
         MFnSkinCluster theSkinCluster(skinCluster);

@@ -107,5 +107,11 @@
 #define kSkinClusterNameFlag "-skn"
 #define kSkinClusterNameFlagLong "-skinClusterName"
 
+#define kMeshNameFlag "-msh"
+#define kMeshNameFlagLong "-meshName"
+
 #define kListVerticesIndicesFlag "-liv"
 #define kListVerticesIndicesFlagLong "-listVerticesIndices"
+
+#define kUseMeshColorFlag "-umc"
+#define kUseMeshColorFlagLong "-useMeshColor"

@@ -231,7 +231,7 @@ class SkinBrushContext : public MPxContext {
     MStatus applyCommandMirror(std::unordered_map<int, double> &valuesToSet);
     MStatus refreshColors(MIntArray &editVertsIndices, MColorArray &multiEditColors,
                           MColorArray &soloEditColors);
-    MStatus editSoloColorSet();
+    MStatus editSoloColorSet(bool doBlack);
     MColor getASoloColor(double val);
     MStatus refreshPointsNormals();
 
@@ -312,11 +312,13 @@ class SkinBrushContext : public MPxContext {
     void setTolerance(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
+    void setUSeMeshColor(bool value);
     void setStepLine(int value);
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
     void setCommandIndex(int value);
     void setSoloColor(int value);
+    void maya2019RefreshColors(bool toggle = false);
     void setSoloColorType(int value);
     void setInfluenceByName(MString value);
     void setPostSetting(bool value);
@@ -354,8 +356,10 @@ class SkinBrushContext : public MPxContext {
     int getInfluenceIndex();
     MString getInfluenceName();
     MString getSkinClusterName();
+    MString getMeshName();
     int getCommandIndex();
     int getSoloColor();
+    bool getUseMeshColors();
     int getSoloColorType();
     bool getPostSetting();
 
@@ -397,6 +401,7 @@ class SkinBrushContext : public MPxContext {
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
     bool postSetting = true;                     // we apply paint as ssons as attr is changed
     bool doNormalize = true;
+    bool useMeshColor = true;
 
     // brush settings for adjusting
     bool initAdjust;                 // True after the first drag event.
@@ -500,7 +505,12 @@ class SkinBrushContext : public MPxContext {
     MColor lockVertColor = MColor((float)0.2, (float)0.2, (float)0.2);
     MString fullColorSet = MString("multiColorsSet");
     MString soloColorSet = MString("soloColorsSet");
-    MString noColorSet = MString("noColorsSet");
+    MString fullColorSet2 = MString("multiColorsSet2");
+    MString soloColorSet2 = MString("soloColorsSet2");
+
+    bool toggleColorState = false;  // use to swap from colorSet and colorSet2
+
+    // MString noColorSet = MString("noColorsSet");
     std::vector<float> intensityValues;  // (length, 0);
 
     float minSoloColor = 0.0;

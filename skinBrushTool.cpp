@@ -243,6 +243,8 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
 // ---------------------------------------------------------------------
 
 MStatus skinBrushTool::doIt(const MArgList& args) {
+    // MGlobal::displayInfo(MString("---------------- [skinBrushTool::doIt]------------------"));
+
     MStatus status = MStatus::kSuccess;
 
     status = parseArgs(args);
