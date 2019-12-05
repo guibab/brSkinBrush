@@ -1,6 +1,8 @@
 #include "functions.h"
 
-unsigned int getMIntArrayIndex(MIntArray& myArray, int searching) {
+#include <limits>
+
+unsigned int getMIntArrayIndex(MIntArray &myArray, int searching) {
     unsigned int toReturn = -1;
     for (unsigned int element = 0; element < myArray.length(); ++element) {
         if (myArray[element] == searching) {
@@ -12,7 +14,7 @@ unsigned int getMIntArrayIndex(MIntArray& myArray, int searching) {
 }
 
 void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsPeriodic,
-               bool VIsPeriodic, MIntArray& vertices) {
+               bool VIsPeriodic, MIntArray &vertices) {
     int resCV;
     // plus U
     int UNext = storedU + 1;
@@ -58,7 +60,7 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
 }
 
 // from the mesh retrieves the skinCluster
-MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinCluster,
+MStatus findSkinCluster(MDagPath MeshPath, MObject &theSkinCluster, int indSkinCluster,
                         bool verbose) {
     if (verbose) MGlobal::displayInfo(MString(" ---- findSkinCluster ----"));
     MStatus stat;
@@ -112,7 +114,7 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
     return MS::kFailure;
 }
 
-MStatus findMesh(MObject& skinCluster, MDagPath& theMeshPath, bool verbose) {
+MStatus findMesh(MObject &skinCluster, MDagPath &theMeshPath, bool verbose) {
     if (verbose) MGlobal::displayInfo(MString(" ---- findMesh ----"));
     MFnSkinCluster theSkinCluster(skinCluster);
     MObjectArray objectsDeformed;
@@ -134,7 +136,7 @@ MStatus findMesh(MObject& skinCluster, MDagPath& theMeshPath, bool verbose) {
     return MS::kFailure;
 }
 
-MStatus findOrigMesh(MObject& skinCluster, MObject& origMesh, bool verbose) {
+MStatus findOrigMesh(MObject &skinCluster, MObject &origMesh, bool verbose) {
     if (verbose) MGlobal::displayInfo(MString(" ---- find Orig Mesh ----"));
     MFnSkinCluster theSkinCluster(skinCluster);
     MObjectArray objectsDeformed;
@@ -147,7 +149,7 @@ MStatus findOrigMesh(MObject& skinCluster, MObject& origMesh, bool verbose) {
     return MS::kSuccess;
 }
 
-MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors, bool verbose) {
+MStatus getListColorsJoints(MObject &skinCluster, MColorArray &jointsColors, bool verbose) {
     MStatus stat;
     if (verbose)
         MGlobal::displayInfo(MString("---------------- [getListColorsJoints()]------------------"));
@@ -244,7 +246,7 @@ MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors, boo
     return stat;
 }
 
-MStatus getListLockJoints(MObject& skinCluster, MIntArray& jointsLocks) {
+MStatus getListLockJoints(MObject &skinCluster, MIntArray &jointsLocks) {
     MStatus stat;
 
     MFnDependencyNode skinClusterDep(skinCluster);
@@ -274,7 +276,7 @@ MStatus getListLockJoints(MObject& skinCluster, MIntArray& jointsLocks) {
     return stat;
 }
 
-MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks) {
+MStatus getListLockVertices(MObject &skinCluster, MIntArray &vertsLocks) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -307,7 +309,7 @@ MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks) {
     return stat;
 }
 
-MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
+MStatus getSymetryAttributes(MObject &skinCluster, MIntArray &symetryList) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -331,10 +333,10 @@ MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
     symetryList = intData.array(&stat);
 }
 
-MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
-                          MIntArray& theMirrorVerts, MIntArray& editAndMirrorVerts,
-                          MDoubleArray& editVertsWeights, MDoubleArray& mirrorVertsWeights,
-                          MDoubleArray& editAndMirrorWeights, bool doMerge) {
+MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray &theEditVerts,
+                          MIntArray &theMirrorVerts, MIntArray &editAndMirrorVerts,
+                          MDoubleArray &editVertsWeights, MDoubleArray &mirrorVertsWeights,
+                          MDoubleArray &editAndMirrorWeights, bool doMerge) {
     // doMerge do we merge the weights ? if painting the same influence or smooth
     MStatus status;
 
@@ -379,8 +381,8 @@ MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
     return status;
 }
 
-MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToLock,
-                  MIntArray& vertsLocks) {
+MStatus editLocks(MObject &skinCluster, MIntArray &inputVertsToLock, bool addToLock,
+                  MIntArray &vertsLocks) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -410,7 +412,7 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     return stat;
 }
 
-MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currColors, bool verbose,
+MStatus getListColors(MObject &skinCluster, int nbVertices, MColorArray &currColors, bool verbose,
                       bool useMPlug) {
     MStatus stat;
     MFnDagNode skinClusterDag(skinCluster);
@@ -493,16 +495,16 @@ MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currCol
     return MS::kSuccess;
 }
 
-MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoints,
-                  MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
-                  MDoubleArray& theWeights, bool normalize, double mutliplier) {
+MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoints,
+                  MDoubleArray &fullWeightArray, std::map<int, double> &valuesToSet,
+                  MDoubleArray &theWeights, bool normalize, double mutliplier) {
     MStatus stat;
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
     //
     if (command == 5) {  // sharpen  -----------------------
         int i = 0;
-        for (const auto& elem : valuesToSet) {
+        for (const auto &elem : valuesToSet) {
             int theVert = elem.first;
             double theVal = mutliplier * elem.second + 1.0;
             double substract = theVal / nbJoints;
@@ -523,7 +525,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
         // do the command --------------------------
         int i = -1;  // i is a short index instead of theVert
         unsigned int jnt;
-        for (const auto& elem : valuesToSet) {
+        for (const auto &elem : valuesToSet) {
             i++;
             int theVert = elem.first;
             double theVal = mutliplier * elem.second;
@@ -613,9 +615,9 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
     return stat;
 }
 
-MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, int indexCurrVert,
-                         int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
-                         MDoubleArray& theWeights, double strengthVal) {
+MStatus setAverageWeight(std::vector<int> &verticesAround, int currentVertex, int indexCurrVert,
+                         int nbJoints, MIntArray &lockJoints, MDoubleArray &fullWeightArray,
+                         MDoubleArray &theWeights, double strengthVal) {
     MStatus stat;
     int sizeVertices = verticesAround.size();
     unsigned int i, jnt, posi;
@@ -654,7 +656,7 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
     return MS::kSuccess;
 }
 
-MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWeight) {
+MStatus doPruneWeight(MDoubleArray &theWeights, int nbJoints, double pruneCutWeight) {
     MStatus stat;
 
     int vertIndex, jnt, posiInArray;
@@ -686,7 +688,7 @@ MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWei
 };
 
 // void Line(float x1, float y1, float x2, float y2, MIntArray &posiX, MIntArray &posiY)
-void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>>& posi) {
+void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>> &posi) {
     // Bresenham's line algorithm
     bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
     if (steep) {
@@ -728,7 +730,7 @@ void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float
     }
 }
 
-void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>>& posi) {
+void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>> &posi) {
     short dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
     short dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
     short err = (dx > dy ? dx : -dy) / 2, e2;
@@ -752,3 +754,115 @@ void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, 
 float dist2D(short x0, short y0, short x1, short y1) {
     return sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
 };
+
+bool RayIntersectsBBox(MBoundingBox bbox, MPoint orig, MVector direction) {
+    MPoint minPt = bbox.min();
+    MPoint maxPt = bbox.max();
+
+    double tmin = (minPt.x - orig.x) / direction.x;
+    double tmax = (maxPt.x - orig.x) / direction.x;
+    double tmpSwap;
+
+    if (tmin > tmax) {
+        tmpSwap = tmin;
+        tmin = tmax;
+        tmax = tmpSwap;
+    }
+
+    double tymin = (minPt.y - orig.y) / direction.y;
+    double tymax = (maxPt.y - orig.y) / direction.y;
+
+    if (tymin > tymax) {
+        tmpSwap = tymin;
+        tymin = tymax;
+        tymax = tmpSwap;
+    }
+
+    if ((tmin > tymax) || (tymin > tmax)) return false;
+
+    if (tymin > tmin) tmin = tymin;
+
+    if (tymax < tmax) tmax = tymax;
+
+    double tzmin = (minPt.z - orig.z) / direction.z;
+    double tzmax = (maxPt.z - orig.z) / direction.z;
+
+    if (tzmin > tzmax) {
+        tmpSwap = tzmin;
+        tzmin = tzmax;
+        tzmax = tmpSwap;
+    }
+
+    if ((tmin > tzmax) || (tzmin > tmax)) return false;
+
+    if (tzmin > tmin) tmin = tzmin;
+
+    if (tzmax < tmax) tmax = tzmax;
+
+    return true;
+};
+
+MPoint offsetIntersection(const MPoint &rayPoint, const MVector &rayVector,
+                          const MVector &originNormal) {
+    // A little hack to shift the input ray point around to get the intersections with the offset
+    // planes
+    MVector diff = rayPoint - originNormal;
+    double prod = (diff * originNormal) / (rayVector * originNormal);
+    return rayPoint - (rayVector * prod) + originNormal;
+}
+
+MMatrix bboxMatrix(const MPoint &minPoint, const MPoint &maxPoint, const MMatrix &bbSpace) {
+    // Build the matrix of the bounding box as if it were a transformed 2x2x2 cube centered at the
+    // origin
+    MPoint c = (minPoint + maxPoint) / 2.0;
+    MVector s = maxPoint - c;
+    double matVals[4][4] = {
+        {s.x, 0.0, 0.0, 0.0}, {0.0, s.y, 0.0, 0.0}, {0.0, 0.0, s.z, 0.0}, {c.x, c.y, c.z, 1.0}};
+    return bbSpace * MMatrix(matVals);
+}
+
+inline bool inUnitPlane(const MPoint &inter) {
+    // Quickly check if the intersection happened in the unit plane
+    return (inter.x <= 1.0 && inter.x >= -1.0) && (inter.y <= 1.0 && inter.y >= -1.0) &&
+           (inter.z <= 1.0 && inter.z >= -1.0);
+}
+
+bool bboxIntersection(const MPoint &minPoint, const MPoint &maxPoint, const MMatrix &bbSpace,
+                      const MPoint &rayPoint, const MVector &rayVector, MPoint &intersection) {
+    // Get the bbox matrix and its inverse
+    MMatrix bbm = bboxMatrix(minPoint, maxPoint, bbSpace);
+    MMatrix bbmi = bbm.inverse();
+
+    // Transform the ray point/vector into the bbox matrix space
+    MPoint rp = rayPoint * bbmi;
+    MVector rv = rayVector * bbmi;
+
+    MPoint rawInter;
+    double rawDist = std::numeric_limits<double>::infinity();
+    bool found = false;
+
+    // For x/y/z
+    for (int i = 0; i < 3; ++i) {
+        // for +- 1
+        for (int j = 0; j < 2; ++j) {
+            MVector nrm;
+            nrm[i] = 2 * j - 1;
+            // Get the offset intersection
+            MPoint inter = offsetIntersection(rp, rv, nrm);
+            if (inUnitPlane(inter)) {
+                // Keep track of the closest point
+                double dist = inter.distanceTo(rp);
+                if (dist < rawDist) {
+                    rawDist = dist;
+                    rawInter = inter;
+                    found = true;
+                }
+            }
+        }
+    }
+
+    // Only do the transformation if we found something
+    if (found) intersection = rawInter * bbm;
+
+    return found;
+}

@@ -25,7 +25,6 @@ void* SkinBrushContextCmd::creator() {
 MStatus SkinBrushContextCmd::appendSyntax() {
     MSyntax syn = syntax();
 
-    syn.addFlag(kAffectSelectedFlag, kAffectSelectedFlagLong, MSyntax::kBoolean);
     syn.addFlag(kColorRFlag, kColorRFlagLong, MSyntax::kDouble);
     syn.addFlag(kColorGFlag, kColorGFlagLong, MSyntax::kDouble);
     syn.addFlag(kColorBFlag, kColorBFlagLong, MSyntax::kDouble);
@@ -82,12 +81,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     MStatus status = MStatus::kSuccess;
 
     MArgParser argData = parser();
-
-    if (argData.isFlagSet(kAffectSelectedFlag)) {
-        bool value;
-        status = argData.getFlagArgument(kAffectSelectedFlag, 0, value);
-        smoothContext->setAffectSelected(value);
-    }
 
     if (argData.isFlagSet(kColorRFlag)) {
         double value;
@@ -337,8 +330,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
 
 MStatus SkinBrushContextCmd::doQueryFlags() {
     MArgParser argData = parser();
-
-    if (argData.isFlagSet(kAffectSelectedFlag)) setResult(smoothContext->getAffectSelected());
 
     if (argData.isFlagSet(kColorRFlag)) setResult(smoothContext->getColorR());
 

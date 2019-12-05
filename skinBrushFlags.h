@@ -10,8 +10,6 @@
 // into three separate flags for each color component. This is currently
 // a workaround and might get resolved in future versions of Maya.
 
-#define kAffectSelectedFlag "-as"
-#define kAffectSelectedFlagLong "-affectSelected"
 #define kColorRFlag "-cr"
 #define kColorRFlagLong "-colorR"
 #define kColorGFlag "-cg"

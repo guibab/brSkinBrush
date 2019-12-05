@@ -65,6 +65,15 @@
 #define CHECK_MSTATUS_AND_RETURN_SILENT(status) \
     if (status != MStatus::kSuccess) return MStatus::kSuccess;
 
+// struct to store the deformers when pick using D key
+struct drawingDeformers {
+    MBoundingBox bbox;
+    MMatrix mat;
+    MPoint center;
+    MVector up, right;
+    double width, height, depth;
+};
+
 // ---------------------------------------------------------------------
 // the tool
 // ---------------------------------------------------------------------
@@ -88,7 +97,6 @@ class skinBrushTool : public MPxToolCommand {
     bool isUndoable() const;
 
     // setting the attributes
-    void setAffectSelected(bool value);
     void setColor(MColor color);
     void setCurve(int value);
     void setDepth(int value);
@@ -131,7 +139,6 @@ class skinBrushTool : public MPxToolCommand {
     void setRedoLocks(MIntArray locks);
 
    private:
-    bool affectSelectedVal;
     MColor colorVal;
     int curveVal;
     int depthVal;
@@ -218,7 +225,6 @@ class SkinBrushContext : public MPxContext {
     MStatus getMesh();
     void getConnectedVertices();
     MStatus getSelection(MDagPath &dagPath);
-    MIntArray getSelectionVertices();
     MStatus getSkinCluster(MDagPath meshDag, MObject &skinClusterObj);
     // MStatus getAllWeights();
     void refreshJointsLocks();
@@ -260,16 +266,7 @@ class SkinBrushContext : public MPxContext {
                          std::unordered_map<int, float> &dicVertsDistRed);
     void prepareArray(std::unordered_map<int, float> &dicVertsDist);
 
-    // selection
-    MStatus performSelect(MEvent event, MIntArray indices, MFloatArray distances);
-    // flood
-    void performFlood();
-
     MObject allVertexComponents(MDagPath meshDag);
-    MIntArray sortIndicesByValues(MIntArray ids, MDoubleArray array);
-    void getVerticesInRangeFast(int index, int hitIndex, MIntArray &indices, MFloatArray &values);
-
-    void appendConnectedIndices(int index, MIntArray &indices);
     MIntArray getVerticesInVolume();
     void getVerticesInVolumeRange(int index, MIntArray volumeIndices, MIntArray &rangeIndices,
                                   MFloatArray &values);
@@ -277,15 +274,9 @@ class SkinBrushContext : public MPxContext {
     double getFalloffValue(double value, double strength);
     bool eventIsValid(MEvent event);
 
-    bool onBoundary(int index);
-    bool oppositeBoundaryIndex(MPoint point, MIntArray faces, MIntArray edges, int &index);
-    bool getClosestFace(MPoint point, MIntArray faces, int &index);
-    double averageEdgeLength(MIntArray edges);
-
     void setInViewMessage(bool display);
 
     // setting the attributes
-    void setAffectSelected(bool value);
     void setColorR(float value);
     void setColorG(float value);
     void setColorB(float value);
@@ -326,7 +317,6 @@ class SkinBrushContext : public MPxContext {
     void setPruneWeights(double value);
 
     // getting the attributes
-    bool getAffectSelected();
     float getColorR();
     float getColorG();
     float getColorB();
@@ -371,7 +361,6 @@ class SkinBrushContext : public MPxContext {
     int undersamplingSteps;
 
     // the tool settings
-    bool affectSelectedVal;
     MColor colorVal = MColor(1.0, 0, 0);
     int curveVal;
     int depthVal;
@@ -468,6 +457,8 @@ class SkinBrushContext : public MPxContext {
     unsigned int influenceCount;
     MIntArray influenceIndices;
     MDagPathArray inflDagPaths;
+    std::vector<drawingDeformers> BBoxOfDeformers;
+
     MStringArray inflNames;
     MIntArray inflNamePixelSize;
     bool maintainMaxInfluences;
@@ -574,31 +565,3 @@ class SkinBrushContextCmd : public MPxContextCommand {
 };
 
 #endif
-
-// ---------------------------------------------------------------------
-// MIT License
-//
-// Copyright (c) 2018 Ingo Clemens, brave rabbit
-// brSkinBrush is under the terms of the MIT License
-//
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// Author: Ingo Clemens    www.braverabbit.com
-// ---------------------------------------------------------------------

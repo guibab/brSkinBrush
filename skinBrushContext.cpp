@@ -19,7 +19,6 @@ SkinBrushContext::SkinBrushContext() {
     // Define the default values for the context.
     // These values will be used to reset the tool from the tool
     // properties window.
-    affectSelectedVal = true;
     colorVal = MColor(1.0, 0.0, 0.0);
     curveVal = 2;
     depthVal = 1;
@@ -244,7 +243,8 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
 
     // refresh view and display
     // meshFn.setDisplayColors(true);
-    view.refresh(false, true);
+    // view.refresh(false, true);
+    maya2019RefreshColors();
 
     this->previousPaint.clear();
 }
@@ -307,66 +307,34 @@ void SkinBrushContext::refresh() {
 // ---------------------------------------------------------------------
 int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
     MStatus stat;
+    MPoint nearClipPt, farClipPt;
+    MVector direction, direction2;
+    MPoint orig, orig2;
+    view.viewToWorld(screenX, screenY, orig, direction);
+
     int lent = this->inflDagPaths.length();
-    MPoint zero(0, 0, 0);
-    short x_pos, y_pos;
-
-    int closest = 200;
-    int closestOffset = 20;
-
     int closestInfluence = -1;
-
-    // store pixels positions -----------
-    std::vector<std::pair<short, short>> pixelsPosition;
-    unsigned int i;
-    /*
-    if (this->tmpTestPrintClosestInfluence)
-    {
-            MGlobal::displayInfo(MString(" POSI    [") + screenX + MString(" | ") + screenY +
-    MString("]     ") );
-    }
-    */
+    double closestDistance = -1;
 
     for (unsigned int i = 0; i < lent; i++) {
-        MPoint influencePosi = zero * this->inflDagPaths[i].inclusiveMatrix();
-        view.worldToView(influencePosi, x_pos, y_pos, &stat);
-        if (MStatus::kSuccess == stat) {
-            auto myPair = std::make_pair(x_pos, y_pos);
-            /*
-            if (this->tmpTestPrintClosestInfluence)
-            {
-                    MGlobal::displayInfo(MString("    [") + x_pos + MString(" | ") + y_pos +
-            MString("]     ") + this->inflNames[i]  );
-            }
-            */
-            auto it = std::find(pixelsPosition.begin(), pixelsPosition.end(), myPair);
-            if (it != pixelsPosition.end()) {
-                myPair = std::make_pair(x_pos + closestOffset, y_pos + closestOffset);  // offset
-                it = std::find(pixelsPosition.begin(), pixelsPosition.end(), myPair);
-                if (it != pixelsPosition.end()) {
-                    myPair =
-                        std::make_pair(x_pos - closestOffset, y_pos - closestOffset);  // offset
-                }
-            }
-            pixelsPosition.push_back(myPair);
-        } else {
-            pixelsPosition.push_back(std::make_pair(-1, -1));
-        }
-    }
-    // now do the search -----------
-    i = 0;
-    for (auto mypair : pixelsPosition) {
-        x_pos = mypair.first;
-        y_pos = mypair.second;
+        MMatrix matI = BBoxOfDeformers[i].mat.inverse();
+        MBoundingBox bbox = BBoxOfDeformers[i].bbox;
+        orig2 = orig * matI;
+        direction2 = direction * matI;
+        // view.viewToObjectSpace(screenX, screenY, mat.inverse (), orig, direction);
 
-        if (x_pos > 0 && y_pos > 0) {
-            int dst = pow((x_pos - screenX), 2) + pow((y_pos - screenY), 2);
-            if (dst < closest) {
+        // MPoint intersection;
+        // bool intersect  = bboxIntersection( bbox.min (), bbox.max (), mat, orig, direction,
+        // intersection);
+        bool intersect = RayIntersectsBBox(bbox, orig2, direction2);
+        if (intersect) {
+            double dst = bbox.center().distanceTo(orig2);
+            // double dst =  intersection.distanceTo(orig);
+            if ((closestInfluence == -1) || (dst < closestDistance)) {
+                closestDistance = dst;
                 closestInfluence = i;
-                closest = dst;
             }
         }
-        i++;
     }
 
     return closestInfluence;
@@ -465,12 +433,78 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
     // SkinBrushContext::doPtrMoved(event, drawMgr, context);
 
     event.getPosition(screenX, screenY);
-    bool influencePosiFound = false;
+    bool displayPickInfluence = this->pickMaxInfluenceVal || this->pickInfluenceVal;
     if (this->pickInfluenceVal) {
-        // MGlobal::displayInfo("HERE pickInfluenceVal IS CALLED");
+        if (verbose) MGlobal::displayInfo("HERE pickInfluenceVal IS CALLED");
+        // -------------------------------------------------------------------------------------------------
+        // start fill jnts boundingBox
+        // --------------------------------------------------------------------
+        if (this->BBoxOfDeformers.size() == 0) {  // fill it
+            int lent = this->inflDagPaths.length();
+            MGlobal::displayInfo("\nfilling BBoxOfDeformers \n");
+            MPoint zero(0, 0, 0);
+            MVector up(0, 1, 0);
+            MVector right(1, 0, 0);
+            MVector side(0, 0, 1);
+
+            for (unsigned int i = 0; i < lent; i++) {  // for all deformers
+                MDagPath path = this->inflDagPaths[i];
+                drawingDeformers newDef;
+
+                MMatrix mat = path.inclusiveMatrix();
+                up = MVector(mat[1]);
+                right = MVector(mat[0]);
+                side = MVector(mat[2]);
+
+                unsigned int nbShapes;
+                path.numberOfShapesDirectlyBelow(nbShapes);
+                // up.normalize();
+                // right.normalize();
+                if (nbShapes != 0) {
+                    path.extendToShapeDirectlyBelow(0);
+                    MFnDagNode dag(path);
+                    MBoundingBox bbox = dag.boundingBox();
+                    MMatrix matEx = path.exclusiveMatrix();
+
+                    // bbox.transformUsing(matEx);
+                    MPoint center = bbox.center() * matEx;
+                    // drawManager.box(center, up, right, 0.5*bbox.width()*right.length(),
+                    // 0.5*bbox.height()*up.length(), 0.5*bbox.depth()*side.length());
+                    newDef.center = center;
+                    newDef.up = up;
+                    newDef.right = right;
+                    newDef.width = 0.5 * bbox.width() * right.length();
+                    newDef.height = 0.5 * bbox.height() * up.length();
+                    newDef.depth = 0.5 * bbox.depth() * side.length();
+
+                    // bbox.transformUsing(matEx);
+                    newDef.mat = mat;
+                    newDef.bbox = bbox;
+                } else {
+                    MPoint influencePosi = zero * mat;
+                    MFnDagNode dag(path);
+                    MBoundingBox bbox = dag.boundingBox();
+                    MMatrix matEx = path.exclusiveMatrix();
+
+                    newDef.center = influencePosi;
+                    newDef.up = up;
+                    newDef.right = right;
+                    newDef.width = 0.5;
+                    newDef.height = 0.5;
+                    newDef.depth = 0.5;
+
+                    newDef.mat = mat;
+                    newDef.bbox = bbox;
+                    // drawManager.box(influencePosi, up, right, .5, .5, .5);
+                }
+                BBoxOfDeformers.push_back(newDef);
+            }
+        }  // end fill it
+
+        // end fill jnts boundingBox
+        // --------------------------------------------------------------------
+        // -----------------------------------------------------------------------------------------------
         biggestInfluence = getClosestInfluenceToCursor(screenX, screenY);
-        influencePosiFound = biggestInfluence != -1;
-        // this->pickInfluenceVal = false;
     }
 
     int faceHit;
@@ -483,7 +517,7 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
         // MGlobal::displayInfo("refreshing ");
     }
 
-    if (!successFullHit && !influencePosiFound)
+    if (!successFullHit && !displayPickInfluence)
         return MStatus::kNotFound;
     else
         drawManager.beginDrawable();
@@ -491,14 +525,31 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
     drawManager.setLineWidth((float)lineWidthVal);
 
     if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
-        // drawManager.setColor(MColor(1.0, 1.0, 0.0));
-        // drawManager.rect2d(MPoint(this->screenX, this->screenY) , MVector(0.0, 1.0),  100, 50,
-        // true);
+        if (this->pickInfluenceVal) {
+            // ---------------------------------------------------------------------------------------
+            // start reDraw jnts
+            // --------------------------------------------------------------------
+            int lent = this->inflDagPaths.length();
+            drawManager.setColor(MColor(0.0, 0.0, 0.0));
+            for (unsigned int i = 0; i < lent; i++) {
+                drawManager.setColor(jointsColors[i]);
+                drawingDeformers bbosDfm = BBoxOfDeformers[i];
+                drawManager.box(bbosDfm.center, bbosDfm.up, bbosDfm.right, bbosDfm.width,
+                                bbosDfm.height, bbosDfm.depth);
+            }
+            // end reDraw jnts
+            // ----------------------------------------------------------------------
+            // ---------------------------------------------------------------------------------------
+        }
         drawManager.setFontSize(14);
         drawManager.setFontName(MString("MS Shell Dlg 2"));
         drawManager.setFontWeight(1);
-        if (this->pickMaxInfluenceVal)
-            biggestInfluence = getHighestInfluence(faceHit, this->centerOfBrush);
+        if (this->pickMaxInfluenceVal) {
+            if (successFullHit)
+                biggestInfluence = getHighestInfluence(faceHit, this->centerOfBrush);
+            else
+                biggestInfluence = -1;
+        }
         MString text("--");
         drawManager.setColor(MColor(0.0, 0.0, 0.0));
         MColor Yellow(1.0, 1.0, 0.0);
@@ -511,6 +562,7 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
         drawManager.text2d(MPoint(this->screenX, this->screenY), text,
                            MHWRender::MUIDrawManager::TextAlignment::kCenter, backgroundSize,
                            &Yellow);
+
     } else {
         drawManager.circle(this->centerOfBrush, normalVector, sizeVal);
         MPoint worldPt;
@@ -639,6 +691,7 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
         this->pickMaxInfluenceVal = false;
         this->pickInfluenceVal = false;
+        this->BBoxOfDeformers.clear();
 
         if (biggestInfluence != this->influenceIndex && biggestInfluence != -1) {
             setInfluenceIndex(biggestInfluence, true);  // true for select in UI
@@ -688,19 +741,6 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     adjustValue = 0.0;
 
     // -----------------------------------------------------------------
-    // vertex selection
-    // -----------------------------------------------------------------
-    vtxSelection = getSelectionVertices();
-    unsigned int numSelection = vtxSelection.length();
-
-    // Create an array marking which indices are affected. This depends
-    // on the selection as well as the Affect Selected setting.
-    bool state = affectSelectedVal;
-    if (numSelection) state = !affectSelectedVal;
-    selectedIndices = std::vector<bool>(numVertices, state);
-    for (i = 0; i < numSelection; i++) selectedIndices[(unsigned)vtxSelection[i]] = !state;
-
-    // -----------------------------------------------------------------
     // closest point on surface
     // -----------------------------------------------------------------
     // Getting the closest index cannot be performed when in flood mode.
@@ -726,46 +766,6 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     }
     // precopy
     maya2019RefreshColors();
-    // -----------------------------------------------------------------
-    // selection & current weights
-    // -----------------------------------------------------------------
-    /*
-// Store the current selection and hilite for undo.
-MGlobal::getActiveSelectionList(prevSelection);
-MGlobal::getHiliteList(prevHilite);
-
-if (event.mouseButton() == MEvent::kLeftMouse)
-{
-    if (event.isModifierShift() || event.isModifierControl())
-    {
-        // If the selection should be reset, clear the current
-        // selection but select the mesh to have it available for
-        // the next usage.
-        if (event.isModifierShift() && event.isModifierControl())
-        {
-            MGlobal::clearSelectionList();
-            MSelectionList sel;
-            sel.add(meshDag);
-            MGlobal::setActiveSelectionList(sel);
-        }
-
-        // If only the shift or control modifier is pressed deselect
-        // the mesh so that only components are effectively selected
-        // but add the mesh to the hilite list.
-        else
-        {
-            MSelectionList sel;
-            sel.add(meshDag);
-            MObject meshObj = meshDag.node();
-            MGlobal::unselect(meshObj);
-            meshObj = meshDag.transform();
-            MGlobal::unselect(meshObj);
-
-            MGlobal::setHiliteList(sel);
-        }
-    }
-}
-    */
     return status;
 }
 /*
@@ -966,7 +966,6 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
                 if (!ret.second) ret.first->second += value;
             }
         }
-
         // --------- LINE OF PIXELS --------------------
         std::vector<std::pair<short, short>> line2dOfPixels;
         // get pixels of the line of pixels
@@ -1074,26 +1073,6 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         prepareArray(dicVertsDistSummedUp);
         performPaint(dicVertsDistSummedUp, dicVertsRed);
         performBrush = true;
-
-        /*
-        if (event.isModifierNone())
-        {
-                prepareArray(dicVertsDistSummedUp);
-                performPaint(dicVertsDistSummedUp , dicVertsRed);
-                performBrush = true;
-        }
-        else
-        {
-                MIntArray closestIndices;
-                MFloatArray closestDistances;
-                for (const auto &element : dicVertsDistSummedUp){
-                        closestIndices.append(element.first);
-                        closestDistances.append(element.second);
-                }
-                performSelect(event, closestIndices, closestDistances);
-                performBrush = true;
-        }
-        */
 
     }
     // -----------------------------------------------------------------
@@ -1302,7 +1281,6 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
 
         cmd = (skinBrushTool *)newToolCommand();
 
-        cmd->setAffectSelected(affectSelectedVal);
         cmd->setColor(colorVal);
         cmd->setCurve(curveVal);
         cmd->setDepth(depthVal);
@@ -1887,73 +1865,6 @@ MStatus SkinBrushContext::getSelection(MDagPath &dagPath) {
 
 //
 // Description:
-//      Parse the currently selected components and return a list of
-//      related vertex indices. Edge or polygon selections are converted
-//      to vertices.
-//
-// Input Arguments:
-//      None
-//
-// Return Value:
-//      The array of selected vertex indices
-//
-MIntArray SkinBrushContext::getSelectionVertices() {
-    unsigned int i;
-
-    MIntArray indices;
-    MDagPath dagPath;
-    MObject compObj;
-
-    MSelectionList sel;
-    MGlobal::getActiveSelectionList(sel);
-
-    for (MItSelectionList selIter(sel, MFn::kMeshVertComponent); !selIter.isDone();
-         selIter.next()) {
-        selIter.getDagPath(dagPath, compObj);
-        if (!compObj.isNull()) {
-            for (MItMeshVertex vertexIter(dagPath, compObj); !vertexIter.isDone();
-                 vertexIter.next()) {
-                indices.append(vertexIter.index());
-            }
-        }
-    }
-
-    for (MItSelectionList selIter(sel, MFn::kMeshEdgeComponent); !selIter.isDone();
-         selIter.next()) {
-        selIter.getDagPath(dagPath, compObj);
-        if (!compObj.isNull()) {
-            for (MItMeshEdge edgeIter(dagPath, compObj); !edgeIter.isDone(); edgeIter.next()) {
-                indices.append(edgeIter.index(0));
-                indices.append(edgeIter.index(1));
-            }
-        }
-    }
-
-    for (MItSelectionList selIter(sel, MFn::kMeshPolygonComponent); !selIter.isDone();
-         selIter.next()) {
-        selIter.getDagPath(dagPath, compObj);
-        if (!compObj.isNull()) {
-            for (MItMeshPolygon polyIter(dagPath, compObj); !polyIter.isDone(); polyIter.next()) {
-                MIntArray vertices;
-                polyIter.getVertices(vertices);
-                for (i = 0; i < vertices.length(); i++) indices.append(vertices[i]);
-            }
-        }
-    }
-
-    // Remove any double entries from the component list.
-    // MFnSingleIndexedComponent does that automatically.
-    MFnSingleIndexedComponent compFn;
-    MObject verticesObj = compFn.create(MFn::kMeshVertComponent);
-    compFn.addElements(indices);
-    // Put the processed ids back into the array.
-    compFn.getElements(indices);
-
-    return indices;
-}
-
-//
-// Description:
 //      Parse the history of the mesh at the given dagPath and return
 //      MObject of the skin cluster node.
 //
@@ -2011,35 +1922,6 @@ MStatus SkinBrushContext::getSkinCluster(MDagPath meshDag, MObject &skinClusterO
     return status;
 }
 
-//
-// Description:
-//      Get weights for all vertices and populate the currentWeights
-//      array. Also copy the weights to the prevWeights array for undo.
-//
-// Input Arguments:
-//      None
-//
-// Return Value:
-//      MStatus             The MStatus for creating the MFnSkinCluster.
-//
-/*
-MStatus SkinBrushContext::getAllWeights()
-{
-    MStatus status = MStatus::kSuccess;
-        return status;
-
-    MFnSkinCluster skinFn(skinObj, &status);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-    skinFn.getWeights(meshDag, allVtxCompObj, currentWeights, this->influenceCount);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-
-    // Copy the current weights for undo.
-    prevWeights.copy(currentWeights);
-
-    return status;
-
-}
-*/
 MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
     MStatus status = MS::kSuccess;
     if (verbose) MGlobal::displayInfo(" FILLED ARRAY VALUES ");
@@ -2092,70 +1974,6 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
     return status;
 }
 
-/*
-MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
-        MStatus status = MS::kSuccess;
-        if (verbose) MGlobal::displayInfo(" FILLED ARRAY VALUES ");
-
-        MFnDependencyNode skinClusterDep(skinCluster);
-
-        MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
-        MPlug matrix_plug = skinClusterDep.findPlug("matrix");
-        //MGlobal::displayInfo(weight_list_plug.name());
-        int nbElements = weight_list_plug.numElements();
-        this->nbJoints = matrix_plug.numElements();
-
-        matrix_plug.getExistingArrayAttributeIndices(this->deformersIndices);
-
-        this->nbJointsBig = this->deformersIndices[this->deformersIndices.length() - 1] +
-1;//matrix_plug.evaluateNumElements(); if (verbose) MGlobal::displayInfo(MString(" nb jnts ") +
-this->nbJoints + MString("  ") + this->nbJointsBig); this->nbJoints = this->nbJointsBig;
-
-
-        // quickly the ignore locks
-        this->ignoreLockJoints.clear();
-        this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-
-
-        skin_weights_.resize(nbElements);
-        if (doColors) {
-                this->multiCurrentColors.clear();
-                this->multiCurrentColors.setLength(nbElements);
-        }
-        this->skinWeightList = MDoubleArray(nbElements * this->nbJoints, 0.0);
-
-        for (int i = 0; i < nbElements; ++i) {
-                // weightList[i]
-                MPlug ith_weights_plug = weight_list_plug.elementByPhysicalIndex(i);
-                int vertexIndex = ith_weights_plug.logicalIndex();
-                //MGlobal::displayInfo(ith_weights_plug.name());
-
-                // weightList[i].weight
-                MPlug plug_weights = ith_weights_plug.child(0); // access first compound child
-                int  nb_weights = plug_weights.numElements();
-                skin_weights_[i].resize(nb_weights);
-                //skin_weights_[i].resize(nbJointPlugElements);
-                //MGlobal::displayInfo(plug_weights.name() + nb_weights);
-
-                MColor theColor;
-                for (int j = 0; j < nb_weights; j++) { // for each joint
-                        MPlug weight_plug = plug_weights.elementByPhysicalIndex(j);
-                        // weightList[i].weight[j]
-                        int indexInfluence = weight_plug.logicalIndex();
-                        double theWeight = weight_plug.asDouble();
-
-                        skin_weights_[i][j] = std::make_pair(indexInfluence, theWeight);
-                        this->skinWeightList[vertexIndex*this->nbJoints + indexInfluence] =
-theWeight; if (doColors) // and not locked theColor += this->jointsColors[indexInfluence] *
-theWeight;
-                }
-                if (doColors) // not store lock vert color
-                        this->multiCurrentColors[vertexIndex] = theColor;
-        }
-        return status;
-}
-*/
-
 MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray &verticesIndices,
                                                  bool doColors) {
     MStatus status = MS::kSuccess;
@@ -2185,36 +2003,6 @@ MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray 
         }
     }
     return status;
-    /*
-
-    MFnDependencyNode skinClusterDep(skinCluster);
-
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
-
-    for (int i = 0; i < verticesIndices.length(); ++i) {
-            int vertexIndex = verticesIndices[i];
-            // weightList[i]
-            MPlug ith_weights_plug = weight_list_plug.elementByLogicalIndex(vertexIndex);
-
-            // weightList[i].weight
-            MPlug plug_weights = ith_weights_plug.child(0); // access first compound child
-            int  nb_weights = plug_weights.numElements();
-
-            MColor theColor;
-            for (int j = 0; j < nb_weights; j++) { // for each joint
-                    MPlug weight_plug = plug_weights.elementByPhysicalIndex(j);
-                    // weightList[i].weight[j]
-                    int indexInfluence = weight_plug.logicalIndex();
-                    double theWeight = weight_plug.asDouble();
-
-                    this->skinWeightList[vertexIndex*this->nbJoints + indexInfluence] = theWeight;
-                    if (doColors)
-                            theColor += this->jointsColors[indexInfluence] * theWeight;
-            }
-            if (doColors) this->multiCurrentColors[vertexIndex] = theColor;
-    }
-    return status;
-    */
 }
 
 //
@@ -2548,119 +2336,6 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
 
 //
 // Description:
-//      Go through the all vertices which are closest to the cursor,
-//      and get all connected vertices which are in range of the brush
-//      radius. Perform the selection.
-//
-// Input Arguments:
-//      event               The mouse event.
-//      indices             The list of vertex indices along the
-//                          intersection ray.
-//      distances           The list of distances of the vertices to the
-//                          intersection ray.
-//
-// Return Value:
-//      MStatus             The MStatus for selecting the components.
-//
-MStatus SkinBrushContext::performSelect(MEvent event, MIntArray indices, MFloatArray distances) {
-    MStatus status = MStatus::kSuccess;
-
-    MFnSingleIndexedComponent comp;
-    MObject compObj = comp.create(MFn::kMeshVertComponent);
-
-    if (!volumeVal) {
-        comp.addElements(indices);
-    } else {
-        MIntArray volumeIndices = getVerticesInVolume();
-        comp.addElements(volumeIndices);
-    }
-
-    MSelectionList sel;
-    sel.add(meshDag, compObj);
-    if (event.isModifierShift()) MGlobal::setActiveSelectionList(sel, MGlobal::kAddToList);
-    if (event.isModifierControl()) MGlobal::setActiveSelectionList(sel, MGlobal::kRemoveFromList);
-
-    // Check the current selection. If any previsouly selected vertices
-    // have been deselected with the control modifier, switch back to
-    // object selection by selecting the mesh. If this doesn't happen
-    // the active selection list will be empty for the next event,
-    // resulting in a MStatus failure which prevents that the
-    // selectedIndices list doesn't get reset and the brush still
-    // operates on the previous vertex selection.
-    MGlobal::getActiveSelectionList(sel);
-    if (!sel.length()) {
-        sel.add(meshDag);
-        MGlobal::setActiveSelectionList(sel, MGlobal::kReplaceList);
-    }
-
-    view.refresh(false, true);
-
-    return status;
-}
-
-//
-// Description:
-//      Compute the smoothing for either all vertices if only the mesh
-//      is selected or just the current vertex selection.
-//
-// Input Arguments:
-//      None
-//
-// Return Value:
-//      None
-//
-void SkinBrushContext::performFlood() {
-    unsigned int i;
-
-    MEvent event;
-    // Execute the common press method to get the current selection and
-    // initialize the smoothing. Pass an empty event which tells the
-    // method to simply smooth with the current strength value.
-    doPressCommon(event);
-
-    // If the current selection doesn't contain any components fill the
-    // array with the indices of all vertices of the mesh.
-    if (!vtxSelection.length()) {
-        MFnSingleIndexedComponent compFn(allVtxCompObj);
-        compFn.getElements(vtxSelection);
-    }
-
-    // Safety measure just to make sure that there are indices present.
-    if (!vtxSelection.length()) return;
-
-    // Reverse the index list if only the unselected vertices should get
-    // smoothed.
-    if (!affectSelectedVal) {
-        // Create an array for all indices and set the indices of the
-        // current selection to true.
-        std::vector<bool> current(numVertices, false);
-        for (i = 0; i < vtxSelection.length(); i++) current[(unsigned)vtxSelection[i]] = true;
-
-        // Clear the current index array.
-        vtxSelection.clear();
-
-        // Create a new array with all unselected indices.
-        for (i = 0; i < numVertices; i++) {
-            if (!current[i]) vtxSelection.append((int)i);
-        }
-    }
-
-    // Create an array with only the first index of the selection to be
-    // able to call performSmooth(). This is identical to passing the
-    // closest vertex to the brush when painting.
-    MIntArray indices;
-    indices.append(vtxSelection[0]);
-    MFloatArray values;
-
-    // Perform the smoothing.
-    performBrush = true;
-
-    // Finalize.
-    doReleaseCommon(event);
-}
-
-//
-// Description:
 //      Return a component MObject for all vertex components of the
 //      given mesh.
 //
@@ -2676,106 +2351,6 @@ MObject SkinBrushContext::allVertexComponents(MDagPath meshDag) {
     MFnMesh meshFn(meshDag);
     compFn.setCompleteData((int)numVertices);
     return vtxComponents;
-}
-
-//
-// Description:
-//      Return a sorted index array defined by the given value array.
-//      The sorting is based on the insertion sorting algorithm:
-//      www.sorting-algorithms.com
-//
-// Input Arguments:
-//      indices             The array of indices to sort.
-//      values              The value array the sorting is based on.
-//
-// Return Value:
-//      The sorted array of indices.
-//
-MIntArray SkinBrushContext::sortIndicesByValues(MIntArray indices, MDoubleArray values) {
-    unsigned int i, j;
-
-    for (i = 0; i < values.length(); i++) {
-        for (j = i; j >= 1 && values[j] < values[j - 1]; j--) {
-            double value = values[j - 1];
-            values.remove(j - 1);
-            values.insert(value, j);
-
-            int index = indices[j - 1];
-            indices.remove(j - 1);
-            indices.insert(index, j);
-        }
-    }
-
-    return indices;
-}
-
-void SkinBrushContext::getVerticesInRangeFast(int index, int hitIndex, MIntArray &indices,
-                                              MFloatArray &values) {
-    // This array stored which indices have beeen visited by setting
-    // their index to false.
-    std::vector<bool> visited(numVertices, false);
-    // we need 2 arrays to avoid expending an array while in a loop ?
-    std::unordered_set<int> setOfVerts;
-    // MIntArray setOfVerts;
-    std::unordered_set<int> setOfVertsGrow;
-    setOfVertsGrow.insert(index);
-
-    MFloatPoint centerPt = surfacePoints[(unsigned)hitIndex];
-    bool processing = true;
-    while (processing) {
-        setOfVerts.clear();
-        for (int itVtx : setOfVertsGrow) setOfVerts.insert(itVtx);
-        setOfVertsGrow.clear();
-        processing = false;
-        for (int vertexIndex : setOfVerts) {
-            // for (i = 0; i < setOfVerts.length(); ++i) {
-            // int vertexIndex = setOfVerts[i];
-            if (visited[vertexIndex]) continue;
-            visited[vertexIndex] = true;
-            MFloatPoint posPoint(this->mayaRawPoints[vertexIndex * 3],
-                                 this->mayaRawPoints[vertexIndex * 3 + 1],
-                                 this->mayaRawPoints[vertexIndex * 3 + 2]);
-            // here make a better distance computation
-            float dist = posPoint.distanceTo(centerPt);
-            // Find which index is closest and store it along with the distance
-            if (dist <= sizeVal) {
-                processing = true;
-                indices.append(vertexIndex);
-                values.append((float)(1 - (dist / sizeVal)));
-
-                // add surrounded vertices for consideration
-                MIntArray surroundingVertices = this->connectedVertices[vertexIndex];
-                for (unsigned int itVtx = 0; itVtx < surroundingVertices.length(); itVtx++)
-                    setOfVertsGrow.insert(surroundingVertices[itVtx]);
-            }
-        }
-    }
-}
-
-//
-// Description:
-//      Get the connected vertices of the given index and append then to
-//      the given array of indices.
-//
-// Input Arguments:
-//      index               The vertex index.
-//      indices             The array of connected indices to append to.
-//
-// Return Value:
-//      None
-//
-void SkinBrushContext::appendConnectedIndices(int index, MIntArray &indices) {
-    unsigned int i;
-
-    MItMeshVertex vtxIter(meshDag);
-
-    int prevIndex;
-    vtxIter.setIndex(index, prevIndex);
-
-    MIntArray vertexList;
-    vtxIter.getConnectedVertices(vertexList);
-
-    for (i = 0; i < vertexList.length(); i++) indices.append(vertexList[i]);
 }
 
 //
@@ -2918,188 +2493,6 @@ bool SkinBrushContext::eventIsValid(MEvent event) {
     event.mouseButton(&status);
     if (!status) return false;
     return true;
-}
-
-// ---------------------------------------------------------------------
-// mesh boundary
-// ---------------------------------------------------------------------
-
-//
-// Description:
-//      Return if the given index is connected to a boundary edge.
-//
-// Input Arguments:
-//      index               The index of the vertex.
-//
-// Return Value:
-//      bool                True, if vertex lies on a boundary.
-//
-bool SkinBrushContext::onBoundary(int index) {
-    unsigned int i;
-
-    int prevIndex;
-
-    MItMeshVertex vtxIter(meshDag);
-    vtxIter.setIndex(index, prevIndex);
-
-    MIntArray edges;
-    vtxIter.getConnectedEdges(edges);
-
-    MItMeshEdge edgeIter(meshDag);
-
-    for (i = 0; i < edges.length(); i++) {
-        edgeIter.setIndex(edges[i], prevIndex);
-        if (edgeIter.onBoundary()) return true;
-    }
-
-    return false;
-}
-
-//
-// Description:
-//      Get the opposite index of the given boundary index which shares
-//      the same position.
-//
-// Input Arguments:
-//      point               The position of the source boundary index.
-//      faces               The list of faces which are connected to the
-//                          source vertex.
-//      edges               The list of conneced edges to the source
-//                          vertex which are needed to calculate an
-//                          average edge length.
-//      index               The index of the opposite vertex.
-//
-// Return Value:
-//      bool                True, if an opposite vertex has been found.
-//
-bool SkinBrushContext::oppositeBoundaryIndex(MPoint point, MIntArray faces, MIntArray edges,
-                                             int &index) {
-    unsigned int i;
-
-    bool result = false;
-
-    int faceIndex;
-
-    double edgeLength = averageEdgeLength(edges) * 0.25;
-
-    // Make sure that the tolerance value is not larger than the average
-    // edge length to avoid false assignments.
-    if (toleranceVal > edgeLength) toleranceVal = edgeLength;
-
-    // Find the opposite boundary index with the closestPoint operation.
-    // At best, the first pass returns a face index which belongs to the
-    // next shell. But it's possible that a face of the same shell is
-    // returned. In this case the source point gets offset by a fraction
-    // of the averaged edge length which eventually returns a face of
-    // the next shell.
-    if (!getClosestFace(point, faces, faceIndex)) {
-        for (i = 0; i < 6; i++) {
-            MPoint pnt = point;
-            if (i == 0)
-                pnt.x += edgeLength;
-            else if (i == 1)
-                pnt.y += edgeLength;
-            else if (i == 2)
-                pnt.z += edgeLength;
-            else if (i == 3)
-                pnt.x -= edgeLength;
-            else if (i == 4)
-                pnt.y -= edgeLength;
-            else if (i == 5)
-                pnt.z -= edgeLength;
-
-            if (getClosestFace(pnt, faces, faceIndex)) break;
-        }
-    }
-
-    MItMeshPolygon polyIter(meshDag);
-
-    int prevIndex;
-    polyIter.setIndex(faceIndex, prevIndex);
-
-    // Get the vertices of the closest face.
-    MIntArray vertices;
-    polyIter.getVertices(vertices);
-
-    // Go through the face vertices and check which one matches the
-    // position of the initial boundary vertex.
-    for (i = 0; i < vertices.length(); i++) {
-        int vtx = vertices[i];
-
-        MPoint vtxPoint;
-        meshFn.getPoint(vtx, vtxPoint);
-        if (vtxPoint.isEquivalent(point, toleranceVal)) {
-            index = vtx;
-            result = true;
-            break;
-        }
-    }
-
-    return result;
-}
-
-//
-// Description:
-//      Get the closest face to the given point and check if it belongs
-//      to the list of given face indices.
-//
-// Input Arguments:
-//      point               The position of the source boundary index.
-//      faces               The list of faces which are connected to the
-//                          source vertex.
-//      index               The index of the closest face.
-//
-// Return Value:
-//      bool                True, if the found face index doesn't
-//                          belong to the source shell.
-//
-bool SkinBrushContext::getClosestFace(MPoint point, MIntArray faces, int &index) {
-    unsigned int i;
-
-    // Get the closest point to the given boundary point.
-    MPointOnMesh meshPoint;
-    intersector.getClosestPoint(point, meshPoint);
-
-    // The face index of the closest point.
-    index = meshPoint.faceIndex();
-
-    // Check if the closest face is one of the source faces.
-    for (i = 0; i < faces.length(); i++) {
-        if (index == faces[i]) return false;
-    }
-    return true;
-}
-
-//
-// Description:
-//      Return the average edge length from the given list of edges.
-//
-// Input Arguments:
-//      edges               The list of edge indices.
-//
-// Return Value:
-//      double              The average edge length.
-//
-double SkinBrushContext::averageEdgeLength(MIntArray edges) {
-    unsigned int i;
-
-    double length = 0.0;
-
-    unsigned int numEdges = edges.length();
-
-    MItMeshEdge edgeIter(meshDag);
-
-    int prevIndex;
-    for (i = 0; i < numEdges; i++) {
-        edgeIter.setIndex(edges[i], prevIndex);
-
-        double value;
-        edgeIter.getLength(value);
-
-        length += value / numEdges;
-    }
-
-    return length;
 }
 
 void SkinBrushContext::setInViewMessage(bool display) {

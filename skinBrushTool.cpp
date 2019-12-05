@@ -31,7 +31,6 @@
 skinBrushTool::skinBrushTool() {
     setCommandString("brSkinBrushCmd");
 
-    affectSelectedVal = true;
     colorVal = MColor(1.0, 0.0, 0.0);
     curveVal = 2;
     depthVal = 1;
@@ -72,7 +71,6 @@ bool skinBrushTool::isUndoable() const { return true; }
 MSyntax skinBrushTool::newSyntax() {
     MSyntax syntax;
 
-    syntax.addFlag(kAffectSelectedFlag, kAffectSelectedFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kColorRFlag, kColorRFlagLong, MSyntax::kDouble);
     syntax.addFlag(kColorGFlag, kColorGFlagLong, MSyntax::kDouble);
     syntax.addFlag(kColorBFlag, kColorBFlagLong, MSyntax::kDouble);
@@ -115,10 +113,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
 
     MArgDatabase argData(syntax(), args);
 
-    if (argData.isFlagSet(kAffectSelectedFlag)) {
-        status = argData.getFlagArgument(kAffectSelectedFlag, 0, affectSelectedVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
     if (argData.isFlagSet(kColorRFlag)) {
         double value;
         status = argData.getFlagArgument(kColorRFlag, 0, value);
@@ -402,8 +396,6 @@ MStatus skinBrushTool::finalize() {
     MString cmd;
     cmd = "brSkinBrushContext -edit ";
     cmd += "-image1 \"brSkinBrush.svg\" -image2 \"vacantCell.png\" -image3 \"vacantCell.png\"";
-    cmd += " " + MString(kAffectSelectedFlag) + " ";
-    cmd += affectSelectedVal;
     cmd += " " + MString(kColorRFlag) + " ";
     cmd += colorVal.r;
     cmd += " " + MString(kColorGFlag) + " ";
@@ -472,8 +464,6 @@ MStatus skinBrushTool::finalize() {
 // ---------------------------------------------------------------------
 // getting values from the command flags
 // ---------------------------------------------------------------------
-
-void skinBrushTool::setAffectSelected(bool value) { affectSelectedVal = value; }
 
 void skinBrushTool::setColor(MColor value) { colorVal = value; }
 

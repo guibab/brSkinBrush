@@ -3,12 +3,6 @@
 // ---------------------------------------------------------------------
 // setting values from the command flags
 // ---------------------------------------------------------------------
-
-void SkinBrushContext::setAffectSelected(bool value) {
-    affectSelectedVal = value;
-    MToolsInfo::setDirtyFlag(*this);
-}
-
 void SkinBrushContext::setColorR(float value) {
     colorVal.r = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -62,8 +56,6 @@ void SkinBrushContext::setExitToolCommand(MString value) {
 void SkinBrushContext::setFlood(double value) {
     strengthVal = value;
     MToolsInfo::setDirtyFlag(*this);
-
-    performFlood();
 }
 
 void SkinBrushContext::setFractionOversampling(bool value) {
@@ -307,9 +299,6 @@ void SkinBrushContext::setInfluenceByName(MString value) {
 // ---------------------------------------------------------------------
 // getting values from the command flags
 // ---------------------------------------------------------------------
-
-bool SkinBrushContext::getAffectSelected() { return affectSelectedVal; }
-
 float SkinBrushContext::getColorR() { return colorVal.r; }
 
 float SkinBrushContext::getColorG() { return colorVal.g; }
