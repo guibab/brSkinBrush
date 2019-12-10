@@ -48,6 +48,7 @@
 #include <maya/MString.h>
 #include <maya/MStringArray.h>
 #include <maya/MSyntax.h>
+#include <maya/MThreadUtils.h>
 #include <maya/MToolsInfo.h>
 #include <maya/MUIDrawManager.h>
 
@@ -67,9 +68,11 @@
 
 // struct to store the deformers when pick using D key
 struct drawingDeformers {
-    MBoundingBox bbox;
+    // MBoundingBox bbox;
     MMatrix mat;
     MPoint center;
+    MPoint minPt;
+    MPoint maxPt;
     MVector up, right;
     double width, height, depth;
 };
@@ -223,7 +226,14 @@ class SkinBrushContext : public MPxContext {
     void doReleaseCommon(MEvent event);
 
     MStatus getMesh();
+
     void getConnectedVertices();
+    void getConnectedVerticesSecond();
+    void getConnectedVerticesThird();
+    void getConnectedVerticesTyler();
+
+    // void getConnectedVertices();
+    void getFromMeshNormals();
     MStatus getSelection(MDagPath &dagPath);
     MStatus getSkinCluster(MDagPath meshDag, MObject &skinClusterObj);
     // MStatus getAllWeights();
@@ -246,10 +256,11 @@ class SkinBrushContext : public MPxContext {
 
     MStatus querySkinClusterValues(MObject skinCluster, MIntArray &verticesIndices, bool doColors);
     MStatus fillArrayValues(MObject skinCluster, bool doColors);
-
+    MStatus displayWeightValue(int vertexIndex, bool displayZero = false);
+    MStatus fillArrayValuesDEP(MObject skinCluster, bool doColors);
     void getSkinClusterAttributes(MObject skinCluster, unsigned int &maxInfluences,
                                   bool &maintainMaxInfluences, unsigned int &normalize);
-    MIntArray getInfluenceIndices(MObject skinCluster, MDagPathArray &dagPaths);
+    MIntArray getInfluenceIndices();
     // bool getClosestIndex(MEvent event);
 
     bool computeHit(short screenPixelX, short screenPixelY, bool getNormal, int &faceHit,
@@ -480,7 +491,8 @@ class SkinBrushContext : public MPxContext {
     MIntArray deformersIndices;
     MIntArray cpIds;  // the ids of the vertices passed as to update skin for
     std::vector<std::vector<std::pair<int, float>>> skin_weights_;
-    MDoubleArray skinWeightList, fullUndoSkinWeightList;
+    MDoubleArray skinWeightList, fullUndoSkinWeightList, skinWeightsForUndo;
+    MIntArray indicesForInfluenceObjects;  // on skinCluster for sparse array
 
     std::vector<bool> influenceLocks;
     MIntArray lockJoints, ignoreLockJoints, lockVertices;
@@ -510,21 +522,20 @@ class SkinBrushContext : public MPxContext {
     MColorArray multiCurrentColors, jointsColors,
         soloCurrentColors;  // lock vertices color are not stored inside these arrays
 
-    std::vector<MIntArray> connectedVertices;  // use by MItMeshVertex getConnectedVertices
-    std::vector<std::vector<int>> connectedSetVertices;
+    MIntArray VertexCountPerPolygon, fullVertexList;
+    std::vector<MIntArray> perVertexFaces;             // per vertex Faces
+    std::vector<MIntArray> perFaceVertices;            // per face vertices
+    std::vector<std::pair<int, int>> perEdgeVertices;  // to draw the wireframe
 
-    std::vector<MIntArray> connectedFaces;  // use by MItMeshVertex getConnectedFaces
-    std::vector<MIntArray> FaceToVertices;  // use by MItMeshVertex getConnectedVertices
-    std::vector<std::vector<int>> FaceToVerticesSet;
-    std::vector<std::vector<int>> normalsIds;  // vector of faces Ids normals
-    std::vector<std::pair<int, int>> edgeVerticesIndices;
+    std::vector<std::vector<int>> perVertexVerticesSet;  // per vertex vertices
+    std::vector<std::vector<int>> perFaceVerticesSet;    // per Face Vertices
+    std::vector<std::vector<int>> normalsIds;            // vector of faces Ids normals
     MVectorArray verticesNormals;
     MIntArray verticesNormalsIndices;
 
     const float *rawNormals;
     const float *mayaRawPoints;
     MPointArray meshPoints;
-    MIntArray triangleCounts, triangleVertices;
     // MFloatPointArray vertexArray; // the position of all the vertices
     int fullVertexListLength = 0;
 

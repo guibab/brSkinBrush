@@ -276,7 +276,7 @@ MStatus getListLockJoints(MObject &skinCluster, MIntArray &jointsLocks) {
     return stat;
 }
 
-MStatus getListLockVertices(MObject &skinCluster, MIntArray &vertsLocks) {
+MStatus getListLockVertices(MObject &skinCluster, MIntArray &vertsLocks, MIntArray &lockedIndices) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -302,8 +302,10 @@ MStatus getListLockVertices(MObject &skinCluster, MIntArray &vertsLocks) {
     MIntArray vertsLocksIndices = intData.array(&stat);
     vertsLocks.clear();
     vertsLocks = MIntArray(nbVertices, 0);
-    for (unsigned int i = 0; i < vertsLocksIndices.length(); ++i)
+    for (unsigned int i = 0; i < vertsLocksIndices.length(); ++i) {
         vertsLocks[vertsLocksIndices[i]] = 1;
+        lockedIndices.append(vertsLocksIndices[i]);
+    }
     // MGlobal::displayInfo(MString(" getListLockVertices | ") + currentColorSet.name () + MString("
     // ") + vertsLocks.length());
     return stat;
@@ -755,10 +757,7 @@ float dist2D(short x0, short y0, short x1, short y1) {
     return sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
 };
 
-bool RayIntersectsBBox(MBoundingBox bbox, MPoint orig, MVector direction) {
-    MPoint minPt = bbox.min();
-    MPoint maxPt = bbox.max();
-
+bool RayIntersectsBBox(MPoint minPt, MPoint maxPt, MPoint orig, MVector direction) {
     double tmin = (minPt.x - orig.x) / direction.x;
     double tmax = (maxPt.x - orig.x) / direction.x;
     double tmpSwap;
@@ -865,4 +864,38 @@ bool bboxIntersection(const MPoint &minPoint, const MPoint &maxPoint, const MMat
     if (found) intersection = rawInter * bbm;
 
     return found;
+}
+
+// Tyler find Functions
+void getRawNeighbors(const MIntArray &counts, const MIntArray &indices, int numVerts,
+                     std::vector<std::unordered_set<int>> &faceNeighbors,
+                     std::vector<std::unordered_set<int>> &edgeNeigbors) {
+    size_t ptr = 0;
+    faceNeighbors.resize(numVerts);
+    edgeNeigbors.resize(numVerts);
+    for (const int &c : counts) {
+        for (int i = 0; i < c; ++i) {
+            int j = (i + 1) % c;
+            int rgt = indices[ptr + i];
+            int lft = indices[ptr + j];
+            edgeNeigbors[rgt].insert(lft);
+            edgeNeigbors[lft].insert(rgt);
+            for (int x = 0; x < c; ++x) {
+                if (x == i) continue;
+                faceNeighbors[lft].insert(indices[ptr + x]);
+            }
+        }
+        ptr += c;
+    }
+}
+
+void convertToCountIndex(const std::vector<std::unordered_set<int>> &input,
+                         std::vector<int> &counts, std::vector<int> &indices) {
+    // Convert to the flattened vector/vector for usage.
+    // This can have faster access later because it uses contiguous memory
+    counts.push_back(0);
+    for (auto &uSet : input) {
+        counts.push_back(counts.back() + uSet.size());
+        indices.insert(indices.end(), uSet.begin(), uSet.end());
+    }
 }
