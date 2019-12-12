@@ -14,6 +14,7 @@
 #define __skinBrushTool__skinBrushTool__
 
 #include <iostream>
+
 //#include <tbb/tbb.h>
 // using namespace std;
 #include <math.h>
@@ -51,12 +52,14 @@
 #include <maya/MThreadUtils.h>
 #include <maya/MToolsInfo.h>
 #include <maya/MUIDrawManager.h>
+#include <maya/MUintArray.h>
 
 #include <algorithm>
 #include <map>
 #include <set>
 #include <unordered_map>
 #include <vector>
+//#include <maya/MRenderItem.h>
 
 // Macro for the press/drag/release methods in case there is nothing
 // selected or the tool gets applied outside any geometry. If the actual
@@ -214,6 +217,7 @@ class SkinBrushContext : public MPxContext {
     // MStatus drawFeedback(MHWRender::MUIDrawManager& drawMgr,const MHWRender::MFrameContext&
     // context);
     MStatus drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector worldVector);
+    MStatus drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager);
 
     MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                        const MHWRender::MFrameContext &context);
@@ -231,6 +235,9 @@ class SkinBrushContext : public MPxContext {
     void getConnectedVerticesSecond();
     void getConnectedVerticesThird();
     void getConnectedVerticesTyler();
+    void getConnectedVerticesFlatten();
+    std::vector<int> getSurroundingVerticesPerVert(int vertexIndex);
+    std::vector<int> getSurroundingVerticesPerFace(int vertexIndex);
 
     // void getConnectedVertices();
     void getFromMeshNormals();
@@ -314,13 +321,16 @@ class SkinBrushContext : public MPxContext {
     void setTolerance(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
-    void setUSeMeshColor(bool value);
+    void setUseColorSetsWhilePainting(bool value);
+    void setDrawTriangles(bool value);
+    void setDrawEdges(bool value);
+    void setDrawPoints(bool value);
     void setStepLine(int value);
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
     void setCommandIndex(int value);
     void setSoloColor(int value);
-    void maya2019RefreshColors(bool toggle = false);
+    void maya2019RefreshColors(bool toggle = true);
     void setSoloColorType(int value);
     void setInfluenceByName(MString value);
     void setPostSetting(bool value);
@@ -360,7 +370,10 @@ class SkinBrushContext : public MPxContext {
     MString getMeshName();
     int getCommandIndex();
     int getSoloColor();
-    bool getUseMeshColors();
+    bool getUseColorSetsWhilePainting();
+    bool getDrawTriangles();
+    bool getDrawEdges();
+    bool getDrawPoints();
     int getSoloColorType();
     bool getPostSetting();
 
@@ -369,7 +382,14 @@ class SkinBrushContext : public MPxContext {
     skinBrushTool *cmd;
 
     bool performBrush;
+    int performRefreshViewPort;
+    int maxRefreshValue = 2;
     int undersamplingSteps;
+    bool useColorSetsWhilePainting = false;
+
+    bool drawTriangles = true;
+    bool drawPoints = false;
+    bool drawEdges = true;
 
     // the tool settings
     MColor colorVal = MColor(1.0, 0, 0);
@@ -401,7 +421,6 @@ class SkinBrushContext : public MPxContext {
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
     bool postSetting = true;                     // we apply paint as ssons as attr is changed
     bool doNormalize = true;
-    bool useMeshColor = true;
 
     // brush settings for adjusting
     bool initAdjust;                 // True after the first drag event.
@@ -429,9 +448,11 @@ class SkinBrushContext : public MPxContext {
 
     MPointArray surfacePoints;  // The cursor positions on the mesh in
                                 // world space.
-    MVector worldVector;        // The view vector from the camera to
-                                // the surface point.
-    MVector normalVector;       // The normal vector to camera
+    // the worldPosition
+    MPoint worldPoint;
+    MVector worldVector;   // The view vector from the camera to
+                           // the surface point.
+    MVector normalVector;  // The normal vector to camera
 
     MFloatPoint centerOfBrush;  // store the center of the bursh to display
 
@@ -525,11 +546,21 @@ class SkinBrushContext : public MPxContext {
     MIntArray VertexCountPerPolygon, fullVertexList;
     std::vector<MIntArray> perVertexFaces;             // per vertex Faces
     std::vector<MIntArray> perFaceVertices;            // per face vertices
+    std::vector<MIntArray> perVertexEdges;             // per face vertices
     std::vector<std::pair<int, int>> perEdgeVertices;  // to draw the wireframe
+    std::vector<std::vector<MIntArray>> perFaceTriangleVertices;
 
     std::vector<std::vector<int>> perVertexVerticesSet;  // per vertex vertices
     std::vector<std::vector<int>> perFaceVerticesSet;    // per Face Vertices
     std::vector<std::vector<int>> normalsIds;            // vector of faces Ids normals
+
+    // Try the Flat Version
+    std::vector<int> perVertexVerticesSetFLAT;
+    std::vector<int> perVertexVerticesSetINDEX;
+
+    std::vector<int> perFaceVerticesSetFLAT;
+    std::vector<int> perFaceVerticesSetINDEX;
+
     MVectorArray verticesNormals;
     MIntArray verticesNormalsIndices;
 

@@ -19,6 +19,8 @@ SkinBrushContext::SkinBrushContext() {
     // Define the default values for the context.
     // These values will be used to reset the tool from the tool
     // properties window.
+    performRefreshViewPort = 0;
+
     colorVal = MColor(1.0, 0.0, 0.0);
     curveVal = 2;
     depthVal = 1;
@@ -247,7 +249,6 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
 
     // refresh view and display
     // meshFn.setDisplayColors(true);
-    // view.refresh(false, true);
     maya2019RefreshColors();
 
     this->previousPaint.clear();
@@ -295,10 +296,7 @@ void SkinBrushContext::refresh() {
     if (soloColorVal == 1) editSoloColorSet(true);  // solo
 
     // refresh view and display
-    meshFn.setDisplayColors(true);
-
-    view = M3dView::active3dView();
-    view.refresh(false, true);
+    // meshFn.setDisplayColors(true);
 
     maya2019RefreshColors();
 }
@@ -343,13 +341,13 @@ int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
             }
         }
     }
-
     return closestInfluence;
 }
 
 int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint hitPoint) {
     // get closest vertex
-    auto verticesSet = this->perFaceVerticesSet[faceHit];
+    // auto verticesSet = this->perFaceVerticesSet[faceHit];
+    auto verticesSet = getSurroundingVerticesPerFace(faceHit);
     int indexVertex = -1;
     float closestDist;
     for (int ptIndex : verticesSet) {
@@ -363,7 +361,7 @@ int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint hitPoint) {
     }
     // now get highest influence for this vertex
 
-    int biggestInfluence;
+    int biggestInfluence = -1;
     double biggestVal = 0;
 
     for (int indexInfluence = 0; indexInfluence < this->nbJoints; ++indexInfluence) {
@@ -409,7 +407,7 @@ MStatus SkinBrushContext::drawTheMesh(MHWRender::MUIDrawManager &drawManager, MV
     }
     drawManager.setColor(MColor(1., 0., 0., .5));
     // drawManager.lineList(edgeVertices, false);
-    drawManager.setDepthPriority(5);
+    drawManager.setDepthPriority(1);  // MRenderItem::sDormantWireDepthPriority
     drawManager.mesh(MHWRender::MUIDrawManager::kLines,
                      edgeVertices);  // edgeVertices.append (element); , &this->verticesNormals);
     /*
@@ -520,10 +518,9 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
         // MGlobal::displayInfo("refreshing ");
     }
 
-    if (!successFullHit && !displayPickInfluence)
-        return MStatus::kNotFound;
-    else
-        drawManager.beginDrawable();
+    if (!successFullHit && !displayPickInfluence) return MStatus::kNotFound;
+
+    drawManager.beginDrawable();
     drawManager.setColor(MColor(0.0, 0.0, 1.0));
     drawManager.setLineWidth((float)lineWidthVal);
 
@@ -535,21 +532,26 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
             int lent = this->inflDagPaths.length();
             drawManager.setColor(MColor(0.0, 0.0, 0.0));
             for (unsigned int i = 0; i < lent; i++) {
-                if (i == biggestInfluence) {
+                bool isBiggestInfluence = i == biggestInfluence;
+                if (isBiggestInfluence) {
                     drawManager.setColor(MColor(1.0, 0.0, 0.0));
-                    drawManager.setLineWidth((float)lineWidthVal + 1.0);
+                    // drawManager.setLineWidth((float)lineWidthVal+1.0);
                 } else {
                     drawManager.setColor(jointsColors[i]);
-                    drawManager.setLineWidth((float)lineWidthVal);
+                    // drawManager.setLineWidth((float)lineWidthVal);
                 }
                 drawingDeformers bbosDfm = BBoxOfDeformers[i];
                 drawManager.box(bbosDfm.center, bbosDfm.up, bbosDfm.right, bbosDfm.width,
-                                bbosDfm.height, bbosDfm.depth);
+                                bbosDfm.height, bbosDfm.depth, isBiggestInfluence);
             }
             // end reDraw jnts
             // ----------------------------------------------------------------------
             // ---------------------------------------------------------------------------------------
+            // drawManager.endDrawable();
+            // drawManager.beginDrawable();
         }
+        // drawManager.setDepthPriority(6); // MRenderItem::sActivePointDepthPriority
+
         drawManager.setFontSize(14);
         drawManager.setFontName(MString("MS Shell Dlg 2"));
         drawManager.setFontWeight(1);
@@ -570,21 +572,24 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
             text = this->inflNames[biggestInfluence];
             backgroundSize[0] = this->inflNamePixelSize[2 * biggestInfluence];
             backgroundSize[1] = this->inflNamePixelSize[2 * biggestInfluence + 1];
+            worldPoint = worldPoint + .1 * worldVector.normal();
+            drawManager.text(worldPoint, text, MHWRender::MUIDrawManager::TextAlignment::kCenter,
+                             backgroundSize, &Yellow);
+            // drawing full front camera
+        } else {
+            drawManager.text2d(MPoint(this->screenX, this->screenY, 0.0), text,
+                               MHWRender::MUIDrawManager::TextAlignment::kCenter, backgroundSize,
+                               &Yellow);
+            // drawing behind bboxes
         }
-        drawManager.text2d(MPoint(this->screenX, this->screenY), text,
-                           MHWRender::MUIDrawManager::TextAlignment::kCenter, backgroundSize,
-                           &Yellow);
-
     } else {
         drawManager.circle(this->centerOfBrush, normalVector, sizeVal);
-        MPoint worldPt;
         MVector worldVector;
-        view.viewToWorld(this->screenX, this->screenY, worldPt, worldVector);
+        view.viewToWorld(this->screenX, this->screenY, worldPoint, worldVector);
 
         // drawTheMesh(drawManager, worldVector);
     }
 
-    // drawManager.circle(surfacePoints[0], normalVector, sizeVal);
     drawManager.endDrawable();
     return MS::kSuccess;
 }
@@ -607,6 +612,12 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
     MStatus status = MStatus::kSuccess;
 
     status = doDragCommon(event);
+    if (!this->useColorSetsWhilePainting) {
+        drawManager.beginDrawable();
+        drawMeshWhileDrag(drawManager);
+        drawManager.endDrawable();
+    }
+
     CHECK_MSTATUS_AND_RETURN_SILENT(status);
 
     // -----------------------------------------------------------------
@@ -654,11 +665,129 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
             }
         }
         // drawTheMesh(drawManager);
-
         drawManager.endDrawable();
     }
 
     return status;
+}
+
+MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager) {
+    int nbVtx = this->verticesPainted.size();
+
+    MPointArray points(nbVtx);
+    MVectorArray normals(nbVtx);
+    MColor theCol(1, 1, 1);
+    MIntArray editVertsIndices;
+
+    MColorArray colors, colorsSolo;
+    MColorArray pointsColors(nbVtx, theCol);
+
+    MUintArray indices, indicesEdges;  // (nbVtx);
+    MColor newCol;
+    unsigned int i = 0;
+    // for (const auto& ptIndex : this->verticesPainted) {
+    // std::vector <int> facesSet;
+    std::vector<int> verticesSet;
+    std::unordered_set<int> fatFaces_set;
+    std::unordered_set<int> fatEdges_set;
+    for (const auto &pt : this->skinValuesToSet) {
+        int ptIndex = pt.first;
+        double weight = pt.second;
+        MPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
+                        this->mayaRawPoints[ptIndex * 3 + 2]);
+        // points.append(posPoint);
+        points.set(posPoint, i);
+        normals.set(verticesNormals[ptIndex], i);
+
+        // now for colors -------------------------------------------------
+        if (drawTriangles) {
+            setColor(ptIndex, weight, editVertsIndices, colors, colorsSolo);
+        }
+        if (drawPoints) {
+            if (this->soloColorVal)
+                newCol = weight * theCol + (1.0 - weight) * this->soloCurrentColors[ptIndex];
+            else
+                newCol = weight * theCol + (1.0 - weight) * this->multiCurrentColors[ptIndex];
+            pointsColors[i] = newCol;
+        }
+        i++;
+
+        // now for the indices of the triangles ------------------------------------
+        if (drawTriangles || drawEdges) {
+            verticesSet.push_back(ptIndex);
+            if (drawTriangles) {
+                for (int f : this->perVertexFaces[ptIndex]) fatFaces_set.insert(f);
+            }
+            if (drawEdges) {
+                for (int e : this->perVertexEdges[ptIndex]) fatEdges_set.insert(e);
+            }
+        }
+    }
+    // now gamma the colors -------------------------------------
+    /*
+    float gammaValue = 1.0/ (float)1.8;//(float)2.2;
+    for (int i = 0; i < nbVtx; i++) {
+            if (this->soloColorVal) {
+                    MColor col = colorsSolo[i];
+                    //MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ),
+    pow(col.b, gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b +
+    1)); colorsSolo[i] = newCol;
+            }
+            else {
+                    MColor col = colors[i];
+                    //MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ),
+    pow(col.b, gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b +
+    1)); colors[i] = newCol;
+            }
+    }
+    */
+    // make it unique .... hopefully
+    if (drawTriangles) {
+        std::vector<int> facesSet(fatFaces_set.begin(), fatFaces_set.end());
+        // now make the triangles -------------------------------
+        for (int f : facesSet) {
+            for (auto tri : this->perFaceTriangleVertices[f]) {
+                auto it0 = std::find(verticesSet.begin(), verticesSet.end(), tri[0]);
+                if (it0 == verticesSet.end()) continue;
+                auto it1 = std::find(verticesSet.begin(), verticesSet.end(), tri[1]);
+                if (it1 == verticesSet.end()) continue;
+                auto it2 = std::find(verticesSet.begin(), verticesSet.end(), tri[2]);
+                if (it2 == verticesSet.end()) continue;
+                indices.append(it0 - verticesSet.begin());
+                indices.append(it1 - verticesSet.begin());
+                indices.append(it2 - verticesSet.begin());
+            }
+        }
+        drawManager.setPaintStyle(MHWRender::MUIDrawManager::kFlat);
+        if (this->soloColorVal) {
+            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colorsSolo,
+                             &indices);
+        } else {
+            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colors,
+                             &indices);
+        }
+    }
+    if (drawEdges) {
+        std::vector<int> edgesSet(fatEdges_set.begin(), fatEdges_set.end());
+        // now make the edges -------------------------------
+        for (int e : edgesSet) {
+            auto pairEdges = this->perEdgeVertices[e];
+            auto it0 = std::find(verticesSet.begin(), verticesSet.end(), pairEdges.first);
+            if (it0 == verticesSet.end()) continue;
+            auto it1 = std::find(verticesSet.begin(), verticesSet.end(), pairEdges.second);
+            if (it1 == verticesSet.end()) continue;
+            indicesEdges.append(it0 - verticesSet.begin());
+            indicesEdges.append(it1 - verticesSet.begin());
+        }
+        MColorArray darkEdges(nbVtx, MColor(0.5, 0.5, 0.5));
+        drawManager.setDepthPriority(2);
+        drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges,
+                         &indicesEdges);
+    }
+    if (drawPoints) {
+        drawManager.setPointSize(4);
+        drawManager.mesh(MHWRender::MUIDrawManager::kPoints, points, NULL, &pointsColors);
+    }
 }
 
 MStatus SkinBrushContext::doRelease(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
@@ -725,13 +854,8 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     paintArrayValues.copy(MDoubleArray(numVertices, 0.0));
     this->skinValuesToSet.clear();
     this->verticesPainted.clear();
+
     // reset values ---------------------------------
-
-    // this->multiCurrentColors = MColorArray(this->numVertices, MColor(0.0, 0.0, 0.0, 1.0));
-    // meshFn.setColors(this->multiCurrentColors, &this->fullColorSet);
-
-    // meshFn.setDisplayColors(true);
-
     this->intensityValues = std::vector<float>(this->numVertices, 0);
     // initialize --
     undersamplingSteps = 0;
@@ -781,7 +905,7 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
         surfacePointAdjust = this->centerOfBrush;
         worldVectorAdjust = this->worldVector;
     }
-    // no need apparently
+    // no need apparently, it gets done in the drag
     // maya2019RefreshColors();
     return status;
 }
@@ -812,7 +936,8 @@ void SkinBrushContext::growArrayOfHits(std::unordered_map<int, float> &dicVertsD
         // -------------------- grow the vertices ----------------------------------------------
         std::vector<int> setOfVertsGrow;
         for (int vertexIndex : borderOfGrowth) {
-            setOfVertsGrow = setOfVertsGrow + this->perVertexVerticesSet[vertexIndex];
+            // setOfVertsGrow = setOfVertsGrow + this->perVertexVerticesSet[vertexIndex];
+            setOfVertsGrow = setOfVertsGrow + getSurroundingVerticesPerVert(vertexIndex);
         }
         // get the vertices that are grown -----------------------------------------------------
         std::vector<int> verticesontheborder = setOfVertsGrow - vertsVisited;
@@ -820,8 +945,10 @@ void SkinBrushContext::growArrayOfHits(std::unordered_map<int, float> &dicVertsD
         // for all vertices grown ------------------------------
         for (int vertexBorder : verticesontheborder) {
             // intersection of the connectedVerts of the grow vert and the already visisted Vertices
+            // std::vector<int> intersection = this->perVertexVerticesSet[vertexBorder] &
+            // vertsWithinDistance;
             std::vector<int> intersection =
-                this->perVertexVerticesSet[vertexBorder] & vertsWithinDistance;
+                getSurroundingVerticesPerVert(vertexBorder) & vertsWithinDistance;
 
             float closestDist = 0.0;
             int closestVertex = -1;
@@ -885,7 +1012,8 @@ void SkinBrushContext::growArrayOfHitsFromCenters(std::unordered_map<int, float>
         // -------------------- grow the vertices ----------------------------------------------
         std::vector<int> setOfVertsGrow;
         for (int vertexIndex : borderOfGrowth) {
-            setOfVertsGrow = setOfVertsGrow + this->perVertexVerticesSet[vertexIndex];
+            // setOfVertsGrow = setOfVertsGrow + this->perVertexVerticesSet[vertexIndex];
+            setOfVertsGrow = setOfVertsGrow + getSurroundingVerticesPerVert(vertexIndex);
         }
         // get the vertices that are grown -----------------------------------------------------
         std::vector<int> verticesontheborder = setOfVertsGrow - vertsVisited;
@@ -964,7 +1092,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         event.getPosition(this->screenX, this->screenY);
 
         // dictionnary of visited vertices and distances --- prefill it with the previous hit ---
-        std::unordered_map<int, float> dicVertsDistSummedUp;  // this->doAddingDots
+        std::unordered_map<int, float> dicVertsDistSummedUp;
         std::unordered_map<int, float> dicVertsDistToGrow = this->dicVertsDistSTART;
         std::unordered_map<int, float> dicVertsRed = this->dicVertsDistSTART;
 
@@ -1075,8 +1203,6 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         // let's expand these arrays ----------------
         if (!this->doAddingDots) {
             growArrayOfHitsFromCenters(dicVertsDistToGrow, AllHitPoints);
-            // growArrayOfHits(dicVertsDistToGrow);
-            // growArrayOfHitsFromCenters(dicVertsDistToGrow, AllHitPoints, vertexHitIndex);
             dicVertsDistSummedUp = dicVertsDistToGrow;
         }
 
@@ -1293,10 +1419,6 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         #endif
         // end For Maya 2019 ---------------------------------
         */
-
-        // refresh view and display
-        view.refresh(false, true);
-
         this->previousPaint.clear();
 
         cmd = (skinBrushTool *)newToolCommand();
@@ -1351,11 +1473,8 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         // is not necessary since the the smoothing already has been
         // performed. There is no need to apply the values twice.
         cmd->finalize();
-    } else {
-        // Refresh the view to erase the drawn circle. This might not
-        // always be necessary but is just included to complete the process.
-        view.refresh(false, true);
     }
+    maya2019RefreshColors();
 }
 
 // ---------------------------------------------------------------------
@@ -1406,7 +1525,8 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
                 for (const auto &elem : valuesToSetOrdered) {
                     int theVert = elem.first;
                     double theWeight = elem.second;
-                    std::vector<int> vertsAround = this->perVertexVerticesSet[theVert];
+                    // std::vector <int> vertsAround = this->perVertexVerticesSet[theVert];
+                    std::vector<int> vertsAround = getSurroundingVerticesPerVert(theVert);
 
                     // this->smoothDepth to expand
                     status = setAverageWeight(vertsAround, theVert, i, this->nbJoints,
@@ -1515,14 +1635,6 @@ MStatus SkinBrushContext::editSoloColorSet(bool doBlack) {
     meshFn.setSomeColors(vtxToSet, colToSet, &this->soloColorSet);
     meshFn.setSomeColors(vtxToSet, colToSet, &this->soloColorSet2);
 
-    // meshFn.setCurrentColorSetName(this->soloColorSet);
-
-    // don't know why but we need that ------------
-    meshFn.setDisplayColors(true);
-
-    view = M3dView::active3dView();
-    view.refresh(false, true);
-    // view.refresh(false, true);
     return status;
 }
 
@@ -1618,6 +1730,8 @@ MStatus SkinBrushContext::getMesh() {
     getConnectedVerticesThird();
     // getConnectedVerticesTyler();
     getFromMeshNormals();
+    getConnectedVerticesFlatten();
+
     // meshFn.getPoints(this->vertexArray);
     this->mayaRawPoints = meshFn.getRawPoints(&status);
     this->lockVertices = MIntArray(this->numVertices, 0);
@@ -1661,30 +1775,69 @@ void SkinBrushContext::getConnectedVertices() {
     // MIntArray vertexCount, vertexList;
     status = meshFn.getVertices(VertexCountPerPolygon, fullVertexList);
     this->fullVertexListLength = fullVertexList.length();
-    // status = meshFn.getTriangles(triangleCounts, triangleVertices);
-    /*
-    MIntArray triangleOffsetCounts, triangleIndices;
-    status = meshFn.getTriangleOffsets(triangleOffsetCounts, triangleIndices);
-    */
+
+    MIntArray triangleCounts, triangleVertices;  // get the triangles to draw the mesh
+    status = meshFn.getTriangles(triangleCounts, triangleVertices);
 
     // First set array sizes ----------------------------------------------
     this->perFaceVertices.clear();
     this->perVertexFaces.clear();
+    this->perFaceTriangleVertices.clear();
 
     this->perFaceVertices.resize(this->numFaces);
     this->perVertexFaces.resize(this->numVertices);
+    this->perFaceTriangleVertices.resize(this->numFaces);
+
     // end set array sizes ----------------------------------------------
     // First run --------------------------------------------------------
+    /*
     for (unsigned int faceId = 0, iter = 0; faceId < VertexCountPerPolygon.length(); ++faceId) {
+            perFaceVertices[faceId].clear();
+            for (int i = 0; i < VertexCountPerPolygon[faceId]; ++i, ++iter) {
+                    int indVertex = fullVertexList[iter];
+                    perFaceVertices[faceId].append(indVertex);
+                    perVertexFaces[indVertex].append(faceId);
+            }
+    }
+    */
+    for (unsigned int faceId = 0, iter = 0, triIter = 0; faceId < VertexCountPerPolygon.length();
+         ++faceId) {
         perFaceVertices[faceId].clear();
         for (int i = 0; i < VertexCountPerPolygon[faceId]; ++i, ++iter) {
             int indVertex = fullVertexList[iter];
             perFaceVertices[faceId].append(indVertex);
             perVertexFaces[indVertex].append(faceId);
         }
+        perFaceTriangleVertices[faceId].resize(triangleCounts[faceId]);
+        for (int triId = 0; triId < triangleCounts[faceId]; ++triId) {
+            perFaceTriangleVertices[faceId][triId].setLength(3);
+            perFaceTriangleVertices[faceId][triId][0] = triangleVertices[triIter++];
+            perFaceTriangleVertices[faceId][triId][1] = triangleVertices[triIter++];
+            perFaceTriangleVertices[faceId][triId][2] = triangleVertices[triIter++];
+        }
     }
-    // getConnectedVerticesSecond();
-    // getConnectedVerticesThird();
+    // get the edgesIndices to draw the wireframe --------------------
+    MItMeshEdge edgeIter(meshDag);
+
+    this->perEdgeVertices.clear();
+    this->perVertexEdges.clear();
+    this->perEdgeVertices.resize(edgeIter.count());
+    this->perVertexEdges.resize(this->numVertices);
+
+    unsigned int i = 0;
+    for (; !edgeIter.isDone(); edgeIter.next()) {
+        int pt0Index = edgeIter.index(0);
+        int pt1Index = edgeIter.index(1);
+        this->perVertexEdges[pt0Index].append(i);
+        this->perVertexEdges[pt1Index].append(i);
+        this->perEdgeVertices[i++] = std::make_pair(pt0Index, pt1Index);
+        /*
+        if (pt0Index < numVertices || pt1Index < numVertices) {
+                this->edgeVerticesIndices.append(pt0Index);
+                this->edgeVerticesIndices.append(pt1Index);
+        }
+        */
+    }
 }
 void SkinBrushContext::getConnectedVerticesSecond() {
     // Second run --------------------------------------------------------
@@ -1735,72 +1888,7 @@ void SkinBrushContext::getConnectedVerticesTyler() {
     convertToCountIndex(faceNeighbors, fCounts, fIndices);
     convertToCountIndex(edgeNeighbors, eCounts, eIndices);
 }
-/*
-void SkinBrushContext::getConnectedVertices() {
-        MItMeshVertex vertexIter(meshDag);
-        this->perVertexVertices.resize(numVertices);
-        this->perVertexFaces.resize(numVertices);
-        //The normals are in local space and are the per-polygon per-vertex normals
-        this->verticesNormals.setLength(numVertices);
 
-        for (int vtxTmp = 0; !vertexIter.isDone(); vertexIter.next(), ++vtxTmp) {
-                MIntArray surroundingVertices, surroundingFaces;
-                vertexIter.getConnectedVertices(surroundingVertices);
-                this->perVertexVertices[vtxTmp] = surroundingVertices;
-
-                vertexIter.getConnectedFaces(surroundingFaces);
-                this->perVertexFaces[vtxTmp] = surroundingFaces;
-
-                MVector theNormal;
-                vertexIter.getNormal(theNormal);
-                this->verticesNormals.set(theNormal, vtxTmp);
-        }
-
-        // get connections from polygons -------------------------
-        MItMeshPolygon polyIter(meshDag);
-        this->perFaceVerticesSet.resize(this->numFaces);
-        this->perFaceVertices.resize(this->numFaces);
-
-        for (int faceTmp = 0; !polyIter.isDone(); polyIter.next(), ++faceTmp) {
-                MIntArray surroundingVertices;
-                polyIter.getVertices(surroundingVertices);
-                this->perFaceVertices[faceTmp] = surroundingVertices;
-
-                std::vector<int> tmpSet;
-                tmpSet.resize(surroundingVertices.length());
-                for (unsigned int itVtx = 0; itVtx < surroundingVertices.length(); itVtx++)
-                        tmpSet[itVtx] = surroundingVertices[itVtx];
-                std::sort(tmpSet.begin(), tmpSet.end());
-                this->perFaceVerticesSet[faceTmp] = tmpSet;
-        }
-
-        // fill the std_array ------------------------
-        this->perVertexVerticesSet.resize(this->numVertices);
-
-        for (int vtxTmp = 0; vtxTmp < this->numVertices; ++vtxTmp) {
-                std::vector<int> connVetsSet2;
-
-                MIntArray connectFaces = this->perVertexFaces[vtxTmp];
-
-                for (int fct = 0; fct < connectFaces.length(); ++fct) {
-                        auto surroundingVertices = this->perFaceVerticesSet[connectFaces[fct]];
-                        connVetsSet2 = connVetsSet2 + surroundingVertices;
-                }
-                connVetsSet2 = connVetsSet2 - std::vector<int>(1, vtxTmp);
-                this->perVertexVerticesSet[vtxTmp] = connVetsSet2;
-        }
-        // get the edgesIndices to draw the wireframe --------------------
-        /*
-        MItMeshEdge edgeIter(meshDag);
-        this->perEdgeVertices.resize( edgeIter.count());
-        unsigned int i = 0;
-        for (; !edgeIter.isDone(); edgeIter.next()) {
-                int pt0Index = edgeIter.index(0);
-                int pt1Index = edgeIter.index(1);
-                this->perEdgeVertices[i++] = std::make_pair (pt0Index, pt1Index);
-        }
-        */
-//}
 void SkinBrushContext::getFromMeshNormals() {
     this->verticesNormals.clear();
     this->verticesNormals.setLength(this->numVertices);
@@ -1811,7 +1899,8 @@ void SkinBrushContext::getFromMeshNormals() {
     this->meshFn.getNormalIds(normalCounts, normals);
 
     int startIndex = 0;
-    for (unsigned int faceTmp = 0; faceTmp < normalCounts.length(); ++faceTmp) {
+#pragma omp parallel for
+    for (int faceTmp = 0; faceTmp < normalCounts.length(); ++faceTmp) {
         int nbNormals = normalCounts[faceTmp];
         std::vector<int> tmpNormalsIds(nbNormals, 0);
         for (unsigned int k = 0; k < nbNormals; ++k) {
@@ -1827,7 +1916,8 @@ void SkinBrushContext::getFromMeshNormals() {
     // get vertexNormalIndex --------------------------------------------------
     this->verticesNormalsIndices.clear();
     this->verticesNormalsIndices.setLength(numVertices);
-    for (unsigned int vertexInd = 0; vertexInd < this->numVertices; vertexInd++) {
+#pragma omp parallel for
+    for (int vertexInd = 0; vertexInd < this->numVertices; vertexInd++) {
         int indFace = this->perVertexFaces[vertexInd][0];  // get the first face
         MIntArray surroundingVertices = this->perFaceVertices[indFace];
         int indNormal = -1;
@@ -1843,6 +1933,45 @@ void SkinBrushContext::getFromMeshNormals() {
         this->verticesNormalsIndices.set(indNormal, vertexInd);
     }
 }
+void SkinBrushContext::getConnectedVerticesFlatten() {
+    perVertexVerticesSetFLAT.clear();
+    perVertexVerticesSetINDEX.clear();
+    int sum = 0;
+    for (auto surroundingVtices : this->perVertexVerticesSet) {
+        perVertexVerticesSetINDEX.push_back(sum);
+        for (int vtx : surroundingVtices) {
+            perVertexVerticesSetFLAT.push_back(vtx);
+            sum++;
+        }
+    }
+    perVertexVerticesSetINDEX.push_back(sum);  // one extra for easy access
+    //------------------------------------------------------------------------
+    perFaceVerticesSetFLAT.clear();
+    perFaceVerticesSetINDEX.clear();
+    sum = 0;
+    for (auto surroundingVtices : this->perFaceVerticesSet) {
+        perFaceVerticesSetINDEX.push_back(sum);
+        for (int vtx : surroundingVtices) {
+            perFaceVerticesSetFLAT.push_back(vtx);
+            sum++;
+        }
+    }
+    perFaceVerticesSetINDEX.push_back(sum);  // one extra for easy access
+}
+std::vector<int> SkinBrushContext::getSurroundingVerticesPerVert(int vertexIndex) {
+    auto first = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex];
+    auto last = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex + (int)1];
+    std::vector<int> newVec(first, last);
+    return newVec;
+};
+
+std::vector<int> SkinBrushContext::getSurroundingVerticesPerFace(int vertexIndex) {
+    auto first = perFaceVerticesSetFLAT.begin() + perFaceVerticesSetINDEX[vertexIndex];
+    auto last = perFaceVerticesSetFLAT.begin() + perFaceVerticesSetINDEX[vertexIndex + (int)1];
+    std::vector<int> newVec(first, last);
+    return newVec;
+};
+
 //
 // Description:
 //      Get the dagPath of the currently selected object's shape node.
@@ -2209,7 +2338,6 @@ bool SkinBrushContext::computeHit(short screenPixelX, short screenPixelY, bool g
                                   int &faceHit, MFloatPoint &hitPoint) {
     MStatus stat;
 
-    MPoint worldPoint;
     view.viewToWorld(screenPixelX, screenPixelY, worldPoint, worldVector);
 
     // float hitRayParam;
@@ -2218,7 +2346,6 @@ bool SkinBrushContext::computeHit(short screenPixelX, short screenPixelY, bool g
         meshFn.closestIntersection(worldPoint, worldVector, nullptr, nullptr, false, MSpace::kWorld,
                                    9999, false, &this->accelParams, hitPoint, &this->pressDistance,
                                    &faceHit, nullptr, nullptr, nullptr, 0.0001f, &stat);
-
     /*
     bool foundIntersect = meshFn.closestIntersection(worldPoint, worldVector, nullptr, nullptr,
     false, MSpace::kWorld, 9999, false, nullptr, hitPoint, &this->pressDistance, &faceHit, nullptr,
@@ -2233,7 +2360,8 @@ bool SkinBrushContext::computeHit(short screenPixelX, short screenPixelY, bool g
 bool SkinBrushContext::expandHit(int faceHit, MFloatPoint hitPoint,
                                  std::unordered_map<int, float> &dicVertsDist) {
     // ----------- compute the vertices around ---------------------
-    auto verticesSet = this->perFaceVerticesSet[faceHit];
+    // auto verticesSet = this->perFaceVerticesSet[faceHit];
+    auto verticesSet = getSurroundingVerticesPerFace(faceHit);
     bool foundHit = false;
     for (int ptIndex : verticesSet) {
         MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
@@ -2431,19 +2559,25 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             // end add to array of values to set  at the end---------------
 
             // now for colors -------------------------------------------------
-            setColor(index, value, editVertsIndices, multiEditColors, soloEditColors);
+            if (this->useColorSetsWhilePainting) {
+                setColor(index, value, editVertsIndices, multiEditColors, soloEditColors);
+            }
         }
         // store this paint ---------------
         this->previousPaint = dicVertsDist;
 
-        // do actually set colors -----------------------------------
-        if (this->soloColorVal == 0) {
-            meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
-            meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
-        } else {
-            meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
-            meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+        if (this->useColorSetsWhilePainting) {
+            // do actually set colors -----------------------------------
+            if (this->soloColorVal == 0) {
+                meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
+                meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+            } else {
+                meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
+                meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+            }
         }
+        // Now store the colors for an actual MUIDrawMAnager Draw ---------------------
+
     } else {
         MIntArray volumeIndices = getVerticesInVolume();
     }
@@ -2460,9 +2594,16 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             // replace colors
         }
     }
-    // view.refresh(false, true);
-    maya2019RefreshColors(true);
-
+    /*
+    this->performRefreshViewPort++;
+    if (this->performRefreshViewPort > this->maxRefreshValue) {
+            maya2019RefreshColors(true);
+            this->performRefreshViewPort = 0;
+    }
+    */
+    if (this->useColorSetsWhilePainting) {
+        maya2019RefreshColors(true);
+    }
     return status;
 }
 

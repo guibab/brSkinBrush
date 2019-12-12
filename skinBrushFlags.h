@@ -111,5 +111,14 @@
 #define kListVerticesIndicesFlag "-liv"
 #define kListVerticesIndicesFlagLong "-listVerticesIndices"
 
-#define kUseMeshColorFlag "-umc"
-#define kUseMeshColorFlagLong "-useMeshColor"
+#define kUseColorSetWhilePaintingFlag "-ucs"
+#define kUseColorSetWhilePaintingFlagLong "-useColorSetsWhilePainting"
+
+#define kMeshDragDrawTrianglesFlag "-mdt"
+#define kMeshDragDrawTrianglesFlagLong "-meshdrawTriangles"
+
+#define kMeshDragDrawEdgesFlag "-mde"
+#define kMeshDragDrawEdgesFlagLong "-meshdrawEdges"
+
+#define kMeshDragDrawPointsFlag "-mdp"
+#define kMeshDragDrawPointsFlagLong "-meshdrawPoints"

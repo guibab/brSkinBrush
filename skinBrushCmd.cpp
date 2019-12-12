@@ -69,7 +69,11 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kSkinClusterNameFlag, kSkinClusterNameFlagLong, MSyntax::kString);
     syn.addFlag(kMeshNameFlag, kMeshNameFlagLong, MSyntax::kString);
 
-    syn.addFlag(kUseMeshColorFlag, kUseMeshColorFlagLong, MSyntax::kBoolean);
+    syn.addFlag(kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong,
+                MSyntax::kBoolean);
+    syn.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
+    syn.addFlag(kMeshDragDrawEdgesFlag, kMeshDragDrawEdgesFlagLong, MSyntax::kBoolean);
+    syn.addFlag(kMeshDragDrawPointsFlag, kMeshDragDrawPointsFlagLong, MSyntax::kBoolean);
 
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
@@ -319,10 +323,28 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setCoverage(value);
     }
 
-    if (argData.isFlagSet(kUseMeshColorFlag)) {
+    if (argData.isFlagSet(kUseColorSetWhilePaintingFlag)) {
         bool value;
-        status = argData.getFlagArgument(kUseMeshColorFlag, 0, value);
-        smoothContext->setUSeMeshColor(value);
+        status = argData.getFlagArgument(kUseColorSetWhilePaintingFlag, 0, value);
+        smoothContext->setUseColorSetsWhilePainting(value);
+    }
+
+    if (argData.isFlagSet(kMeshDragDrawTrianglesFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kMeshDragDrawTrianglesFlag, 0, value);
+        smoothContext->setDrawTriangles(value);
+    }
+
+    if (argData.isFlagSet(kMeshDragDrawEdgesFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kMeshDragDrawEdgesFlag, 0, value);
+        smoothContext->setDrawEdges(value);
+    }
+
+    if (argData.isFlagSet(kMeshDragDrawPointsFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kMeshDragDrawPointsFlag, 0, value);
+        smoothContext->setDrawPoints(value);
     }
 
     return status;
@@ -397,9 +419,16 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
 
     if (argData.isFlagSet(kSoloColorFlag)) setResult(smoothContext->getSoloColor());
 
-    if (argData.isFlagSet(kUseMeshColorFlag)) setResult(smoothContext->getUseMeshColors());
-
     if (argData.isFlagSet(kSoloColorTypeFlag)) setResult(smoothContext->getSoloColorType());
+
+    if (argData.isFlagSet(kUseColorSetWhilePaintingFlag))
+        setResult(smoothContext->getUseColorSetsWhilePainting());
+
+    if (argData.isFlagSet(kMeshDragDrawTrianglesFlag)) setResult(smoothContext->getDrawTriangles());
+
+    if (argData.isFlagSet(kMeshDragDrawEdgesFlag)) setResult(smoothContext->getDrawEdges());
+
+    if (argData.isFlagSet(kMeshDragDrawPointsFlag)) setResult(smoothContext->getDrawPoints());
 
     if (argData.isFlagSet(kPostSettingFlag)) setResult(smoothContext->getPostSetting());
 

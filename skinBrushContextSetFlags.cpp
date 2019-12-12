@@ -135,9 +135,25 @@ void SkinBrushContext::setVolume(bool value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setUSeMeshColor(bool value) {
-    useMeshColor = value;
-    MGlobal::displayInfo(MString("setUSeMeshColor CALLED ") + value);
+void SkinBrushContext::setUseColorSetsWhilePainting(bool value) {
+    useColorSetsWhilePainting = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setDrawTriangles(bool value) {
+    drawTriangles = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setDrawEdges(bool value) {
+    drawEdges = value;
+    MGlobal::displayInfo(MString("setDrawEdges CALLED ") + value);
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setDrawPoints(bool value) {
+    drawPoints = value;
+    MGlobal::displayInfo(MString("setDrawPoints CALLED ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -166,6 +182,7 @@ void SkinBrushContext::setSoloColor(int value) {
         // if (currentColorSet != this->fullColorSet)
         meshFn.setCurrentColorSetName(this->fullColorSet);  // , &this->colorSetMod);
     }
+    maya2019RefreshColors();
     MToolsInfo::setDirtyFlag(*this);
     //}
 }
@@ -182,6 +199,7 @@ void SkinBrushContext::maya2019RefreshColors(bool toggle) {
             meshFn.setCurrentColorSetName(this->fullColorSet2);
         }
         view.refresh(false, true);
+        // view.scheduleRefresh();
     }
     if (!toggle || !toggleColorState) {
         if (soloColorVal == 1) {
@@ -190,6 +208,7 @@ void SkinBrushContext::maya2019RefreshColors(bool toggle) {
             meshFn.setCurrentColorSetName(this->fullColorSet);
         }
         view.refresh(false, true);
+        // view.scheduleRefresh ();
     }
 }
 
@@ -200,10 +219,7 @@ void SkinBrushContext::setSoloColorType(int value) {
         soloColorTypeVal = value;
         // here we do the redraw
         editSoloColorSet(false);
-
-#if MAYA_API_VERSION >= 201900
         maya2019RefreshColors();
-#endif
 
         MToolsInfo::setDirtyFlag(*this);
     }
@@ -353,8 +369,11 @@ int SkinBrushContext::getCommandIndex() { return commandIndex; }
 
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
 
-bool SkinBrushContext::getUseMeshColors() { return useMeshColor; }
+bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhilePainting; }
 
+bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
+bool SkinBrushContext::getDrawEdges() { return drawEdges; }
+bool SkinBrushContext::getDrawPoints() { return drawPoints; }
 int SkinBrushContext::getSoloColorType() { return soloColorTypeVal; }
 
 bool SkinBrushContext::getCoverage() { return coverageVal; }
