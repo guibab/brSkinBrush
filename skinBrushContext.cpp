@@ -674,22 +674,56 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
 MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager) {
     int nbVtx = this->verticesPainted.size();
 
+    float transparency = 1.0;
+
     MPointArray points(nbVtx);
     MVectorArray normals(nbVtx);
-    MColor theCol(1, 1, 1);
+    MColor theCol(1, 1, 1), white(1, 1, 1, 1), black(0, 0, 0, 1);
     MIntArray editVertsIndices;
 
     MColorArray colors, colorsSolo;
     MColorArray pointsColors(nbVtx, theCol);
 
     MUintArray indices, indicesEdges;  // (nbVtx);
-    MColor newCol;
+    MColorArray darkEdges;             // (nbVtx, MColor(0.5, 0.5, 0.5));
+
+    MColor newCol, col;
     unsigned int i = 0;
     // for (const auto& ptIndex : this->verticesPainted) {
     // std::vector <int> facesSet;
     std::vector<int> verticesSet;
     std::unordered_set<int> fatFaces_set;
     std::unordered_set<int> fatEdges_set;
+
+    MColor baseColor;
+    float h, s, v;
+
+    // get baseColor ----------------------------------
+    if (drawTransparency || drawPoints) {
+        int theCommandIndex = this->commandIndex;
+        if (this->commandIndex == 0 && this->modifierNoneShiftControl == 1)
+            theCommandIndex = 1;  // remove
+        if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
+            theCommandIndex = 7;                                       // unlockVertices
+        if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+        // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+        // UnLockVertices
+
+        if (theCommandIndex > 6)
+            baseColor = white;
+        else if (theCommandIndex == 6)
+            baseColor = this->lockVertColor;
+        else if (theCommandIndex > 3)
+            baseColor = white;
+        else if (commandIndex == 1)
+            baseColor = black;
+        else
+            baseColor = this->jointsColors[this->influenceIndex];
+
+        baseColor.get(MColor::kHSV, h, s, v);
+        baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
+    }
+
     for (const auto &pt : this->skinValuesToSet) {
         int ptIndex = pt.first;
         double weight = pt.second;
@@ -701,14 +735,52 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
 
         // now for colors -------------------------------------------------
         if (drawTriangles) {
+            /*
+            if (useTransparency) {
+                    colors.append(baseColor);
+                    colorsSolo.append(baseColor);
+                    col = colors[i];
+                    transparency = (float)weight;
+            }
+            else {
+                    setColor(ptIndex, weight, editVertsIndices, colors, colorsSolo);
+                    if (this->soloColorVal)col = colorsSolo[i];
+                    else col = colors[i];
+            }
+            */
+            if (drawTransparency)
+                transparency = (float)weight;
+            else
+                transparency = 1.0;
+
             setColor(ptIndex, weight, editVertsIndices, colors, colorsSolo);
+            if (this->soloColorVal)
+                col = colorsSolo[i];
+            else
+                col = colors[i];
+
+            // now gamma -----------------------------------------------------------------
+            col.get(MColor::kHSV, h, s, v);
+            // col.set(MColor::kHSV, h, pow(s, this->interactiveValue), pow(v,
+            // this->interactiveValue1), (float)weight);
+            col.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
+            // MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ), pow(col.b,
+            // gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b +
+            // 1));
+            if (this->soloColorVal)
+                colorsSolo[i] = col;
+            else
+                colors[i] = col;
         }
         if (drawPoints) {
             if (this->soloColorVal)
-                newCol = weight * theCol + (1.0 - weight) * this->soloCurrentColors[ptIndex];
+                newCol = weight * baseColor + (1.0 - weight) * this->soloCurrentColors[ptIndex];
             else
-                newCol = weight * theCol + (1.0 - weight) * this->multiCurrentColors[ptIndex];
+                newCol = weight * baseColor + (1.0 - weight) * this->multiCurrentColors[ptIndex];
             pointsColors[i] = newCol;
+        }
+        if (drawEdges) {
+            darkEdges.append(MColor((float)0.5, (float)0.5, (float)0.5, transparency));
         }
         i++;
 
@@ -726,19 +798,21 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     // now gamma the colors -------------------------------------
     /*
     float gammaValue = 1.0/ (float)1.8;//(float)2.2;
+    gammaValue = 1.0 / (float)this->interactiveValue;//(float)2.2;
+    MColor col;
+
     for (int i = 0; i < nbVtx; i++) {
-            if (this->soloColorVal) {
-                    MColor col = colorsSolo[i];
-                    //MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ),
-    pow(col.b, gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b +
-    1)); colorsSolo[i] = newCol;
-            }
-            else {
-                    MColor col = colors[i];
-                    //MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ),
-    pow(col.b, gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b +
-    1)); colors[i] = newCol;
-            }
+            if (this->soloColorVal)col = colorsSolo[i];
+            else col = colors[i];
+            float h, s, v;
+            col.get(MColor::kHSV, h, s, v);
+            col.set(MColor::kHSV, h, pow(s, this->interactiveValue), pow(v,
+    this->interactiveValue1));
+            //MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ), pow(col.b,
+    gammaValue ));
+            //MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b + 1));
+            if (this->soloColorVal)colorsSolo[i] = col;
+            else colors[i] = col;
     }
     */
     // make it unique .... hopefully
@@ -758,7 +832,11 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
                 indices.append(it2 - verticesSet.begin());
             }
         }
-        drawManager.setPaintStyle(MHWRender::MUIDrawManager::kFlat);
+        auto style = MHWRender::MUIDrawManager::kFlat;
+        // if (this->interactiveValue == 1.0) style = MHWRender::MUIDrawManager::kStippled;
+        // if (this->interactiveValue == 2.0) style = MHWRender::MUIDrawManager::kShaded;
+        drawManager.setPaintStyle(style);  // kFlat // kShaded //kStippled
+
         if (this->soloColorVal) {
             drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colorsSolo,
                              &indices);
@@ -779,7 +857,6 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
             indicesEdges.append(it0 - verticesSet.begin());
             indicesEdges.append(it1 - verticesSet.begin());
         }
-        MColorArray darkEdges(nbVtx, MColor(0.5, 0.5, 0.5));
         drawManager.setDepthPriority(2);
         drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges,
                          &indicesEdges);

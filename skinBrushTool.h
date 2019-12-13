@@ -325,6 +325,7 @@ class SkinBrushContext : public MPxContext {
     void setDrawTriangles(bool value);
     void setDrawEdges(bool value);
     void setDrawPoints(bool value);
+    void setDrawTransparency(bool value);
     void setStepLine(int value);
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
@@ -336,6 +337,7 @@ class SkinBrushContext : public MPxContext {
     void setPostSetting(bool value);
 
     void setPruneWeights(double value);
+    void setInteractiveValue(double value, int ind);
 
     // getting the attributes
     float getColorR();
@@ -359,6 +361,7 @@ class SkinBrushContext : public MPxContext {
     double getStrength();
     double getSmoothStrength();
     double getPruneWeights();
+    double getInteractiveValue(int ind);
     double getTolerance();
     int getUndersampling();
     bool getVolume();
@@ -374,11 +377,16 @@ class SkinBrushContext : public MPxContext {
     bool getDrawTriangles();
     bool getDrawEdges();
     bool getDrawPoints();
+    bool getDrawTransparency();
     int getSoloColorType();
     bool getPostSetting();
 
    private:
     bool verbose = false;
+    double interactiveValue = 1.0;   // for whateverUse in the code
+    double interactiveValue1 = 1.0;  // for whateverUse in the code
+    double interactiveValue2 = 1.0;  // for whateverUse in the code
+
     skinBrushTool *cmd;
 
     bool performBrush;
@@ -390,6 +398,7 @@ class SkinBrushContext : public MPxContext {
     bool drawTriangles = true;
     bool drawPoints = false;
     bool drawEdges = true;
+    bool drawTransparency = true;
 
     // the tool settings
     MColor colorVal = MColor(1.0, 0, 0);

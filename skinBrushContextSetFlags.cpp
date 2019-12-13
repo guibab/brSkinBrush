@@ -120,6 +120,16 @@ void SkinBrushContext::setPruneWeights(double value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
+void SkinBrushContext::setInteractiveValue(double value, int ind) {
+    if (ind == 0)
+        this->interactiveValue = value;
+    else if (ind == 1)
+        this->interactiveValue1 = value;
+    else if (ind == 2)
+        this->interactiveValue2 = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
 void SkinBrushContext::setTolerance(double value) {
     toleranceVal = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -154,6 +164,12 @@ void SkinBrushContext::setDrawEdges(bool value) {
 void SkinBrushContext::setDrawPoints(bool value) {
     drawPoints = value;
     MGlobal::displayInfo(MString("setDrawPoints CALLED ") + value);
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setDrawTransparency(bool value) {
+    drawTransparency = value;
+    MGlobal::displayInfo(MString("setDrawTransparency CALLED ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -357,6 +373,12 @@ double SkinBrushContext::getSmoothStrength() { return smoothStrengthVal; }
 
 double SkinBrushContext::getPruneWeights() { return this->pruneWeight; }
 
+double SkinBrushContext::getInteractiveValue(int ind) {
+    if (ind == 0) return this->interactiveValue;
+    if (ind == 1) return this->interactiveValue1;
+    if (ind == 2) return this->interactiveValue2;
+}
+
 double SkinBrushContext::getTolerance() { return toleranceVal; }
 
 int SkinBrushContext::getUndersampling() { return undersamplingVal; }
@@ -374,6 +396,7 @@ bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhile
 bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
 bool SkinBrushContext::getDrawEdges() { return drawEdges; }
 bool SkinBrushContext::getDrawPoints() { return drawPoints; }
+bool SkinBrushContext::getDrawTransparency() { return drawTransparency; }
 int SkinBrushContext::getSoloColorType() { return soloColorTypeVal; }
 
 bool SkinBrushContext::getCoverage() { return coverageVal; }

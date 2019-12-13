@@ -74,6 +74,11 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
     syn.addFlag(kMeshDragDrawEdgesFlag, kMeshDragDrawEdgesFlagLong, MSyntax::kBoolean);
     syn.addFlag(kMeshDragDrawPointsFlag, kMeshDragDrawPointsFlagLong, MSyntax::kBoolean);
+    syn.addFlag(kMeshDragDrawTransFlag, kMeshDragDrawTransFlagLong, MSyntax::kBoolean);
+
+    syn.addFlag(kInteractiveValueFlag, kInteractiveValueFlagLong, MSyntax::kDouble);
+    syn.addFlag(kInteractiveValue1Flag, kInteractiveValue1FlagLong, MSyntax::kDouble);
+    syn.addFlag(kInteractiveValue2Flag, kInteractiveValue2FlagLong, MSyntax::kDouble);
 
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
@@ -282,6 +287,22 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setPruneWeights(value);
     }
 
+    if (argData.isFlagSet(kInteractiveValueFlag)) {
+        double value;
+        status = argData.getFlagArgument(kInteractiveValueFlag, 0, value);
+        smoothContext->setInteractiveValue(value, 0);
+    }
+    if (argData.isFlagSet(kInteractiveValue1Flag)) {
+        double value;
+        status = argData.getFlagArgument(kInteractiveValue1Flag, 0, value);
+        smoothContext->setInteractiveValue(value, 1);
+    }
+    if (argData.isFlagSet(kInteractiveValue2Flag)) {
+        double value;
+        status = argData.getFlagArgument(kInteractiveValue2Flag, 0, value);
+        smoothContext->setInteractiveValue(value, 2);
+    }
+
     if (argData.isFlagSet(kUndersamplingFlag)) {
         int value;
         status = argData.getFlagArgument(kUndersamplingFlag, 0, value);
@@ -347,6 +368,12 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setDrawPoints(value);
     }
 
+    if (argData.isFlagSet(kMeshDragDrawTransFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kMeshDragDrawTransFlag, 0, value);
+        smoothContext->setDrawTransparency(value);
+    }
+
     return status;
 }
 
@@ -399,6 +426,10 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
 
     if (argData.isFlagSet(kPruneWeightsFlag)) setResult(smoothContext->getPruneWeights());
 
+    if (argData.isFlagSet(kInteractiveValueFlag)) setResult(smoothContext->getInteractiveValue(0));
+    if (argData.isFlagSet(kInteractiveValue1Flag)) setResult(smoothContext->getInteractiveValue(1));
+    if (argData.isFlagSet(kInteractiveValue2Flag)) setResult(smoothContext->getInteractiveValue(2));
+
     if (argData.isFlagSet(kUndersamplingFlag)) setResult(smoothContext->getUndersampling());
 
     if (argData.isFlagSet(kVolumeFlag)) setResult(smoothContext->getVolume());
@@ -429,6 +460,8 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kMeshDragDrawEdgesFlag)) setResult(smoothContext->getDrawEdges());
 
     if (argData.isFlagSet(kMeshDragDrawPointsFlag)) setResult(smoothContext->getDrawPoints());
+
+    if (argData.isFlagSet(kMeshDragDrawTransFlag)) setResult(smoothContext->getDrawTransparency());
 
     if (argData.isFlagSet(kPostSettingFlag)) setResult(smoothContext->getPostSetting());
 

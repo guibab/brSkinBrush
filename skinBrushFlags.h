@@ -122,3 +122,15 @@
 
 #define kMeshDragDrawPointsFlag "-mdp"
 #define kMeshDragDrawPointsFlagLong "-meshdrawPoints"
+
+#define kMeshDragDrawTransFlag "-mda"
+#define kMeshDragDrawTransFlagLong "-meshdrawTransparency"
+
+#define kInteractiveValueFlag "-iv"
+#define kInteractiveValueFlagLong "-interactiveValue"
+
+#define kInteractiveValue1Flag "-iv1"
+#define kInteractiveValue1FlagLong "-interactiveValue1"
+
+#define kInteractiveValue2Flag "-iv2"
+#define kInteractiveValue2FlagLong "-interactiveValue2"
