@@ -29,23 +29,20 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kColorGFlag, kColorGFlagLong, MSyntax::kDouble);
     syn.addFlag(kColorBFlag, kColorBFlagLong, MSyntax::kDouble);
     syn.addFlag(kCurveFlag, kCurveFlagLong, MSyntax::kLong);
-    syn.addFlag(kDepthFlag, kDepthFlagLong, MSyntax::kLong);
-    syn.addFlag(kDepthStartFlag, kDepthStartFlagLong, MSyntax::kLong);
     syn.addFlag(kDrawBrushFlag, kDrawBrushFlagLong, MSyntax::kBoolean);
     syn.addFlag(kDrawRangeFlag, kDrawRangeFlagLong, MSyntax::kBoolean);
+    syn.addFlag(kImportPythonFlag, kImportPythonFlagLong, MSyntax::kString);
     syn.addFlag(kEnterToolCommandFlag, kEnterToolCommandFlagLong, MSyntax::kString);
     syn.addFlag(kExitToolCommandFlag, kExitToolCommandFlagLong, MSyntax::kString);
     syn.addFlag(kFloodFlag, kFloodFlagLong, MSyntax::kDouble);
     syn.addFlag(kFractionOversamplingFlag, kFractionOversamplingFlagLong, MSyntax::kBoolean);
     syn.addFlag(kIgnoreLockFlag, kIgnoreLockFlagLong, MSyntax::kBoolean);
-    syn.addFlag(kKeepShellsTogetherFlag, kKeepShellsTogetherFlagLong, MSyntax::kBoolean);
     syn.addFlag(kLineWidthFlag, kLineWidthFlagLong, MSyntax::kLong);
     syn.addFlag(kMessageFlag, kMessageFlagLong, MSyntax::kLong);
     syn.addFlag(kOversamplingFlag, kOversamplingFlagLong, MSyntax::kLong);
     syn.addFlag(kRangeFlag, kRangeFlagLong, MSyntax::kDouble);
     syn.addFlag(kSizeFlag, kSizeFlagLong, MSyntax::kDouble);
     syn.addFlag(kStrengthFlag, kStrengthFlagLong, MSyntax::kDouble);
-    syn.addFlag(kToleranceFlag, kToleranceFlagLong, MSyntax::kDouble);
     syn.addFlag(kUndersamplingFlag, kUndersamplingFlagLong, MSyntax::kLong);
     syn.addFlag(kVolumeFlag, kVolumeFlagLong, MSyntax::kBoolean);
 
@@ -55,7 +52,6 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kCommandIndexFlag, kCommandIndexFlagLong, MSyntax::kLong);
     syn.addFlag(kSoloColorFlag, kSoloColorFlagLong, MSyntax::kLong);
     syn.addFlag(kSoloColorTypeFlag, kSoloColorTypeFlagLong, MSyntax::kLong);
-    syn.addFlag(kStepsLineFlag, kStepsLineLong, MSyntax::kLong);
     syn.addFlag(kCoverageFlag, kCoverageLong, MSyntax::kLong);
     syn.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
 
@@ -115,18 +111,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setCurve(value);
     }
 
-    if (argData.isFlagSet(kDepthFlag)) {
-        int value;
-        status = argData.getFlagArgument(kDepthFlag, 0, value);
-        smoothContext->setDepth(value);
-    }
-
-    if (argData.isFlagSet(kDepthStartFlag)) {
-        int value;
-        status = argData.getFlagArgument(kDepthStartFlag, 0, value);
-        smoothContext->setDepthStart(value);
-    }
-
     if (argData.isFlagSet(kDrawBrushFlag)) {
         bool value;
         status = argData.getFlagArgument(kDrawBrushFlag, 0, value);
@@ -137,6 +121,12 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         bool value;
         status = argData.getFlagArgument(kDrawRangeFlag, 0, value);
         smoothContext->setDrawRange(value);
+    }
+
+    if (argData.isFlagSet(kImportPythonFlag)) {
+        MString value;
+        status = argData.getFlagArgument(kImportPythonFlag, 0, value);
+        smoothContext->setPythonImportPath(value);
     }
 
     if (argData.isFlagSet(kEnterToolCommandFlag)) {
@@ -227,12 +217,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setIgnoreLock(value);
     }
 
-    if (argData.isFlagSet(kKeepShellsTogetherFlag)) {
-        bool value;
-        status = argData.getFlagArgument(kKeepShellsTogetherFlag, 0, value);
-        smoothContext->setKeepShellsTogether(value);
-    }
-
     if (argData.isFlagSet(kLineWidthFlag)) {
         int value;
         status = argData.getFlagArgument(kLineWidthFlag, 0, value);
@@ -275,12 +259,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setSmoothStrength(value);
     }
 
-    if (argData.isFlagSet(kToleranceFlag)) {
-        double value;
-        status = argData.getFlagArgument(kToleranceFlag, 0, value);
-        smoothContext->setTolerance(value);
-    }
-
     if (argData.isFlagSet(kPruneWeightsFlag)) {
         double value;
         status = argData.getFlagArgument(kPruneWeightsFlag, 0, value);
@@ -313,12 +291,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         bool value;
         status = argData.getFlagArgument(kVolumeFlag, 0, value);
         smoothContext->setVolume(value);
-    }
-
-    if (argData.isFlagSet(kStepsLineFlag)) {
-        int value;
-        status = argData.getFlagArgument(kStepsLineFlag, 0, value);
-        smoothContext->setStepLine(value);
     }
 
     if (argData.isFlagSet(kCommandIndexFlag)) {
@@ -388,13 +360,11 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
 
     if (argData.isFlagSet(kCurveFlag)) setResult(smoothContext->getCurve());
 
-    if (argData.isFlagSet(kDepthFlag)) setResult(smoothContext->getDepth());
-
-    if (argData.isFlagSet(kDepthStartFlag)) setResult(smoothContext->getDepthStart());
-
     if (argData.isFlagSet(kDrawBrushFlag)) setResult(smoothContext->getDrawBrush());
 
     if (argData.isFlagSet(kDrawRangeFlag)) setResult(smoothContext->getDrawRange());
+
+    if (argData.isFlagSet(kImportPythonFlag)) setResult(smoothContext->getPythonImportPath());
 
     if (argData.isFlagSet(kEnterToolCommandFlag)) setResult(smoothContext->getEnterToolCommand());
 
@@ -404,9 +374,6 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
         setResult(smoothContext->getFractionOversampling());
 
     if (argData.isFlagSet(kIgnoreLockFlag)) setResult(smoothContext->getIgnoreLock());
-
-    if (argData.isFlagSet(kKeepShellsTogetherFlag))
-        setResult(smoothContext->getKeepShellsTogether());
 
     if (argData.isFlagSet(kLineWidthFlag)) setResult(smoothContext->getLineWidth());
 
@@ -422,8 +389,6 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
 
     if (argData.isFlagSet(kSmoothStrengthFlag)) setResult(smoothContext->getSmoothStrength());
 
-    if (argData.isFlagSet(kToleranceFlag)) setResult(smoothContext->getTolerance());
-
     if (argData.isFlagSet(kPruneWeightsFlag)) setResult(smoothContext->getPruneWeights());
 
     if (argData.isFlagSet(kInteractiveValueFlag)) setResult(smoothContext->getInteractiveValue(0));
@@ -433,8 +398,6 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kUndersamplingFlag)) setResult(smoothContext->getUndersampling());
 
     if (argData.isFlagSet(kVolumeFlag)) setResult(smoothContext->getVolume());
-
-    if (argData.isFlagSet(kStepsLineFlag)) setResult(smoothContext->getStepLine());
 
     if (argData.isFlagSet(kCoverageFlag)) setResult(smoothContext->getCoverage());
 

@@ -33,15 +33,13 @@ skinBrushTool::skinBrushTool() {
 
     colorVal = MColor(1.0, 0.0, 0.0);
     curveVal = 2;
-    depthVal = 1;
-    depthStartVal = 1;
     drawBrushVal = true;
     drawRangeVal = true;
+    moduleImportString = MString("from brSkinBrush_pythonFunctions import ");
     enterToolCommandVal = "";
     exitToolCommandVal = "";
     fractionOversamplingVal = false;
     ignoreLockVal = false;
-    keepShellsTogetherVal = true;
     lineWidthVal = 1;
     messageVal = 2;
     oversamplingVal = 1;
@@ -49,10 +47,8 @@ skinBrushTool::skinBrushTool() {
     sizeVal = 5.0;
     strengthVal = 0.25;
     smoothStrengthVal = 1.0;
-    toleranceVal = 0.001;
     undersamplingVal = 2;
     volumeVal = false;
-    stepsToDrawLineVal = 4;
     coverageVal = true;
 
     pruneWeights = 0.0001;
@@ -75,32 +71,29 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kColorGFlag, kColorGFlagLong, MSyntax::kDouble);
     syntax.addFlag(kColorBFlag, kColorBFlagLong, MSyntax::kDouble);
     syntax.addFlag(kCurveFlag, kCurveFlagLong, MSyntax::kLong);
-    syntax.addFlag(kDepthFlag, kDepthFlagLong, MSyntax::kLong);
-    syntax.addFlag(kDepthStartFlag, kDepthStartFlagLong, MSyntax::kLong);
     syntax.addFlag(kDrawBrushFlag, kDrawBrushFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kDrawRangeFlag, kDrawRangeFlagLong, MSyntax::kBoolean);
+    syntax.addFlag(kImportPythonFlag, kImportPythonFlagLong, MSyntax::kString);
     syntax.addFlag(kEnterToolCommandFlag, kEnterToolCommandFlagLong, MSyntax::kString);
     syntax.addFlag(kExitToolCommandFlag, kExitToolCommandFlagLong, MSyntax::kString);
     syntax.addFlag(kFractionOversamplingFlag, kFractionOversamplingFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kIgnoreLockFlag, kIgnoreLockFlagLong, MSyntax::kBoolean);
-    syntax.addFlag(kKeepShellsTogetherFlag, kKeepShellsTogetherFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kLineWidthFlag, kLineWidthFlagLong, MSyntax::kLong);
     syntax.addFlag(kMessageFlag, kMessageFlagLong, MSyntax::kLong);
     syntax.addFlag(kOversamplingFlag, kOversamplingFlagLong, MSyntax::kLong);
     syntax.addFlag(kRangeFlag, kRangeFlagLong, MSyntax::kDouble);
     syntax.addFlag(kSizeFlag, kSizeFlagLong, MSyntax::kDouble);
     syntax.addFlag(kStrengthFlag, kStrengthFlagLong, MSyntax::kDouble);
-    syntax.addFlag(kToleranceFlag, kToleranceFlagLong, MSyntax::kDouble);
     syntax.addFlag(kUndersamplingFlag, kUndersamplingFlagLong, MSyntax::kLong);
     syntax.addFlag(kVolumeFlag, kVolumeFlagLong, MSyntax::kBoolean);
 
     syntax.addFlag(kPruneWeightsFlag, kPruneWeightsFlagLong, MSyntax::kDouble);
     syntax.addFlag(kSmoothStrengthFlag, kSmoothStrengthFlagLong, MSyntax::kDouble);
     syntax.addFlag(kCommandIndexFlag, kCommandIndexFlagLong, MSyntax::kLong);
-    syntax.addFlag(kStepsLineFlag, kStepsLineLong, MSyntax::kLong);
     syntax.addFlag(kSoloColorFlag, kSoloColorFlagLong, MSyntax::kLong);
     syntax.addFlag(kSoloColorTypeFlag, kSoloColorTypeFlagLong, MSyntax::kLong);
     syntax.addFlag(kCoverageFlag, kCoverageLong, MSyntax::kBoolean);
+
     // syntax.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kInfluenceIndexFlag, kInfluenceIndexFlagLong, MSyntax::kLong);
     syntax.addFlag(kPostSettingFlag, kPostSettingFlagLong, MSyntax::kBoolean);
@@ -135,20 +128,16 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
         status = argData.getFlagArgument(kCurveFlag, 0, curveVal);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
-    if (argData.isFlagSet(kDepthFlag)) {
-        status = argData.getFlagArgument(kDepthFlag, 0, depthVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
-    if (argData.isFlagSet(kDepthStartFlag)) {
-        status = argData.getFlagArgument(kDepthStartFlag, 0, depthStartVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
     if (argData.isFlagSet(kDrawBrushFlag)) {
         status = argData.getFlagArgument(kDrawBrushFlag, 0, drawBrushVal);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
     if (argData.isFlagSet(kDrawRangeFlag)) {
         status = argData.getFlagArgument(kDrawRangeFlag, 0, drawRangeVal);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kImportPythonFlag)) {
+        status = argData.getFlagArgument(kImportPythonFlag, 0, moduleImportString);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
     if (argData.isFlagSet(kEnterToolCommandFlag)) {
@@ -165,10 +154,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
     }
     if (argData.isFlagSet(kIgnoreLockFlag)) {
         status = argData.getFlagArgument(kIgnoreLockFlag, 0, ignoreLockVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
-    if (argData.isFlagSet(kKeepShellsTogetherFlag)) {
-        status = argData.getFlagArgument(kKeepShellsTogetherFlag, 0, keepShellsTogetherVal);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
     if (argData.isFlagSet(kLineWidthFlag)) {
@@ -195,10 +180,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
         status = argData.getFlagArgument(kStrengthFlag, 0, strengthVal);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
-    if (argData.isFlagSet(kToleranceFlag)) {
-        status = argData.getFlagArgument(kToleranceFlag, 0, toleranceVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
     if (argData.isFlagSet(kPruneWeightsFlag)) {
         status = argData.getFlagArgument(kPruneWeightsFlag, 0, pruneWeights);
         CHECK_MSTATUS_AND_RETURN_IT(status);
@@ -216,10 +197,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
 
-    if (argData.isFlagSet(kStepsLineFlag)) {
-        status = argData.getFlagArgument(kStepsLineFlag, 0, stepsToDrawLineVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
     if (argData.isFlagSet(kCoverageFlag)) {
         status = argData.getFlagArgument(kCoverageFlag, 0, coverageVal);
         CHECK_MSTATUS_AND_RETURN_IT(status);
@@ -235,7 +212,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
 // ---------------------------------------------------------------------
 // main methods for the tool command
 // ---------------------------------------------------------------------
-
 MStatus skinBrushTool::doIt(const MArgList& args) {
     // MGlobal::displayInfo(MString("---------------- [skinBrushTool::doIt]------------------"));
 
@@ -404,14 +380,12 @@ MStatus skinBrushTool::finalize() {
     cmd += colorVal.b;
     cmd += " " + MString(kCurveFlag) + " ";
     cmd += curveVal;
-    cmd += " " + MString(kDepthFlag) + " ";
-    cmd += depthVal;
-    cmd += " " + MString(kDepthStartFlag) + " ";
-    cmd += depthStartVal;
     cmd += " " + MString(kDrawBrushFlag) + " ";
     cmd += drawBrushVal;
     cmd += " " + MString(kDrawRangeFlag) + " ";
     cmd += drawRangeVal;
+    cmd += " " + MString(kImportPythonFlag) + " ";
+    cmd += "\"" + moduleImportString + "\"";
     cmd += " " + MString(kEnterToolCommandFlag) + " ";
     cmd += "\"" + enterToolCommandVal + "\"";
     cmd += " " + MString(kExitToolCommandFlag) + " ";
@@ -420,8 +394,6 @@ MStatus skinBrushTool::finalize() {
     cmd += fractionOversamplingVal;
     cmd += " " + MString(kIgnoreLockFlag) + " ";
     cmd += ignoreLockVal;
-    cmd += " " + MString(kKeepShellsTogetherFlag) + " ";
-    cmd += keepShellsTogetherVal;
     cmd += " " + MString(kLineWidthFlag) + " ";
     cmd += lineWidthVal;
     cmd += " " + MString(kMessageFlag) + " ";
@@ -436,16 +408,12 @@ MStatus skinBrushTool::finalize() {
     cmd += strengthVal;
     cmd += " " + MString(kSmoothStrengthFlag) + " ";
     cmd += smoothStrengthVal;
-    cmd += " " + MString(kToleranceFlag) + " ";
-    cmd += toleranceVal;
     cmd += " " + MString(kPruneWeightsFlag) + " ";
     cmd += pruneWeights;
     cmd += " " + MString(kUndersamplingFlag) + " ";
     cmd += undersamplingVal;
     cmd += " " + MString(kVolumeFlag) + " ";
     cmd += volumeVal;
-    cmd += " " + MString(kStepsLineFlag) + " ";
-    cmd += stepsToDrawLineVal;
     cmd += " " + MString(kPostSettingFlag) + " ";
     cmd += postSetting;
 
@@ -469,13 +437,11 @@ void skinBrushTool::setColor(MColor value) { colorVal = value; }
 
 void skinBrushTool::setCurve(int value) { curveVal = value; }
 
-void skinBrushTool::setDepth(int value) { depthVal = value; }
-
-void skinBrushTool::setDepthStart(int value) { depthStartVal = value; }
-
 void skinBrushTool::setDrawBrush(bool value) { drawBrushVal = value; }
 
 void skinBrushTool::setDrawRange(bool value) { drawRangeVal = value; }
+
+void skinBrushTool::setPythonImportPath(MString value) { moduleImportString = value; }
 
 void skinBrushTool::setEnterToolCommand(MString value) { enterToolCommandVal = value; }
 
@@ -484,8 +450,6 @@ void skinBrushTool::setExitToolCommand(MString value) { exitToolCommandVal = val
 void skinBrushTool::setFractionOversampling(bool value) { fractionOversamplingVal = value; }
 
 void skinBrushTool::setIgnoreLock(bool value) { ignoreLockVal = value; }
-
-void skinBrushTool::setKeepShellsTogether(bool value) { keepShellsTogetherVal = value; }
 
 void skinBrushTool::setLineWidth(int value) { lineWidthVal = value; }
 
@@ -501,8 +465,6 @@ void skinBrushTool::setStrength(double value) { strengthVal = value; }
 
 void skinBrushTool::setSmoothStrength(double value) { smoothStrengthVal = value; }
 
-void skinBrushTool::setTolerance(double value) { toleranceVal = value; }
-
 void skinBrushTool::setPruneWeights(double value) { pruneWeights = value; }
 
 void skinBrushTool::setUndersampling(int value) { undersamplingVal = value; }
@@ -514,8 +476,6 @@ void skinBrushTool::setCommandIndex(int value) { commandIndex = value; }
 void skinBrushTool::setSoloColorType(int value) { soloColorTypeVal = value; }
 
 void skinBrushTool::setSoloColor(int value) { soloColorVal = value; }
-
-void skinBrushTool::setStepLine(int value) { stepsToDrawLineVal = value; }
 
 void skinBrushTool::setCoverage(bool value) { coverageVal = value; }
 
@@ -547,31 +507,3 @@ void skinBrushTool::setUnoVertices(MIntArray editVertsIndices) { undoVertices = 
 void skinBrushTool::setUnoLocks(MIntArray locks) { undoLocks = locks; }
 
 void skinBrushTool::setRedoLocks(MIntArray locks) { redoLocks = locks; }
-
-// ---------------------------------------------------------------------
-// MIT License
-//
-// Copyright (c) 2018 Ingo Clemens, brave rabbit
-// brSkinBrush is under the terms of the MIT License
-//
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// Author: Ingo Clemens    www.braverabbit.com
-// ---------------------------------------------------------------------

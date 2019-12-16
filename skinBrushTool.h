@@ -105,15 +105,13 @@ class skinBrushTool : public MPxToolCommand {
     // setting the attributes
     void setColor(MColor color);
     void setCurve(int value);
-    void setDepth(int value);
-    void setDepthStart(int value);
     void setDrawBrush(bool value);
     void setDrawRange(bool value);
+    void setPythonImportPath(MString value);
     void setEnterToolCommand(MString value);
     void setExitToolCommand(MString value);
     void setFractionOversampling(bool value);
     void setIgnoreLock(bool value);
-    void setKeepShellsTogether(bool value);
     void setLineWidth(int value);
     void setMessage(int value);
     void setOversampling(int value);
@@ -121,11 +119,9 @@ class skinBrushTool : public MPxToolCommand {
     void setSize(double value);
     void setStrength(double value);
     void setSmoothStrength(double value);
-    void setTolerance(double value);
     void setPruneWeights(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
-    void setStepLine(int value);
     void setCommandIndex(int value);
     void setSoloColor(int value);
     void setSoloColorType(int value);
@@ -147,27 +143,24 @@ class skinBrushTool : public MPxToolCommand {
    private:
     MColor colorVal;
     int curveVal;
-    int depthVal;
-    int depthStartVal;
     bool drawBrushVal;
     bool drawRangeVal;
+
+    MString moduleImportString;
     MString enterToolCommandVal;
     MString exitToolCommandVal;
     bool fractionOversamplingVal;
     bool ignoreLockVal;
-    bool keepShellsTogetherVal;
     int lineWidthVal;
     int messageVal;
     int oversamplingVal;
     double rangeVal;
     double sizeVal;
     double strengthVal, smoothStrengthVal;
-    double toleranceVal;
     double pruneWeights;
     int undersamplingVal;
     bool volumeVal;
 
-    int stepsToDrawLineVal;
     bool coverageVal;
     int influenceIndex = 0, commandIndex = 0, smoothRepeat = 3, smoothDepth = 1;
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
@@ -192,7 +185,6 @@ class skinBrushTool : public MPxToolCommand {
 // ---------------------------------------------------------------------
 // the context
 // ---------------------------------------------------------------------
-
 class SkinBrushContext : public MPxContext {
    public:
     SkinBrushContext();
@@ -299,10 +291,9 @@ class SkinBrushContext : public MPxContext {
     void setColorG(float value);
     void setColorB(float value);
     void setCurve(int value);
-    void setDepth(int value);
-    void setDepthStart(int value);
     void setDrawBrush(bool value);
     void setDrawRange(bool value);
+    void setPythonImportPath(MString value);
     void setEnterToolCommand(MString value);
     void setExitToolCommand(MString value);
     void setFlood(double value);
@@ -310,7 +301,6 @@ class SkinBrushContext : public MPxContext {
     void setPickInfluence(bool value);
     void setFractionOversampling(bool value);
     void setIgnoreLock(bool value);
-    void setKeepShellsTogether(bool value);
     void setLineWidth(int value);
     void setMessage(int value);
     void setOversampling(int value);
@@ -318,7 +308,6 @@ class SkinBrushContext : public MPxContext {
     void setSize(double value);
     void setStrength(double value);
     void setSmoothStrength(double value);
-    void setTolerance(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
     void setUseColorSetsWhilePainting(bool value);
@@ -326,7 +315,6 @@ class SkinBrushContext : public MPxContext {
     void setDrawEdges(bool value);
     void setDrawPoints(bool value);
     void setDrawTransparency(bool value);
-    void setStepLine(int value);
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
     void setCommandIndex(int value);
@@ -344,15 +332,13 @@ class SkinBrushContext : public MPxContext {
     float getColorG();
     float getColorB();
     int getCurve();
-    int getDepth();
-    int getDepthStart();
     bool getDrawBrush();
     bool getDrawRange();
+    MString getPythonImportPath();
     MString getEnterToolCommand();
     MString getExitToolCommand();
     bool getFractionOversampling();
     bool getIgnoreLock();
-    bool getKeepShellsTogether();
     int getLineWidth();
     int getMessage();
     int getOversampling();
@@ -362,10 +348,8 @@ class SkinBrushContext : public MPxContext {
     double getSmoothStrength();
     double getPruneWeights();
     double getInteractiveValue(int ind);
-    double getTolerance();
     int getUndersampling();
     bool getVolume();
-    int getStepLine();
     bool getCoverage();
     int getInfluenceIndex();
     MString getInfluenceName();
@@ -403,25 +387,24 @@ class SkinBrushContext : public MPxContext {
     // the tool settings
     MColor colorVal = MColor(1.0, 0, 0);
     int curveVal;
-    int depthVal;
-    int depthStartVal;
     bool drawBrushVal;
     bool drawRangeVal;
+
+    MString moduleImportString;
     MString enterToolCommandVal;
     MString exitToolCommandVal;
     bool fractionOversamplingVal;
     bool ignoreLockVal;
-    bool keepShellsTogetherVal;
+
     int lineWidthVal;
     int messageVal;
     int oversamplingVal;
     double rangeVal;
     double sizeVal;
     double strengthVal, smoothStrengthVal;
-    double toleranceVal;
+
     int undersamplingVal;
     bool volumeVal;
-    int stepsToDrawLineVal;
     bool coverageVal;
     // if we're asking to pick max influence
     bool pickMaxInfluenceVal = false, pickInfluenceVal = false;
@@ -583,7 +566,6 @@ class SkinBrushContext : public MPxContext {
     bool successFullHit = false;
     bool successFullDragHit = false;
     bool refreshDone = false;
-    // int stepsLine = 10; // steps to draw the line
     std::unordered_map<int, float> dicVertsDistSTART, previousPaint;
     std::unordered_map<int, double> skinValuesToSet;
     std::set<int> verticesPainted;  // the vertices that have been painted for a redraw purpose

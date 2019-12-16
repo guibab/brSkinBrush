@@ -18,10 +18,6 @@
 #define kColorBFlagLong "-colorB"
 #define kCurveFlag "-c"
 #define kCurveFlagLong "-curve"
-#define kDepthFlag "-d"
-#define kDepthFlagLong "-depth"
-#define kDepthStartFlag "-ds"
-#define kDepthStartFlagLong "-depthStart"
 #define kDrawBrushFlag "-db"
 #define kDrawBrushFlagLong "-drawBrush"
 #define kDrawRangeFlag "-dr"
@@ -36,8 +32,6 @@
 #define kFractionOversamplingFlagLong "-fractionOversampling"
 #define kIgnoreLockFlag "-il"
 #define kIgnoreLockFlagLong "-ignoreLock"
-#define kKeepShellsTogetherFlag "-kst"
-#define kKeepShellsTogetherFlagLong "-keepShellsTogether"
 #define kLineWidthFlag "-lw"
 #define kLineWidthFlagLong "-lineWidth"
 #define kMessageFlag "-m"
@@ -50,8 +44,6 @@
 #define kSizeFlagLong "-size"
 #define kStrengthFlag "-st"
 #define kStrengthFlagLong "-strength"
-#define kToleranceFlag "-to"
-#define kToleranceFlagLong "-tolerance"
 #define kUndersamplingFlag "-us"
 #define kUndersamplingFlagLong "-undersampling"
 #define kVolumeFlag "-v"
@@ -62,9 +54,6 @@
 
 #define kSmoothStrengthFlag "-sst"
 #define kSmoothStrengthFlagLong "-smoothStrength"
-
-#define kStepsLineFlag "-sl"
-#define kStepsLineLong "-stepLine"
 
 #define kCoverageFlag "-co"
 #define kCoverageLong "-coverage"
@@ -134,3 +123,6 @@
 
 #define kInteractiveValue2Flag "-iv2"
 #define kInteractiveValue2FlagLong "-interactiveValue2"
+
+#define kImportPythonFlag "-imp"
+#define kImportPythonFlagLong "-importPython"

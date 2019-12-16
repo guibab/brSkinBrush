@@ -23,15 +23,13 @@ SkinBrushContext::SkinBrushContext() {
 
     colorVal = MColor(1.0, 0.0, 0.0);
     curveVal = 2;
-    depthVal = 1;
-    depthStartVal = 1;
     drawBrushVal = true;
     drawRangeVal = true;
+    moduleImportString = MString("from brSkinBrush_pythonFunctions import ");
     enterToolCommandVal = "";
     exitToolCommandVal = "";
     fractionOversamplingVal = false;
     ignoreLockVal = false;
-    keepShellsTogetherVal = true;
     lineWidthVal = 1;
     messageVal = 2;
     oversamplingVal = 1;
@@ -42,9 +40,7 @@ SkinBrushContext::SkinBrushContext() {
 
     pruneWeight = 0.0001;
 
-    toleranceVal = 0.001;
     undersamplingVal = 2;
-    stepsToDrawLineVal = 4;
     volumeVal = false;
     coverageVal = true;
     postSetting = true;
@@ -69,20 +65,11 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     setInViewMessage(true);
 
     MGlobal::executeCommand(enterToolCommandVal);
-
-    MString cmdtoolOnSetupStart(
-        "from brSkinBrush_pythonFunctions import toolOnSetupStart\ntoolOnSetupStart()\n");
-    MGlobal::executePythonCommand(cmdtoolOnSetupStart);
-
-    // command to check size of text for picking
-    MString cmdFont("from brSkinBrush_pythonFunctions import fnFonts\n");
-    MGlobal::executePythonCommand(cmdFont);
-
-    MString cmdCatchEventsUI("import catchEventsUI\n");
-    cmdCatchEventsUI += MString("reload(catchEventsUI)\n");
-    cmdCatchEventsUI += MString("catchEventsUI.EVENTCATCHER = catchEventsUI.CatchEventsWidget()\n");
-    cmdCatchEventsUI += MString("catchEventsUI.EVENTCATCHER.open()\n");
-    MGlobal::executePythonCommand(cmdCatchEventsUI);
+    MGlobal::displayInfo(MString(" --------->  moduleImportString : ") + moduleImportString);
+    MGlobal::executePythonCommand(
+        moduleImportString + MString("toolOnSetupEnd, toolOffCleanup, toolOnSetupStart, fnFonts, "
+                                     "headsUpMessage, updateDisplayStrengthOrSize\n"));
+    MGlobal::executePythonCommand("toolOnSetupStart()");
 
     this->pickMaxInfluenceVal = false;
     this->pickInfluenceVal = false;
@@ -193,23 +180,14 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     view = M3dView::active3dView();
     view.refresh(false, true);
 
-    MString cmdtoolOnSetupEnd(
-        "from brSkinBrush_pythonFunctions import toolOnSetupEnd\ntoolOnSetupEnd()\n");
-    MGlobal::executePythonCommand(cmdtoolOnSetupEnd);
+    MGlobal::executePythonCommand("toolOnSetupEnd()");
 }
 
 void SkinBrushContext::toolOffCleanup() {
     setInViewMessage(false);
     MGlobal::executeCommand(exitToolCommandVal);
 
-    MString cmd("import catchEventsUI\n");
-    cmd += MString(
-        "if hasattr ( catchEventsUI,\"EVENTCATCHER\"): catchEventsUI.EVENTCATCHER.close()\n");
-    MGlobal::executePythonCommand(cmd);
-
-    cmd =
-        MString("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.toolOffCleanup()");
-    MGlobal::executePythonCommand(cmd);
+    MGlobal::executePythonCommand("toolOffCleanup()");
 }
 
 void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }
@@ -523,6 +501,7 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
     drawManager.beginDrawable();
     drawManager.setColor(MColor(0.0, 0.0, 1.0));
     drawManager.setLineWidth((float)lineWidthVal);
+    MColor biggestInfluenceColor(1.0, 0.0, 0.0);
 
     if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
         if (this->pickInfluenceVal) {
@@ -532,17 +511,18 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
             int lent = this->inflDagPaths.length();
             drawManager.setColor(MColor(0.0, 0.0, 0.0));
             for (unsigned int i = 0; i < lent; i++) {
-                bool isBiggestInfluence = i == biggestInfluence;
-                if (isBiggestInfluence) {
-                    drawManager.setColor(MColor(1.0, 0.0, 0.0));
+                bool fillDraw = i == biggestInfluence;
+                if (i == biggestInfluence) {
+                    drawManager.setColor(biggestInfluenceColor);
                     // drawManager.setLineWidth((float)lineWidthVal+1.0);
                 } else {
+                    if (i == this->influenceIndex) fillDraw = true;
                     drawManager.setColor(jointsColors[i]);
                     // drawManager.setLineWidth((float)lineWidthVal);
                 }
                 drawingDeformers bbosDfm = BBoxOfDeformers[i];
                 drawManager.box(bbosDfm.center, bbosDfm.up, bbosDfm.right, bbosDfm.width,
-                                bbosDfm.height, bbosDfm.depth, isBiggestInfluence);
+                                bbosDfm.height, bbosDfm.depth, fillDraw);
             }
             // end reDraw jnts
             // ----------------------------------------------------------------------
@@ -1316,7 +1296,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         // delta movement from them.
         MPoint currentPos(this->screenX, this->screenY);
         MPoint startPos(startScreenX, startScreenY);
-        MPoint deltaPos(currentPos - startPos);
+        MVector deltaPos(currentPos - startPos);
 
         // Switch if the size should get adjusted or the strength based
         // on the drag direction. A drag along the x axis defines size
@@ -1325,20 +1305,18 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         // drag event and gets reset the next time a mouse button is
         // pressed.
         if (!initAdjust) {
-            if (abs(deltaPos.x) > abs(deltaPos.y)) {
-                initAdjust = true;
-            } else if (abs(deltaPos.x) < abs(deltaPos.y)) {
-                sizeAdjust = false;
-                initAdjust = true;
-            }
+            if (deltaPos.length() < 6)
+                return status;  // only if we move at least 6 pixels do we know the direction to
+                                // pick !
+            sizeAdjust = (abs(deltaPos.x) > abs(deltaPos.y));
+            initAdjust = true;
         }
-
         // Define the settings for either setting the brush size or the
         // brush strength.
         MString message = "Brush Size";
         MString slider = "Size";
         double dragDistance = deltaPos.x;
-        double min = 0.0;
+        double min = 0.001;
         unsigned int max = 1000;
         double baseValue = sizeVal;
         // The adjustment speed depends on the distance to the mesh.
@@ -1383,34 +1361,45 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         // -------------------------------------------------------------
         // value display in the viewport
         // -------------------------------------------------------------
-        char info[32];
-#ifdef _WIN64
-        sprintf_s(info, "%s: %.2f", message.asChar(), adjustValue);
-#else
-        sprintf(info, "%s: %.2f", message.asChar(), adjustValue);
-#endif
-
-        // Calculate the position for the value display. Since the
-        // heads-up message starts at the center of the viewport an
-        // offset needs to get calculated based on the view size and the
-        // initial adjust position of the cursor.
         short offsetX = startScreenX - viewCenterX;
         short offsetY = startScreenY - viewCenterY - 50;
 
-        MString cmd = "headsUpMessage -horizontalOffset ";
-        cmd += offsetX;
-        cmd += " -verticalOffset ";
-        cmd += offsetY;
-        cmd += " -time 0.1 ";
-        cmd += "\"" + MString(info) + "\"";
-        MGlobal::executeCommand(cmd);
+        /*
+char info[32];
 
+#ifdef _WIN64
+        if (event.isModifierShift()) sprintf_s(info, "%s: %.3f", message.asChar(), adjustValue);
+        else sprintf_s(info, "%s: %.2f", message.asChar(), adjustValue);
+#else
+        if (event.isModifierShift()) sprintf(info, "%s: %.3f", message.asChar(), adjustValue);
+        else sprintf(info, "%s: %.2f", message.asChar(), adjustValue);
+#endif
+
+// Calculate the position for the value display. Since the
+// heads-up message starts at the center of the viewport an
+// offset needs to get calculated based on the view size and the
+// initial adjust position of the cursor.
+MString cmd = "headsUpMessage -horizontalOffset ";
+cmd += offsetX;
+cmd += " -verticalOffset ";
+cmd += offsetY;
+cmd += " -time 0.1 ";
+cmd += "\"" + MString(info) + "\"";
+MGlobal::executeCommand(cmd);
+        */
+        int precision = 2;
+        if (event.isModifierShift()) precision = 3;
+        MString headsUpCommand = MString("headsUpMessage(") + offsetX + MString(", ") + offsetY +
+                                 MString(", '") + message + MString("', ") + adjustValue +
+                                 MString(", ") + precision + MString(")\n");
+
+        MGlobal::executePythonCommand(headsUpCommand);
         // Also, adjust the slider in the tool settings window if it's
         // currently open.
-        MString tool("brSkinBrush");
-        MGlobal::executeCommand("if (`columnLayout -exists " + tool + "`) " +
-                                "floatSliderGrp -edit -value " + (MString() + adjustValue) + " " +
-                                tool + slider + ";");
+        MString UIupdate = MString("updateDisplayStrengthOrSize(") + sizeAdjust + MString(", ") +
+                           adjustValue + MString(")\n");
+        // MGlobal::displayInfo(UIupdate);
+        MGlobal::executePythonCommand(UIupdate);
     }
     return status;
 }
@@ -1484,33 +1473,19 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
         meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
 
-        /*
-        // For Maya 2019 ---------------------------------
-        #if MAYA_API_VERSION >= 201900
-        if (soloColorVal == 1) {
-                meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->noColorSet);
-        }
-        else {
-                meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->noColorSet);
-        }
-        #endif
-        // end For Maya 2019 ---------------------------------
-        */
         this->previousPaint.clear();
 
         cmd = (skinBrushTool *)newToolCommand();
 
         cmd->setColor(colorVal);
         cmd->setCurve(curveVal);
-        cmd->setDepth(depthVal);
-        cmd->setDepthStart(depthStartVal);
         cmd->setDrawBrush(drawBrushVal);
         cmd->setDrawRange(drawRangeVal);
+        cmd->setPythonImportPath(moduleImportString);
         cmd->setEnterToolCommand(enterToolCommandVal);
         cmd->setExitToolCommand(exitToolCommandVal);
         cmd->setFractionOversampling(fractionOversamplingVal);
         cmd->setIgnoreLock(ignoreLockVal);
-        cmd->setKeepShellsTogether(keepShellsTogetherVal);
         cmd->setLineWidth(lineWidthVal);
         cmd->setMessage(messageVal);
         cmd->setOversampling(oversamplingVal);
@@ -1519,10 +1494,8 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         cmd->setStrength(strengthVal);
 
         cmd->setSmoothStrength(smoothStrengthVal);
-        cmd->setTolerance(toleranceVal);
         cmd->setUndersampling(undersamplingVal);
         cmd->setVolume(volumeVal);
-        cmd->setStepLine(stepsToDrawLineVal);
         cmd->setCoverage(coverageVal);
 
         cmd->setCommandIndex(theCommandIndex);

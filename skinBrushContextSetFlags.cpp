@@ -23,16 +23,6 @@ void SkinBrushContext::setCurve(int value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDepth(int value) {
-    depthVal = value;
-    MToolsInfo::setDirtyFlag(*this);
-}
-
-void SkinBrushContext::setDepthStart(int value) {
-    depthStartVal = value;
-    MToolsInfo::setDirtyFlag(*this);
-}
-
 void SkinBrushContext::setDrawBrush(bool value) {
     drawBrushVal = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -40,6 +30,11 @@ void SkinBrushContext::setDrawBrush(bool value) {
 
 void SkinBrushContext::setDrawRange(bool value) {
     drawRangeVal = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setPythonImportPath(MString value) {
+    moduleImportString = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -65,11 +60,6 @@ void SkinBrushContext::setFractionOversampling(bool value) {
 
 void SkinBrushContext::setIgnoreLock(bool value) {
     ignoreLockVal = value;
-    MToolsInfo::setDirtyFlag(*this);
-}
-
-void SkinBrushContext::setKeepShellsTogether(bool value) {
-    keepShellsTogetherVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -130,11 +120,6 @@ void SkinBrushContext::setInteractiveValue(double value, int ind) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setTolerance(double value) {
-    toleranceVal = value;
-    MToolsInfo::setDirtyFlag(*this);
-}
-
 void SkinBrushContext::setUndersampling(int value) {
     undersamplingVal = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -170,11 +155,6 @@ void SkinBrushContext::setDrawPoints(bool value) {
 void SkinBrushContext::setDrawTransparency(bool value) {
     drawTransparency = value;
     MGlobal::displayInfo(MString("setDrawTransparency CALLED ") + value);
-    MToolsInfo::setDirtyFlag(*this);
-}
-
-void SkinBrushContext::setStepLine(int value) {
-    stepsToDrawLineVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -277,22 +257,10 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
             msg += MString(" name is ") + influenceName;
 
             if (selectInUI) {
-                MString tool("brSkinBrush");
-                MString cmd = "if (`columnLayout -exists " + tool + "`) " +
-                              "treeView -edit -clearSelection " + tool +
-                              "JointTree;"
-                              "treeView -edit -showItem \"" +
-                              influenceName + "\" " + tool + "JointTree;";
-                "treeView -edit -select \"" + influenceName + "\" 1 " + tool +
-                    "JointTree;"
-                    "treeView -edit -selectItem \"" +
-                    influenceName + "\" 1 " + tool + "JointTree;";
-                cmd +=
-                    "\nglobal string $gSkinBrushInfluenceSelection[];$gSkinBrushInfluenceSelection "
-                    "= { \"" +
-                    influenceName + "\" };";
-                MGlobal::executeCommand(cmd);
-                MGlobal::displayInfo(cmd);
+                MString pickInfluenceCommand = moduleImportString + MString("pickedInfluence\n");
+                pickInfluenceCommand +=
+                    MString("pickedInfluence ('") + influenceName + MString("')");
+                MGlobal::executePythonCommand(pickInfluenceCommand);
             }
         }
         if (verbose) MGlobal::displayInfo(msg);
@@ -332,45 +300,25 @@ void SkinBrushContext::setInfluenceByName(MString value) {
 // getting values from the command flags
 // ---------------------------------------------------------------------
 float SkinBrushContext::getColorR() { return colorVal.r; }
-
 float SkinBrushContext::getColorG() { return colorVal.g; }
-
 float SkinBrushContext::getColorB() { return colorVal.b; }
 
 int SkinBrushContext::getCurve() { return curveVal; }
-
-int SkinBrushContext::getDepth() { return depthVal; }
-
-int SkinBrushContext::getDepthStart() { return depthStartVal; }
-
 bool SkinBrushContext::getDrawBrush() { return drawBrushVal; }
-
 bool SkinBrushContext::getDrawRange() { return drawRangeVal; }
-
+MString SkinBrushContext::getPythonImportPath() { return moduleImportString; }
 MString SkinBrushContext::getEnterToolCommand() { return enterToolCommandVal; }
-
 MString SkinBrushContext::getExitToolCommand() { return exitToolCommandVal; }
-
 bool SkinBrushContext::getFractionOversampling() { return fractionOversamplingVal; }
 
 bool SkinBrushContext::getIgnoreLock() { return ignoreLockVal; }
-
-bool SkinBrushContext::getKeepShellsTogether() { return keepShellsTogetherVal; }
-
 int SkinBrushContext::getLineWidth() { return lineWidthVal; }
-
 int SkinBrushContext::getMessage() { return messageVal; }
-
 int SkinBrushContext::getOversampling() { return oversamplingVal; }
-
 double SkinBrushContext::getRange() { return rangeVal; }
-
 double SkinBrushContext::getSize() { return sizeVal; }
-
 double SkinBrushContext::getStrength() { return strengthVal; }
-
 double SkinBrushContext::getSmoothStrength() { return smoothStrengthVal; }
-
 double SkinBrushContext::getPruneWeights() { return this->pruneWeight; }
 
 double SkinBrushContext::getInteractiveValue(int ind) {
@@ -379,32 +327,19 @@ double SkinBrushContext::getInteractiveValue(int ind) {
     if (ind == 2) return this->interactiveValue2;
 }
 
-double SkinBrushContext::getTolerance() { return toleranceVal; }
-
 int SkinBrushContext::getUndersampling() { return undersamplingVal; }
-
 bool SkinBrushContext::getVolume() { return volumeVal; }
-
-int SkinBrushContext::getStepLine() { return stepsToDrawLineVal; }
-
 int SkinBrushContext::getCommandIndex() { return commandIndex; }
-
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
-
 bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhilePainting; }
-
 bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
 bool SkinBrushContext::getDrawEdges() { return drawEdges; }
 bool SkinBrushContext::getDrawPoints() { return drawPoints; }
 bool SkinBrushContext::getDrawTransparency() { return drawTransparency; }
 int SkinBrushContext::getSoloColorType() { return soloColorTypeVal; }
-
 bool SkinBrushContext::getCoverage() { return coverageVal; }
+int SkinBrushContext::getInfluenceIndex() { return influenceIndex; }
 
-int SkinBrushContext::getInfluenceIndex() {
-    // MGlobal::displayInfo("getInfluenceIndex CALLED");
-    return influenceIndex;
-}
 MString SkinBrushContext::getInfluenceName() {
     // MGlobal::displayInfo("getInfluenceName CALLED");
     MString influenceName("FAILED");
@@ -420,5 +355,4 @@ MString SkinBrushContext::getSkinClusterName() {
 }
 
 MString SkinBrushContext::getMeshName() { return this->meshDag.fullPathName(); }
-
 bool SkinBrushContext::getPostSetting() { return postSetting; }
