@@ -199,7 +199,9 @@ void SkinBrushContext::refreshJointsLocks() {
         getListLockJoints(skinObj, this->lockJoints);
     }
 }
+
 void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
+    // this command is used when undo is called
     /*
     if (verbose) MGlobal::displayInfo(" - refreshThisVertices-");
     MString toDisplay("List Vertices : ");
@@ -211,9 +213,13 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     }
     MGlobal::displayInfo(toDisplay);
     */
-
     querySkinClusterValues(this->skinObj, verticesIndices, true);
+    // query the Locks
+    getListLockJoints(skinObj, this->lockJoints);
+    MIntArray editVertsIndices;
+    getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
 
+    // points and normals
     refreshPointsNormals();
 
     MColorArray multiEditColors, soloEditColors;
@@ -224,6 +230,11 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
 
     meshFn.setSomeColors(verticesIndices, multiEditColors, &this->fullColorSet2);
     meshFn.setSomeColors(verticesIndices, soloEditColors, &this->soloColorSet2);
+
+    // if locking or unlocking
+    // without that it doesn't refresh because mesh is not invalidated, meaning the skinCluster
+    // hasn't changed
+    meshFn.updateSurface();
 
     // refresh view and display
     // meshFn.setDisplayColors(true);
@@ -679,16 +690,15 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     float h, s, v;
 
     // get baseColor ----------------------------------
+    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+    // UnLockVertices
+    int theCommandIndex = this->commandIndex;
+    if (this->commandIndex == 0 && this->modifierNoneShiftControl == 1)
+        theCommandIndex = 1;  // remove
+    if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
+        theCommandIndex = 7;                                       // unlockVertices
+    if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
     if (drawTransparency || drawPoints) {
-        int theCommandIndex = this->commandIndex;
-        if (this->commandIndex == 0 && this->modifierNoneShiftControl == 1)
-            theCommandIndex = 1;  // remove
-        if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
-            theCommandIndex = 7;                                       // unlockVertices
-        if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
-        // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
-        // UnLockVertices
-
         if (theCommandIndex > 6)
             baseColor = white;
         else if (theCommandIndex == 6)
@@ -707,6 +717,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     for (const auto &pt : this->skinValuesToSet) {
         int ptIndex = pt.first;
         double weight = pt.second;
+        if (theCommandIndex >= 6) weight = 1.0;  // no transparency on lock / unlocks verts
         MPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
                         this->mayaRawPoints[ptIndex * 3 + 2]);
         // points.append(posPoint);
@@ -734,23 +745,26 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
                 transparency = 1.0;
 
             setColor(ptIndex, weight, editVertsIndices, colors, colorsSolo);
-            if (this->soloColorVal)
-                col = colorsSolo[i];
-            else
-                col = colors[i];
-
-            // now gamma -----------------------------------------------------------------
-            col.get(MColor::kHSV, h, s, v);
-            // col.set(MColor::kHSV, h, pow(s, this->interactiveValue), pow(v,
-            // this->interactiveValue1), (float)weight);
-            col.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
-            // MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ), pow(col.b,
-            // gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b +
-            // 1));
-            if (this->soloColorVal)
-                colorsSolo[i] = col;
-            else
-                colors[i] = col;
+            if (theCommandIndex != 6) {  // not painting locks
+                if (this->soloColorVal) {
+                    col = colorsSolo[i];
+                } else {
+                    col = colors[i];
+                }
+                // now gamma -----------------------------------------------------------------
+                col.get(MColor::kHSV, h, s, v);
+                // col.set(MColor::kHSV, h, pow(s, this->interactiveValue), pow(v,
+                // this->interactiveValue1), (float)weight);
+                col.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
+                // MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ),
+                // pow(col.b, gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1),
+                // log2(col.b + 1));
+                if (this->soloColorVal) {
+                    colorsSolo[i] = col;
+                } else {
+                    colors[i] = col;
+                }
+            }
         }
         if (drawPoints) {
             if (this->soloColorVal)
@@ -845,6 +859,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
         drawManager.setPointSize(4);
         drawManager.mesh(MHWRender::MUIDrawManager::kPoints, points, NULL, &pointsColors);
     }
+    return MStatus::kSuccess;
 }
 
 MStatus SkinBrushContext::doRelease(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
@@ -1426,8 +1441,6 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
     // the tool command along with the necessary data for undo and redo.
     // The same goes for the select mode.
     if (performBrush) {
-        // redraw clors properly I guess- but I think we would need a set first
-        // need to look into that eventually
         MColorArray multiEditColors, soloEditColors;
         MIntArray editVertsIndices((int)this->verticesPainted.size(), 0);
         MIntArray undoLocks, redoLocks;
@@ -1436,18 +1449,21 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
         int i = 0;
         for (const auto &theVert : this->verticesPainted) {
             editVertsIndices[i] = theVert;
+            // if (theVert == 241)MGlobal::displayInfo(MString("241  in this->verticesPainted "));
             i++;
         }
         int theCommandIndex = this->commandIndex;
         if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
-            theCommandIndex = 7;  // unlockVertices
-
+            theCommandIndex = 7;                                       // unlockVertices
+        if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+        // MGlobal::displayInfo(MString("a| Vtx 241 ") + this->lockVertices[241]);
         if (theCommandIndex >= 6) {
             undoLocks.copy(this->lockVertices);
             bool addLocks = theCommandIndex == 6;
             // if (this->mirrorIsActive) editLocks(this->skinObj, editAndMirrorVerts, addLocks,
             // this->lockVertices);
             editLocks(this->skinObj, editVertsIndices, addLocks, this->lockVertices);
+            // MGlobal::displayInfo(MString("b| Vtx 241 ") + this->lockVertices[241]);
             // MGlobal::displayInfo("editing locks");
             redoLocks.copy(this->lockVertices);
         } else {
@@ -1465,14 +1481,34 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
                 }
             }
         }
+        // MGlobal::displayInfo(MString("c| Vtx 241 ") + this->lockVertices[241]);
         refreshColors(editVertsIndices, multiEditColors, soloEditColors);
-        this->skinValuesToSet.clear();
         meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
         meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
 
+        /*
+        if (theCommandIndex >= 6) {
+                toggleColorState = true;
+                maya2019RefreshColors();
+                view.refresh(true);
+        }
+        */
         meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
         meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
 
+        if (theCommandIndex >= 6) {  // if locking or unlocking
+            // without that it doesn't refresh because mesh is not invalidated, meaning the
+            // skinCluster hasn't changed
+            meshFn.updateSurface();
+        }
+        /*
+        if (theCommandIndex >= 6) {
+                maya2019RefreshColors();
+                view.refresh(true);
+        }
+        */
+
+        this->skinValuesToSet.clear();
         this->previousPaint.clear();
 
         cmd = (skinBrushTool *)newToolCommand();
@@ -1548,9 +1584,8 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
     if (this->commandIndex == 0 && this->modifierNoneShiftControl == 1)
         theCommandIndex = 1;  // remove
     if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
-        theCommandIndex = 7;  // unlockVertices
-    if (this->modifierNoneShiftControl == 2 && theCommandIndex < 6)
-        theCommandIndex = 4;  // smooth always
+        theCommandIndex = 7;                                       // unlockVertices
+    if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
 
     double multiplier = 1.0;
     // if (!this->postSetting && theCommandIndex != 4) multiplier = .1; // less applying if dragging
@@ -1703,6 +1738,7 @@ MStatus SkinBrushContext::refreshColors(MIntArray &editVertsIndices, MColorArray
         int theVert = editVertsIndices[i];
         MColor multiColor, soloColor;
         bool isVtxLocked = this->lockVertices[theVert] == 1;
+
         for (int j = 0; j < this->nbJoints; ++j) {  // for each joint
             double val = this->skinWeightList[theVert * this->nbJoints + j];
             multiColor += jointsColors[j] * val;
@@ -1711,15 +1747,22 @@ MStatus SkinBrushContext::refreshColors(MIntArray &editVertsIndices, MColorArray
                 soloColor = getASoloColor(val);
             }
         }
-        if (!isVtxLocked) {
-            multiEditColors[i] = multiColor;
-            soloEditColors[i] = soloColor;
-        } else {
-            multiEditColors[i] = this->lockVertColor;
-            soloEditColors[i] = this->lockVertColor;
-        }
         this->multiCurrentColors[theVert] = multiColor;
         this->soloCurrentColors[theVert] = soloColor;
+        if (isVtxLocked) {
+            multiEditColors[i] = this->lockVertColor;
+            soloEditColors[i] = this->lockVertColor;
+        } else {
+            multiEditColors[i] = multiColor;
+            soloEditColors[i] = soloColor;
+        }
+        /*
+        if (theVert == 241) {
+                MGlobal::displayInfo(MString("refreshColors| Vtx 241 ") + isVtxLocked);
+                MGlobal::displayInfo(MString("r ") + multiEditColors[i].r + MString(" g ") +
+        multiEditColors[i].g + MString("b ") + multiEditColors[i].b );
+        }
+        */
     }
     return status;
 }
@@ -2468,7 +2511,7 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
     if (verbose) MGlobal::displayInfo(MString("         --> actually painting weights"));
     MColor white(1, 1, 1, 1);
     MColor black(0, 0, 0, 1);
-
+    MColor soloColor, multColor;
     int theCommandIndex = this->commandIndex;
     if (this->commandIndex == 0 && this->modifierNoneShiftControl == 1)
         theCommandIndex = 1;  // remove
@@ -2477,25 +2520,16 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
     if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
 
     if (theCommandIndex >= 6) {  // painting locks
-        bool doStoreLock = (theCommandIndex == 6 && !this->lockVertices[vertexIndex]) ||
-                           (theCommandIndex == 7 && this->lockVertices[vertexIndex]);
-        if (doStoreLock) {
-            if (!this->mirrorIsActive) {     // we do the colors diferently if mirror is active
-                if (theCommandIndex == 6) {  // lock verts if not already locked
-                    multiEditColors.append(this->lockVertColor);
-                    soloEditColors.append(this->lockVertColor);
-                } else {  // unlock verts
-                    multiEditColors.append(this->multiCurrentColors[vertexIndex]);
-                    soloEditColors.append(this->soloCurrentColors[vertexIndex]);
-                }
-            }
-            editVertsIndices.append(vertexIndex);
-            // editVertsWeights.append(1.0);
-            this->intensityValues[vertexIndex] = 1;  // store to not repaint
+        // if (!this->mirrorIsActive) {// we do the colors diferently if mirror is active
+        if (theCommandIndex == 6) {  // lock verts if not already locked
+            soloColor = this->lockVertColor;
+            multColor = this->lockVertColor;
+        } else {  // unlock verts
+            multColor = this->multiCurrentColors[vertexIndex];
+            soloColor = this->soloCurrentColors[vertexIndex];
         }
+        this->intensityValues[vertexIndex] = 1;  // store to not repaint
     } else if (!this->lockVertices[vertexIndex]) {
-        MColor soloColor, multColor;
-        editVertsIndices.append(vertexIndex);
         // editVertsWeights.append(val);
         MColor currentColor = this->multiCurrentColors[vertexIndex];
         // float val = std::log10(value * 9 + 1);
@@ -2528,10 +2562,12 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
                 soloColor = value * white + (1.0 - value) * this->soloCurrentColors[vertexIndex];
                 multColor = value * white + (1.0 - value) * this->multiCurrentColors[vertexIndex];
             }
-            multiEditColors.append(multColor);
-            soloEditColors.append(soloColor);
         }
     }
+    editVertsIndices.append(vertexIndex);
+    multiEditColors.append(multColor);
+    soloEditColors.append(soloColor);
+
     /*
     if (this->mirrorIsActive) {
             int mirrorInfluenceIndex = this->mirrorInfluences[this->influenceIndex];
@@ -2569,8 +2605,8 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
     double multiplier = 1.0;
     if (!this->postSetting && this->commandIndex != 4)
         multiplier = .1;  // less applying if dragging paint
-
-    if (this->modifierNoneShiftControl == 2 && this->commandIndex >= 6) return status;
+    bool isCommandLock = this->commandIndex >= 6 && this->modifierNoneShiftControl != 2;
+    // if (this->modifierNoneShiftControl == 2 && this->commandIndex >= 6) return status;
     if (!volumeVal) {
         MColorArray multiEditColors, soloEditColors;
         MIntArray editVertsIndices, theMirrorVerts, editAndMirrorVerts;
@@ -2584,9 +2620,10 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             float value = element.second * multiplier;
 
             // check if need to set this color, we store somehow -------
-            if ((this->lockVertices[index] == 1 && this->commandIndex < 6) ||
-                this->intensityValues[index] == 1)
+            if ((this->lockVertices[index] == 1 && !isCommandLock) ||
+                this->intensityValues[index] == 1) {
                 continue;
+            }
 
             // get the correct value of paint --
             value += this->intensityValues[index];
@@ -2627,7 +2664,6 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             }
         }
         // Now store the colors for an actual MUIDrawMAnager Draw ---------------------
-
     } else {
         MIntArray volumeIndices = getVerticesInVolume();
     }
@@ -2652,6 +2688,12 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
     }
     */
     if (this->useColorSetsWhilePainting) {
+        if (this->commandIndex >= 6) {  // if locking or unlocking
+            // without that it doesn't refresh because mesh is not invalidated, meaning the
+            // skinCluster hasn't changed
+            meshFn.updateSurface();
+        }
+
         maya2019RefreshColors(true);
     }
     return status;

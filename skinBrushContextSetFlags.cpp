@@ -273,9 +273,8 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
             editSoloColorSet(false);
         }
 
-#if MAYA_API_VERSION >= 201900
+        meshFn.updateSurface();  // for proper redraw hopefully
         maya2019RefreshColors();
-#endif
     }
     // MToolsInfo::setDirtyFlag(*this);
     // if (selectInUI) MToolsInfo::setDirtyFlag(*this);

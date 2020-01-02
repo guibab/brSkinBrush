@@ -228,7 +228,6 @@ MStatus skinBrushTool::redoIt() {
 
     MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") +
                          this->commandIndex);
-    if (this->commandIndex >= 6) MGlobal::displayInfo("lock / unlock vertices");
 
     // Apply the redo weights and get the current weights for undo.
     MFnSkinCluster skinFn(skinObj, &status);
@@ -243,7 +242,7 @@ MStatus skinBrushTool::redoIt() {
         // refresh the tool points positions ---------
     }
     if (this->commandIndex >= 6) {
-        MGlobal::displayInfo("lock / unlock vertices");
+        MGlobal::displayInfo("redo it updateSurface : lock / unlock vertices");
 
         MObjectArray objectsDeformed;
         skinFn.getOutputGeometry(objectsDeformed);
@@ -263,7 +262,11 @@ MStatus skinBrushTool::redoIt() {
         status = lockedVerticesPlug.setValue(
             tmpIntArray.create(theArrayValues));  // to set the attribute
 
-        return status;
+        // we need a hard refresh of invalidate for the undo / redo ---
+
+        MFnMesh meshFn;
+        meshFn.setObject(meshDag);
+        meshFn.updateSurface();
     }
     callBrushRefresh();
     return MStatus::kSuccess;
@@ -292,7 +295,7 @@ MStatus skinBrushTool::undoIt() {
     }
 
     if (this->commandIndex >= 6) {
-        MGlobal::displayInfo("lock / unlock vertices");
+        MGlobal::displayInfo("undo it with refresh: lock / unlock vertices");
 
         MObjectArray objectsDeformed;
         skinFn.getOutputGeometry(objectsDeformed);
@@ -309,10 +312,12 @@ MStatus skinBrushTool::undoIt() {
         for (unsigned int vtx = 0; vtx < undoLocks.length(); ++vtx) {
             if (undoLocks[vtx] == 1) theArrayValues.append(vtx);
         }
-
         status = lockedVerticesPlug.setValue(
             tmpIntArray.create(theArrayValues));  // to set the attribute
-        return status;
+        // we need a hard refresh of invalidate for the undo / redo ---
+        MFnMesh meshFn;
+        meshFn.setObject(meshDag);
+        meshFn.updateSurface();
     }
     callBrushRefresh();
     /*
@@ -349,10 +354,8 @@ MStatus skinBrushTool::callBrushRefresh() {
             lst += MString(", ");
         }
         lst += this->undoVertices[nbElements - 1];
-        cmd =
-            MString(
-                "cmds.brSkinBrushContext('brSkinBrushContext1', e=True, listVerticesIndices = [") +
-            lst + MString("])");
+        cmd = MString("cmds.brSkinBrushContext('brSkinBrushContext1', e=True,");
+        cmd += MString("listVerticesIndices = [") + lst + MString("])");
 
         /*
         MString melCmd = MString ("evalDeferred(\"python (\\\"")+ cmd +MString("\\\")\");" ) ;
