@@ -34,7 +34,9 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kImportPythonFlag, kImportPythonFlagLong, MSyntax::kString);
     syn.addFlag(kEnterToolCommandFlag, kEnterToolCommandFlagLong, MSyntax::kString);
     syn.addFlag(kExitToolCommandFlag, kExitToolCommandFlagLong, MSyntax::kString);
-    syn.addFlag(kFloodFlag, kFloodFlagLong, MSyntax::kDouble);
+
+    syn.addFlag(kFloodFlag, kFloodFlagLong, MSyntax::kNoArg);
+
     syn.addFlag(kFractionOversamplingFlag, kFractionOversamplingFlagLong, MSyntax::kBoolean);
     syn.addFlag(kIgnoreLockFlag, kIgnoreLockFlagLong, MSyntax::kBoolean);
     syn.addFlag(kLineWidthFlag, kLineWidthFlagLong, MSyntax::kLong);
@@ -142,9 +144,9 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     }
 
     if (argData.isFlagSet(kFloodFlag)) {
-        double value;
-        status = argData.getFlagArgument(kFloodFlag, 0, value);
-        smoothContext->setFlood(value);
+        // double value;
+        // status = argData.getFlagArgument(kFloodFlag, 0, value);
+        smoothContext->setFlood();
     }
 
     if (argData.isFlagSet(kRefreshFlag)) {

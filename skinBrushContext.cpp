@@ -1436,133 +1436,145 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
             }
         }
     }
+    if (performBrush) {
+        doTheAction();
+    }
+}
 
+void SkinBrushContext::doTheAction() {
     // If the smoothing has been performed send the current values to
     // the tool command along with the necessary data for undo and redo.
     // The same goes for the select mode.
-    if (performBrush) {
-        MColorArray multiEditColors, soloEditColors;
-        MIntArray editVertsIndices((int)this->verticesPainted.size(), 0);
-        MIntArray undoLocks, redoLocks;
+    MColorArray multiEditColors, soloEditColors;
+    MIntArray editVertsIndices((int)this->verticesPainted.size(), 0);
+    MIntArray undoLocks, redoLocks;
 
-        MDoubleArray prevWeights((int)this->verticesPainted.size() * this->nbJoints, 0);
-        int i = 0;
-        for (const auto &theVert : this->verticesPainted) {
-            editVertsIndices[i] = theVert;
-            // if (theVert == 241)MGlobal::displayInfo(MString("241  in this->verticesPainted "));
-            i++;
-        }
-        int theCommandIndex = this->commandIndex;
-        if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
-            theCommandIndex = 7;                                       // unlockVertices
-        if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
-        // MGlobal::displayInfo(MString("a| Vtx 241 ") + this->lockVertices[241]);
-        if (theCommandIndex >= 6) {
-            undoLocks.copy(this->lockVertices);
-            bool addLocks = theCommandIndex == 6;
-            // if (this->mirrorIsActive) editLocks(this->skinObj, editAndMirrorVerts, addLocks,
-            // this->lockVertices);
-            editLocks(this->skinObj, editVertsIndices, addLocks, this->lockVertices);
-            // MGlobal::displayInfo(MString("b| Vtx 241 ") + this->lockVertices[241]);
-            // MGlobal::displayInfo("editing locks");
-            redoLocks.copy(this->lockVertices);
-        } else {
-            if (this->skinValuesToSet.size() > 0)
-                applyCommand(this->influenceIndex, this->skinValuesToSet, !this->mirrorIsActive);
+    MDoubleArray prevWeights((int)this->verticesPainted.size() * this->nbJoints, 0);
+    int i = 0;
+    for (const auto &theVert : this->verticesPainted) {
+        editVertsIndices[i] = theVert;
+        // if (theVert == 241)MGlobal::displayInfo(MString("241  in this->verticesPainted "));
+        i++;
+    }
+    int theCommandIndex = this->commandIndex;
+    if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
+        theCommandIndex = 7;                                       // unlockVertices
+    if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+    // MGlobal::displayInfo(MString("a| Vtx 241 ") + this->lockVertices[241]);
+    if (theCommandIndex >= 6) {
+        undoLocks.copy(this->lockVertices);
+        bool addLocks = theCommandIndex == 6;
+        // if (this->mirrorIsActive) editLocks(this->skinObj, editAndMirrorVerts, addLocks,
+        // this->lockVertices);
+        editLocks(this->skinObj, editVertsIndices, addLocks, this->lockVertices);
+        // MGlobal::displayInfo(MString("b| Vtx 241 ") + this->lockVertices[241]);
+        // MGlobal::displayInfo("editing locks");
+        redoLocks.copy(this->lockVertices);
+    } else {
+        if (this->skinValuesToSet.size() > 0)
+            applyCommand(this->influenceIndex, this->skinValuesToSet, !this->mirrorIsActive);
 
-            if (!this->postSetting) {  // only store if not constant setting
-                int i = 0;
-                for (const auto &theVert : this->verticesPainted) {
-                    for (int j = 0; j < this->nbJoints; ++j) {
-                        prevWeights[i * this->nbJoints + j] =
-                            this->fullUndoSkinWeightList[theVert * this->nbJoints + j];
-                    }
-                    i++;
+        if (!this->postSetting) {  // only store if not constant setting
+            int i = 0;
+            for (const auto &theVert : this->verticesPainted) {
+                for (int j = 0; j < this->nbJoints; ++j) {
+                    prevWeights[i * this->nbJoints + j] =
+                        this->fullUndoSkinWeightList[theVert * this->nbJoints + j];
                 }
+                i++;
             }
         }
-        // MGlobal::displayInfo(MString("c| Vtx 241 ") + this->lockVertices[241]);
-        refreshColors(editVertsIndices, multiEditColors, soloEditColors);
-        meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
-        meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
-
-        /*
-        if (theCommandIndex >= 6) {
-                toggleColorState = true;
-                maya2019RefreshColors();
-                view.refresh(true);
-        }
-        */
-        meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
-        meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
-
-        if (theCommandIndex >= 6) {  // if locking or unlocking
-            // without that it doesn't refresh because mesh is not invalidated, meaning the
-            // skinCluster hasn't changed
-            meshFn.updateSurface();
-        }
-        /*
-        if (theCommandIndex >= 6) {
-                maya2019RefreshColors();
-                view.refresh(true);
-        }
-        */
-
-        this->skinValuesToSet.clear();
-        this->previousPaint.clear();
-
-        cmd = (skinBrushTool *)newToolCommand();
-
-        cmd->setColor(colorVal);
-        cmd->setCurve(curveVal);
-        cmd->setDrawBrush(drawBrushVal);
-        cmd->setDrawRange(drawRangeVal);
-        cmd->setPythonImportPath(moduleImportString);
-        cmd->setEnterToolCommand(enterToolCommandVal);
-        cmd->setExitToolCommand(exitToolCommandVal);
-        cmd->setFractionOversampling(fractionOversamplingVal);
-        cmd->setIgnoreLock(ignoreLockVal);
-        cmd->setLineWidth(lineWidthVal);
-        cmd->setMessage(messageVal);
-        cmd->setOversampling(oversamplingVal);
-        cmd->setRange(rangeVal);
-        cmd->setSize(sizeVal);
-        cmd->setStrength(strengthVal);
-
-        cmd->setSmoothStrength(smoothStrengthVal);
-        cmd->setUndersampling(undersamplingVal);
-        cmd->setVolume(volumeVal);
-        cmd->setCoverage(coverageVal);
-
-        cmd->setCommandIndex(theCommandIndex);
-
-        cmd->setUnoLocks(undoLocks);
-        cmd->setRedoLocks(redoLocks);
-
-        cmd->setMesh(meshDag);
-        cmd->setSkinCluster(skinObj);
-        cmd->setInfluenceIndices(influenceIndices);
-        cmd->setVertexComponents(smoothedCompObj);
-
-        cmd->setUnoVertices(editVertsIndices);
-        if (!this->postSetting) {
-            cmd->setWeights(prevWeights);
-        } else {
-            cmd->setWeights(this->skinWeightsForUndo);
-        }
-
-        cmd->setNormalize(normalize);
-        cmd->setSelection(prevSelection, prevHilite);
-        // cmd->redoIt();
-        // Regular context implementations usually call
-        // (MPxToolCommand)::redoIt at this point but in this case it
-        // is not necessary since the the smoothing already has been
-        // performed. There is no need to apply the values twice.
-        cmd->finalize();
     }
+    // MGlobal::displayInfo(MString("c| Vtx 241 ") + this->lockVertices[241]);
+    refreshColors(editVertsIndices, multiEditColors, soloEditColors);
+    meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
+    meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
+
+    /*
+    if (theCommandIndex >= 6) {
+            toggleColorState = true;
+            maya2019RefreshColors();
+            view.refresh(true);
+    }
+    */
+    meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+    meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+
+    if (theCommandIndex >= 6) {  // if locking or unlocking
+        // without that it doesn't refresh because mesh is not invalidated, meaning the skinCluster
+        // hasn't changed
+        meshFn.updateSurface();
+    }
+    /*
+    if (theCommandIndex >= 6) {
+            maya2019RefreshColors();
+            view.refresh(true);
+    }
+    */
+
+    this->skinValuesToSet.clear();
+    this->previousPaint.clear();
+
+    cmd = (skinBrushTool *)newToolCommand();
+
+    cmd->setColor(colorVal);
+    cmd->setCurve(curveVal);
+    cmd->setDrawBrush(drawBrushVal);
+    cmd->setDrawRange(drawRangeVal);
+    cmd->setPythonImportPath(moduleImportString);
+    cmd->setEnterToolCommand(enterToolCommandVal);
+    cmd->setExitToolCommand(exitToolCommandVal);
+    cmd->setFractionOversampling(fractionOversamplingVal);
+    cmd->setIgnoreLock(ignoreLockVal);
+    cmd->setLineWidth(lineWidthVal);
+    cmd->setOversampling(oversamplingVal);
+    cmd->setRange(rangeVal);
+    cmd->setSize(sizeVal);
+    cmd->setStrength(strengthVal);
+
+    // storing options for the finalize optionVar
+    cmd->setSoloColor(soloColorVal);
+    cmd->setSoloColorType(soloColorTypeVal);
+    cmd->setUseColorSetsWhilePainting(useColorSetsWhilePainting);
+    cmd->setDrawTriangles(drawTriangles);
+    cmd->setDrawEdges(drawEdges);
+    cmd->setDrawPoints(drawPoints);
+    cmd->setDrawTransparency(drawTransparency);
+    cmd->setPostSetting(postSetting);
+    cmd->setCoverage(coverageVal);
+    cmd->setMessage(messageVal);
+
+    cmd->setSmoothStrength(smoothStrengthVal);
+    cmd->setUndersampling(undersamplingVal);
+    cmd->setVolume(volumeVal);
+    cmd->setCommandIndex(theCommandIndex);
+
+    cmd->setUnoLocks(undoLocks);
+    cmd->setRedoLocks(redoLocks);
+
+    cmd->setMesh(meshDag);
+    cmd->setSkinCluster(skinObj);
+    cmd->setInfluenceIndices(influenceIndices);
+    cmd->setInfluenceName(getInfluenceName());
+    cmd->setVertexComponents(smoothedCompObj);
+
+    cmd->setUnoVertices(editVertsIndices);
+    if (!this->postSetting) {
+        cmd->setWeights(prevWeights);
+    } else {
+        cmd->setWeights(this->skinWeightsForUndo);
+    }
+
+    cmd->setNormalize(normalize);
+    cmd->setSelection(prevSelection, prevHilite);
+    // cmd->redoIt();
+    // Regular context implementations usually call
+    // (MPxToolCommand)::redoIt at this point but in this case it
+    // is not necessary since the the smoothing already has been
+    // performed. There is no need to apply the values twice.
+    cmd->finalize();
     maya2019RefreshColors();
 }
-
 // ---------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------
@@ -1613,7 +1625,6 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
                     // std::vector <int> vertsAround = this->perVertexVerticesSet[theVert];
                     std::vector<int> vertsAround = getSurroundingVerticesPerVert(theVert);
 
-                    // this->smoothDepth to expand
                     status = setAverageWeight(vertsAround, theVert, i, this->nbJoints,
                                               this->lockJoints, this->skinWeightList, theWeights,
                                               this->smoothStrengthVal * theWeight);

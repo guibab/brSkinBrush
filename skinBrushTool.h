@@ -128,8 +128,8 @@ class skinBrushTool : public MPxToolCommand {
     void setCoverage(bool value);
     void setPostSetting(bool value);
 
-   public:
     void setInfluenceIndices(MIntArray indices);
+    void setInfluenceName(MString name);
     void setMesh(MDagPath dagPath);
     void setNormalize(bool value);
     void setSelection(MSelectionList selection, MSelectionList hilite);
@@ -139,6 +139,12 @@ class skinBrushTool : public MPxToolCommand {
     void setUnoVertices(MIntArray editVertsIndices);
     void setUnoLocks(MIntArray locks);
     void setRedoLocks(MIntArray locks);
+
+    void setUseColorSetsWhilePainting(bool value);
+    void setDrawTriangles(bool value);
+    void setDrawEdges(bool value);
+    void setDrawPoints(bool value);
+    void setDrawTransparency(bool value);
 
    private:
     MColor colorVal;
@@ -162,13 +168,22 @@ class skinBrushTool : public MPxToolCommand {
     bool volumeVal;
 
     bool coverageVal;
-    int influenceIndex = 0, commandIndex = 0, smoothRepeat = 3, smoothDepth = 1;
+    int influenceIndex = 0, commandIndex = 0;
+    int smoothRepeat = 3;
+    // int smoothDepth = 1;// smooth depth is the same as repeat
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
     bool postSetting = true;
+
+    bool useColorSetsWhilePainting = false;
+    bool drawTriangles = true;
+    bool drawEdges = true;
+    bool drawPoints = true;
+    bool drawTransparency = true;
 
     MIntArray influenceIndices;
     MDagPath meshDag;
     bool normalize;
+    MString influenceName;
     MSelectionList redoHilite;
     MSelectionList redoSelection;
     MDoubleArray redoWeights;
@@ -220,6 +235,7 @@ class SkinBrushContext : public MPxContext {
     MStatus doPressCommon(MEvent event);
     MStatus doDragCommon(MEvent event);
     void doReleaseCommon(MEvent event);
+    void doTheAction();
 
     MStatus getMesh();
 
@@ -296,7 +312,7 @@ class SkinBrushContext : public MPxContext {
     void setPythonImportPath(MString value);
     void setEnterToolCommand(MString value);
     void setExitToolCommand(MString value);
-    void setFlood(double value);
+    void setFlood();
     void setPickMaxInfluence(bool value);
     void setPickInfluence(bool value);
     void setFractionOversampling(bool value);
@@ -409,7 +425,8 @@ class SkinBrushContext : public MPxContext {
     // if we're asking to pick max influence
     bool pickMaxInfluenceVal = false, pickInfluenceVal = false;
     // for me yep ----
-    int influenceIndex = 0, commandIndex = 0, smoothRepeat = 4, smoothDepth = 3;
+    int influenceIndex = 0, commandIndex = 0, smoothRepeat = 4;
+    // int smoothDepth = 3;// smooth depth is the same as repeat
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
     bool postSetting = true;                     // we apply paint as ssons as attr is changed
     bool doNormalize = true;

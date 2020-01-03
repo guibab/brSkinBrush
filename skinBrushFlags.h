@@ -16,38 +16,48 @@
 #define kColorGFlagLong "-colorG"
 #define kColorBFlag "-cb"
 #define kColorBFlagLong "-colorB"
+
 #define kCurveFlag "-c"
 #define kCurveFlagLong "-curve"
 #define kDrawBrushFlag "-db"
 #define kDrawBrushFlagLong "-drawBrush"
+
 #define kDrawRangeFlag "-dr"
 #define kDrawRangeFlagLong "-drawRange"
+
 #define kEnterToolCommandFlag "-etc"
 #define kEnterToolCommandFlagLong "-enterToolCommand"
 #define kExitToolCommandFlag "-xtc"
 #define kExitToolCommandFlagLong "-exitToolCommand"
+
 #define kFloodFlag "-f"
 #define kFloodFlagLong "-flood"
+
 #define kFractionOversamplingFlag "-fo"
 #define kFractionOversamplingFlagLong "-fractionOversampling"
+
 #define kIgnoreLockFlag "-il"
 #define kIgnoreLockFlagLong "-ignoreLock"
+
 #define kLineWidthFlag "-lw"
 #define kLineWidthFlagLong "-lineWidth"
+
 #define kMessageFlag "-m"
 #define kMessageFlagLong "-message"
+
 #define kOversamplingFlag "-o"
 #define kOversamplingFlagLong "-oversampling"
-#define kRangeFlag "-r"
-#define kRangeFlagLong "-range"
-#define kSizeFlag "-s"
-#define kSizeFlagLong "-size"
-#define kStrengthFlag "-st"
-#define kStrengthFlagLong "-strength"
 #define kUndersamplingFlag "-us"
 #define kUndersamplingFlagLong "-undersampling"
 #define kVolumeFlag "-v"
 #define kVolumeFlagLong "-volume"
+#define kRangeFlag "-r"
+#define kRangeFlagLong "-range"
+
+#define kSizeFlag "-s"
+#define kSizeFlagLong "-size"
+#define kStrengthFlag "-st"
+#define kStrengthFlagLong "-strength"
 ///// Added by Guillaume
 #define kPruneWeightsFlag "-pw"
 #define kPruneWeightsFlagLong "-pruneWeights"

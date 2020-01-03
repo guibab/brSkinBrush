@@ -48,8 +48,20 @@ void SkinBrushContext::setExitToolCommand(MString value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setFlood(double value) {
-    strengthVal = value;
+void SkinBrushContext::setFlood() {
+    this->verticesPainted.clear();
+    this->skinValuesToSet.clear();
+    double value = strengthVal;
+
+    if (this->commandIndex == 4) value = smoothStrengthVal;
+    for (int i = 0; i < this->numVertices; ++i) {
+        this->verticesPainted.insert(i);
+        this->skinValuesToSet.insert(std::make_pair(i, value));
+    }
+    doTheAction();
+    if (verbose)
+        MGlobal::displayInfo(MString("SET FLOOD IS CALLED command ") + this->commandIndex +
+                             MString(" value ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -184,6 +196,7 @@ void SkinBrushContext::setSoloColor(int value) {
 }
 
 void SkinBrushContext::maya2019RefreshColors(bool toggle) {
+    meshFn.updateSurface();
     view = M3dView::active3dView();
     // first swap
     if (toggle) toggleColorState = !toggleColorState;
@@ -214,6 +227,7 @@ void SkinBrushContext::setSoloColorType(int value) {
     if (soloColorTypeVal != value) {
         soloColorTypeVal = value;
         // here we do the redraw
+        meshFn.updateSurface();
         editSoloColorSet(false);
         maya2019RefreshColors();
 

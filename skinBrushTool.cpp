@@ -1,13 +1,3 @@
-// ---------------------------------------------------------------------
-//
-//  skinBrushTool.cpp
-//  skinBrushTool
-//
-//  Created by ingo on 11/18/18.
-//  Copyright (c) 2018 Ingo Clemens. All rights reserved.
-//
-// ---------------------------------------------------------------------
-
 #include "skinBrushTool.h"
 
 #include "skinBrushFlags.h"
@@ -93,6 +83,13 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kSoloColorFlag, kSoloColorFlagLong, MSyntax::kLong);
     syntax.addFlag(kSoloColorTypeFlag, kSoloColorTypeFlagLong, MSyntax::kLong);
     syntax.addFlag(kCoverageFlag, kCoverageLong, MSyntax::kBoolean);
+
+    syntax.addFlag(kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong,
+                   MSyntax::kBoolean);
+    syntax.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
+    syntax.addFlag(kMeshDragDrawEdgesFlag, kMeshDragDrawEdgesFlagLong, MSyntax::kBoolean);
+    syntax.addFlag(kMeshDragDrawPointsFlag, kMeshDragDrawPointsFlagLong, MSyntax::kBoolean);
+    syntax.addFlag(kMeshDragDrawTransFlag, kMeshDragDrawTransFlagLong, MSyntax::kBoolean);
 
     // syntax.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kInfluenceIndexFlag, kInfluenceIndexFlagLong, MSyntax::kLong);
@@ -203,6 +200,28 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
     }
     if (argData.isFlagSet(kInfluenceIndexFlag)) {
         status = argData.getFlagArgument(kInfluenceIndexFlag, 0, influenceIndex);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+
+    if (argData.isFlagSet(kUseColorSetWhilePaintingFlag)) {
+        status =
+            argData.getFlagArgument(kUseColorSetWhilePaintingFlag, 0, useColorSetsWhilePainting);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kMeshDragDrawTrianglesFlag)) {
+        status = argData.getFlagArgument(kMeshDragDrawTrianglesFlag, 0, drawTriangles);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kMeshDragDrawEdgesFlag)) {
+        status = argData.getFlagArgument(kMeshDragDrawEdgesFlag, 0, drawEdges);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kMeshDragDrawPointsFlag)) {
+        status = argData.getFlagArgument(kMeshDragDrawPointsFlag, 0, drawPoints);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kMeshDragDrawTransFlag)) {
+        status = argData.getFlagArgument(kMeshDragDrawTransFlag, 0, drawTransparency);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
 
@@ -383,6 +402,18 @@ MStatus skinBrushTool::finalize() {
     cmd += colorVal.b;
     cmd += " " + MString(kCurveFlag) + " ";
     cmd += curveVal;
+
+    cmd += " " + MString(kCommandIndexFlag) + " ";
+    cmd += commandIndex;
+    cmd += " " + MString(kSoloColorFlag) + " ";
+    cmd += soloColorVal;
+    cmd += " " + MString(kSoloColorTypeFlag) + " ";
+    cmd += soloColorTypeVal;
+    cmd += " " + MString(kCoverageFlag) + " ";
+    cmd += coverageVal;
+    cmd += " " + MString(kMessageFlag) + " ";
+    cmd += messageVal;
+
     cmd += " " + MString(kDrawBrushFlag) + " ";
     cmd += drawBrushVal;
     cmd += " " + MString(kDrawRangeFlag) + " ";
@@ -399,8 +430,6 @@ MStatus skinBrushTool::finalize() {
     cmd += ignoreLockVal;
     cmd += " " + MString(kLineWidthFlag) + " ";
     cmd += lineWidthVal;
-    cmd += " " + MString(kMessageFlag) + " ";
-    cmd += messageVal;
     cmd += " " + MString(kOversamplingFlag) + " ";
     cmd += oversamplingVal;
     cmd += " " + MString(kRangeFlag) + " ";
@@ -419,6 +448,19 @@ MStatus skinBrushTool::finalize() {
     cmd += volumeVal;
     cmd += " " + MString(kPostSettingFlag) + " ";
     cmd += postSetting;
+    cmd += " " + MString(kInfluenceNameFlag) + " ";
+    cmd += influenceName;
+
+    cmd += " " + MString(kUseColorSetWhilePaintingFlag) + " ";
+    cmd += useColorSetsWhilePainting;
+    cmd += " " + MString(kMeshDragDrawTrianglesFlag) + " ";
+    cmd += drawTriangles;
+    cmd += " " + MString(kMeshDragDrawEdgesFlag) + " ";
+    cmd += drawEdges;
+    cmd += " " + MString(kMeshDragDrawPointsFlag) + " ";
+    cmd += drawPoints;
+    cmd += " " + MString(kMeshDragDrawTransFlag) + " ";
+    cmd += drawTransparency;
 
     cmd += " brSkinBrushContext1;";
 
@@ -476,6 +518,15 @@ void skinBrushTool::setVolume(bool value) { volumeVal = value; }
 
 void skinBrushTool::setCommandIndex(int value) { commandIndex = value; }
 
+void skinBrushTool::setUseColorSetsWhilePainting(bool value) { useColorSetsWhilePainting = value; }
+
+void skinBrushTool::setDrawTriangles(bool value) { drawTriangles = value; }
+
+void skinBrushTool::setDrawEdges(bool value) { drawEdges = value; }
+
+void skinBrushTool::setDrawPoints(bool value) { drawPoints = value; }
+void skinBrushTool::setDrawTransparency(bool value) { drawTransparency = value; }
+
 void skinBrushTool::setSoloColorType(int value) { soloColorTypeVal = value; }
 
 void skinBrushTool::setSoloColor(int value) { soloColorVal = value; }
@@ -489,6 +540,8 @@ void skinBrushTool::setPostSetting(bool value) { postSetting = value; }
 // ---------------------------------------------------------------------
 
 void skinBrushTool::setInfluenceIndices(MIntArray indices) { influenceIndices = indices; }
+
+void skinBrushTool::setInfluenceName(MString name) { influenceName = name; }
 
 void skinBrushTool::setMesh(MDagPath dagPath) { meshDag = dagPath; }
 
