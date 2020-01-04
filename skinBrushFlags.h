@@ -95,6 +95,9 @@
 #define kRefreshFlag "-rf"
 #define kRefreshFlagLong "-refresh"
 
+#define kRefreshDfmColorFlag "-rfd"
+#define kRefreshDfmColorFlagLong "-refreshDfmColor"
+
 #define kRefreshPtsNmsFlag "-rfpn"
 #define kRefreshPtsNmsFlagLong "-refreshPointsNormals"
 

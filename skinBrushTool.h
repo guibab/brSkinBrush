@@ -254,6 +254,7 @@ class SkinBrushContext : public MPxContext {
     // MStatus getAllWeights();
     void refreshJointsLocks();
     void refresh();
+    void refreshDeformerColor(int influenceInd);
     void refreshTheseVertices(MIntArray verticesIndices);
 
     // MStatus getMirrorInfos();

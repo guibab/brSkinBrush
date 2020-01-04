@@ -64,6 +64,9 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kRefreshFlag, kRefreshFlagLong, MSyntax::kBoolean);
     syn.addFlag(kRefreshPtsNmsFlag, kRefreshPtsNmsFlagLong, MSyntax::kBoolean);
     syn.addFlag(kRefreshLocksJointsFlag, kRefreshLocksJointsFlagLong, MSyntax::kBoolean);
+
+    syn.addFlag(kRefreshDfmColorFlag, kRefreshDfmColorFlagLong, MSyntax::kLong);
+
     syn.addFlag(kSkinClusterNameFlag, kSkinClusterNameFlagLong, MSyntax::kString);
     syn.addFlag(kMeshNameFlag, kMeshNameFlagLong, MSyntax::kString);
 
@@ -151,6 +154,12 @@ MStatus SkinBrushContextCmd::doEditFlags() {
 
     if (argData.isFlagSet(kRefreshFlag)) {
         smoothContext->refresh();
+    }
+
+    if (argData.isFlagSet(kRefreshDfmColorFlag)) {
+        int value;
+        status = argData.getFlagArgument(kRefreshDfmColorFlag, 0, value);
+        smoothContext->refreshDeformerColor(value);
     }
 
     if (argData.isFlagSet(kRefreshPtsNmsFlag)) {

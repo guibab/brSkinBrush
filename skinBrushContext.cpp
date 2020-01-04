@@ -243,6 +243,40 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     this->previousPaint.clear();
 }
 
+void SkinBrushContext::refreshDeformerColor(int deformerInd) {
+    if (!skinObj.isNull()) {
+        getListLockJoints(skinObj, this->lockJoints);
+        getListColorsJoints(skinObj, this->jointsColors, this->verbose);  // get the joints colors
+    } else {
+        MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
+        return;
+    }
+
+    // get the vertices indices to edit -------------------
+    MIntArray editVertsIndices;
+    // int influenceInd = this->influenceIndex;
+    for (unsigned int theVert = 0; theVert < this->numVertices; ++theVert) {
+        double val = this->skinWeightList[theVert * this->nbJoints + deformerInd];
+        if (val != 0) {
+            editVertsIndices.append(theVert);
+        }
+    }
+
+    // display the locks ----------------------
+    MColorArray multiEditColors, soloEditColors;
+    refreshColors(editVertsIndices, multiEditColors, soloEditColors);
+    meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
+    meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
+
+    meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
+    meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
+
+    if (soloColorVal == 1) editSoloColorSet(true);  // solo
+    // refresh view and display
+    meshFn.updateSurface();
+    maya2019RefreshColors();
+}
+
 void SkinBrushContext::refresh() {
     MStatus status;
     if (verbose) MGlobal::displayInfo(" - REFRESH In CPP -");
@@ -286,6 +320,7 @@ void SkinBrushContext::refresh() {
 
     // refresh view and display
     // meshFn.setDisplayColors(true);
+    meshFn.updateSurface();
 
     maya2019RefreshColors();
 }
