@@ -92,6 +92,8 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kMeshDragDrawTransFlag, kMeshDragDrawTransFlagLong, MSyntax::kBoolean);
 
     // syntax.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
+    syntax.addFlag(kSmoothRepeatFlag, kSmoothRepeatFlagLong, MSyntax::kLong);
+
     syntax.addFlag(kInfluenceIndexFlag, kInfluenceIndexFlagLong, MSyntax::kLong);
     syntax.addFlag(kPostSettingFlag, kPostSettingFlagLong, MSyntax::kBoolean);
 
@@ -451,6 +453,9 @@ MStatus skinBrushTool::finalize() {
     cmd += " " + MString(kInfluenceNameFlag) + " ";
     cmd += influenceName;
 
+    cmd += " " + MString(kSmoothRepeatFlag) + " ";
+    cmd += smoothRepeat;
+
     cmd += " " + MString(kUseColorSetWhilePaintingFlag) + " ";
     cmd += useColorSetsWhilePainting;
     cmd += " " + MString(kMeshDragDrawTrianglesFlag) + " ";
@@ -517,6 +522,8 @@ void skinBrushTool::setUndersampling(int value) { undersamplingVal = value; }
 void skinBrushTool::setVolume(bool value) { volumeVal = value; }
 
 void skinBrushTool::setCommandIndex(int value) { commandIndex = value; }
+
+void skinBrushTool::setSmoothRepeat(int value) { smoothRepeat = value; }
 
 void skinBrushTool::setUseColorSetsWhilePainting(bool value) { useColorSetsWhilePainting = value; }
 

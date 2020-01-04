@@ -66,6 +66,7 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kRefreshLocksJointsFlag, kRefreshLocksJointsFlagLong, MSyntax::kBoolean);
 
     syn.addFlag(kRefreshDfmColorFlag, kRefreshDfmColorFlagLong, MSyntax::kLong);
+    syn.addFlag(kSmoothRepeatFlag, kSmoothRepeatFlagLong, MSyntax::kLong);
 
     syn.addFlag(kSkinClusterNameFlag, kSkinClusterNameFlagLong, MSyntax::kString);
     syn.addFlag(kMeshNameFlag, kMeshNameFlagLong, MSyntax::kString);
@@ -310,6 +311,12 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setCommandIndex(value);
     }
 
+    if (argData.isFlagSet(kSmoothRepeatFlag)) {
+        int value;
+        status = argData.getFlagArgument(kSmoothRepeatFlag, 0, value);
+        smoothContext->setSmoothRepeat(value);
+    }
+
     if (argData.isFlagSet(kSoloColorFlag)) {
         int value;
         status = argData.getFlagArgument(kSoloColorFlag, 0, value);
@@ -421,6 +428,8 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kMeshNameFlag)) setResult(smoothContext->getMeshName());
 
     if (argData.isFlagSet(kCommandIndexFlag)) setResult(smoothContext->getCommandIndex());
+
+    if (argData.isFlagSet(kSmoothRepeatFlag)) setResult(smoothContext->getSmoothRepeat());
 
     if (argData.isFlagSet(kSoloColorFlag)) setResult(smoothContext->getSoloColor());
 

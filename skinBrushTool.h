@@ -123,6 +123,7 @@ class skinBrushTool : public MPxToolCommand {
     void setUndersampling(int value);
     void setVolume(bool value);
     void setCommandIndex(int value);
+    void setSmoothRepeat(int value);
     void setSoloColor(int value);
     void setSoloColorType(int value);
     void setCoverage(bool value);
@@ -335,6 +336,7 @@ class SkinBrushContext : public MPxContext {
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
     void setCommandIndex(int value);
+    void setSmoothRepeat(int value);
     void setSoloColor(int value);
     void maya2019RefreshColors(bool toggle = true);
     void setSoloColorType(int value);
@@ -373,6 +375,7 @@ class SkinBrushContext : public MPxContext {
     MString getSkinClusterName();
     MString getMeshName();
     int getCommandIndex();
+    int getSmoothRepeat();
     int getSoloColor();
     bool getUseColorSetsWhilePainting();
     bool getDrawTriangles();

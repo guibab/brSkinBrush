@@ -1524,7 +1524,6 @@ void SkinBrushContext::doTheAction() {
     refreshColors(editVertsIndices, multiEditColors, soloEditColors);
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
-
     /*
     if (theCommandIndex >= 6) {
             toggleColorState = true;
@@ -1578,6 +1577,7 @@ void SkinBrushContext::doTheAction() {
     cmd->setPostSetting(postSetting);
     cmd->setCoverage(coverageVal);
     cmd->setMessage(messageVal);
+    cmd->setSmoothRepeat(smoothRepeat);
 
     cmd->setSmoothStrength(smoothStrengthVal);
     cmd->setUndersampling(undersamplingVal);
@@ -1681,17 +1681,14 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
             }
             // now set the weights -----------------------------------------------------
             // doPruneWeight(theWeights, this->nbJoints, this->pruneWeight);
-
             // here we should normalize -----------------------------------------------------
 
-            MIntArray objVertices;
             int i = 0;
             // int prevVert = -1;
             for (const auto &elem : valuesToSetOrdered) {
                 int theVert = elem.first;
                 // if (prevVert > theVert) MGlobal::displayInfo(MString("indices don't grow ") +
                 // prevVert + MString(" ") + theVert); prevVert = theVert;
-                objVertices.append(theVert);
                 for (int j = 0; j < this->nbJoints; ++j) {
                     // if (repeat == 0 && storeUndo) previousWeights[i*this->nbJoints + j] =
                     // this->skinWeightList[theVert*this->nbJoints + j];
@@ -1703,22 +1700,29 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
                 }
                 i++;
             }
-            MFnSingleIndexedComponent compFn;
-            MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
-            compFn.addElements(objVertices);
-
-            // Set the new weights.
-            // Initialize the skin cluster.
-            MFnSkinCluster skinFn(skinObj, &status);
-            CHECK_MSTATUS_AND_RETURN_IT(status);
-            this->skinWeightsForUndo.clear();
-            skinFn.setWeights(meshDag, weightsObj, influenceIndices, theWeights, normalize,
-                              &this->skinWeightsForUndo);
-
-            // in do press common
-            // update values ---------------
-            refreshPointsNormals();
         }
+        MIntArray objVertices;
+        for (const auto &elem : valuesToSetOrdered) {
+            int theVert = elem.first;
+            objVertices.append(theVert);
+        }
+
+        MFnSingleIndexedComponent compFn;
+        MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
+        compFn.addElements(objVertices);
+
+        // Set the new weights.
+        // Initialize the skin cluster.
+        MFnSkinCluster skinFn(skinObj, &status);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+        this->skinWeightsForUndo.clear();
+        skinFn.setWeights(meshDag, weightsObj, influenceIndices, theWeights, normalize,
+                          &this->skinWeightsForUndo);
+
+        // in do press common
+        // update values ---------------
+        refreshPointsNormals();
+
         /*
         if (storeUndo) {
                 MIntArray undoVerts;

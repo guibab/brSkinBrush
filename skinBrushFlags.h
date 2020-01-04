@@ -128,6 +128,9 @@
 #define kMeshDragDrawTransFlag "-mda"
 #define kMeshDragDrawTransFlagLong "-meshdrawTransparency"
 
+#define kSmoothRepeatFlag "-sr"
+#define kSmoothRepeatFlagLong "-smoothRepeat"
+
 #define kInteractiveValueFlag "-iv"
 #define kInteractiveValueFlagLong "-interactiveValue"
 

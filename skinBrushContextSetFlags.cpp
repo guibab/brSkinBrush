@@ -176,6 +176,12 @@ void SkinBrushContext::setCommandIndex(int value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
+void SkinBrushContext::setSmoothRepeat(int value) {
+    // MGlobal::displayInfo(MString("setCommandIndex CALLED ") + value);
+    smoothRepeat = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
 void SkinBrushContext::setSoloColor(int value) {
     // MGlobal::displayInfo(MString("setSoloColor CALLED ") + value);
     // if (soloColorVal != value) {
@@ -343,6 +349,7 @@ double SkinBrushContext::getInteractiveValue(int ind) {
 int SkinBrushContext::getUndersampling() { return undersamplingVal; }
 bool SkinBrushContext::getVolume() { return volumeVal; }
 int SkinBrushContext::getCommandIndex() { return commandIndex; }
+int SkinBrushContext::getSmoothRepeat() { return smoothRepeat; }
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
 bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhilePainting; }
 bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
