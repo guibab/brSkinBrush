@@ -154,30 +154,6 @@ MStatus getListColorsJoints(MObject &skinCluster, MColorArray &jointsColors, boo
     if (verbose)
         MGlobal::displayInfo(MString("---------------- [getListColorsJoints()]------------------"));
 
-    /*
-    MDagPathArray  listOfJoints;
-    MFnSkinCluster theSkinCluster(skinCluster);
-    theSkinCluster.influenceObjects(listOfJoints, &stat);
-    int nbJoints = listOfJoints.length();
-
-    // now get the colors per joint ----------------------------------------
-    MStringArray allJointsNames;
-    float color[3];
-    MColorArray jointsColors(nbJoints);
-    for (int i = 0; i < nbJoints; i++) {
-            MFnDagNode jnt(listOfJoints[i]);
-            //jnt = MFnDagNode (listOfJoints[iterator]);
-            MPlug lockInfluenceWeightsPlug = jnt.findPlug("wireColorRGB");
-            //MPlug lockInfluenceWeightsPlug(jnt, MFnDagNode::wireColorRGB);
-
-            color[0] = lockInfluenceWeightsPlug.child(0).asFloat();
-            color[1] = lockInfluenceWeightsPlug.child(1).asFloat();
-            color[2] = lockInfluenceWeightsPlug.child(2).asFloat();
-
-            jointsColors[i] = MColor(color);
-            //MString jointName = jnt.name();
-    }
-    */
     if (verbose) {
         MDagPathArray listOfJoints;
         MFnSkinCluster theSkinCluster(skinCluster);

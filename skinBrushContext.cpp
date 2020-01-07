@@ -92,17 +92,15 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         displayWeightValue(vertexIndex);
         */
         this->skinWeightList.clear();
+        this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
+        getListLockJoints(skinObj, this->lockJoints);
+        getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
         status = fillArrayValuesDEP(skinObj, true);  // get the skin data and all the colors
         /*
         MGlobal::displayInfo(MString ("DEP this->skinWeightList ") + this->skinWeightList.length());
         MGlobal::displayInfo(MString ("DEP this->nbJoints  " )+ this->nbJoints);
         displayWeightValue(vertexIndex);
         */
-        this->lockJoints = MIntArray(this->nbJoints, 0);
-        this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-
-        getListLockJoints(skinObj, this->lockJoints);
-        getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
 
         if (verbose)
             MGlobal::displayInfo(MString("nb found joints colors ") + jointsColors.length());
@@ -344,13 +342,7 @@ int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
         // MBoundingBox bbox = BBoxOfDeformers[i].bbox;
         orig2 = orig * matI;
         direction2 = direction * matI;
-        // view.viewToObjectSpace(screenX, screenY, mat.inverse (), orig, direction);
 
-        // MPoint intersection;
-        // bool intersect  = bboxIntersection( bbox.min (), bbox.max (), mat, orig, direction,
-        // intersection);
-
-        // bool intersect = RayIntersectsBBox(bbox, orig, direction);
         MPoint minPt = BBoxOfDeformers[i].minPt;
         MPoint maxPt = BBoxOfDeformers[i].maxPt;
         MPoint center = BBoxOfDeformers[i].center;
@@ -479,48 +471,46 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
                 MDagPath path = this->inflDagPaths[i];
                 drawingDeformers newDef;
 
-                MMatrix mat = path.inclusiveMatrix();
-                MMatrix matEx = path.exclusiveMatrix();
+                MMatrix worldMatrix = path.inclusiveMatrix();        // worldMatrix
+                MMatrix parentMatrix = path.exclusiveMatrix();       // parentMatrix
+                MMatrix mat = worldMatrix * parentMatrix.inverse();  // matrix
+
                 MBoundingBox bbox;
-                up = MVector(mat[1]);
-                right = MVector(mat[0]);
-                side = MVector(mat[2]);
+
+                right = MVector(worldMatrix[0]);
+                up = MVector(worldMatrix[1]);
+                side = MVector(worldMatrix[2]);
 
                 unsigned int nbShapes;
                 path.numberOfShapesDirectlyBelow(nbShapes);
                 if (nbShapes != 0) {
                     path.extendToShapeDirectlyBelow(0);
                     MFnDagNode dag(path);
-                    bbox = dag.boundingBox();
+                    bbox = dag.boundingBox();  // Returns the bounding box for the dag node in
+                                               // object space.
 
-                    MPoint center = bbox.center() * matEx;
+                    MPoint center = bbox.center() * worldMatrix;
                     newDef.center = center;
                     newDef.width = 0.5 * bbox.width() * right.length();
                     newDef.height = 0.5 * bbox.height() * up.length();
                     newDef.depth = 0.5 * bbox.depth() * side.length();
-                    newDef.mat = mat;
+
+                    newDef.mat = worldMatrix;
                     newDef.minPt = bbox.min();
                     newDef.maxPt = bbox.max();
                 } else {
-                    MPoint influencePosi = zero * mat;
                     MFnDagNode dag(path);
-                    bbox = dag.boundingBox();
-
-                    newDef.center = influencePosi;  // bbox.center()* matEx; //
+                    newDef.center = zero * worldMatrix;
                     newDef.width = 0.5 * right.length();
                     newDef.height = 0.5 * up.length();
                     newDef.depth = 0.5 * side.length();
-                    newDef.mat = matEx;
 
-                    // divide by 2
-                    MPoint minPt = bbox.min();
-                    MPoint maxPt = bbox.max();
-                    newDef.minPt = minPt + 0.25 * (maxPt - minPt);
-                    newDef.maxPt = maxPt + 0.25 * (minPt - maxPt);
+                    newDef.mat = worldMatrix;
+                    newDef.minPt = MPoint(-0.25, -0.25, -0.25);
+                    newDef.maxPt = MPoint(0.25, 0.25, 0.25);
                 }
                 newDef.up = up;
                 newDef.right = right;
-                // newDef.bbox = bbox;
 
                 BBoxOfDeformers.push_back(newDef);
             }
@@ -638,7 +628,7 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
     MStatus status = MStatus::kSuccess;
 
     status = doDragCommon(event);
-    if (!this->useColorSetsWhilePainting) {
+    if (this->postSetting && !this->useColorSetsWhilePainting) {
         drawManager.beginDrawable();
         drawMeshWhileDrag(drawManager);
         drawManager.endDrawable();
@@ -910,9 +900,6 @@ MStatus SkinBrushContext::refreshPointsNormals() {
     if (!skinObj.isNull()) {
         this->meshFn.freeCachedIntersectionAccelerator();  // yes ?
         this->mayaRawPoints = this->meshFn.getRawPoints(&status);
-
-        // this->meshFn.getPoints(this->meshPoints);
-        // this->meshFn.getTriangles(this->triangleCounts, this->triangleVertices);
         this->rawNormals = this->meshFn.getRawNormals(&status);
 
 #pragma omp parallel for
@@ -1722,18 +1709,6 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
         // in do press common
         // update values ---------------
         refreshPointsNormals();
-
-        /*
-        if (storeUndo) {
-                MIntArray undoVerts;
-                undoVerts.copy(theEditVerts);
-                // now store the undo ----------------
-                //for (int i = 0; i < theEditVerts.length(); ++i) undoVerts[i] = theEditVerts[i];
-                this->undoVertsIndices_.push_back(undoVerts);
-                this->undoVertsValues_.push_back(previousWeights);
-        }
-        replace_weights(theEditVerts, theWeights);
-        */
     }
     return status;
 }
@@ -1791,7 +1766,10 @@ MStatus SkinBrushContext::refreshColors(MIntArray &editVertsIndices, MColorArray
 
         for (int j = 0; j < this->nbJoints; ++j) {  // for each joint
             double val = this->skinWeightList[theVert * this->nbJoints + j];
-            multiColor += jointsColors[j] * val;
+            if (this->lockJoints[j] == 1)
+                multiColor += lockJntColor * val;
+            else
+                multiColor += jointsColors[j] * val;
             if (j == this->influenceIndex) {
                 this->soloColorsValues[theVert] = val;
                 soloColor = getASoloColor(val);
@@ -1897,7 +1875,6 @@ MStatus SkinBrushContext::getMesh() {
     MFnSingleIndexedComponent compFn;
     smoothedCompObj = compFn.create(MFn::kMeshVertComponent);
     // Get the indices of all influences.
-    this->inflDagPaths.clear();
     influenceIndices = getInfluenceIndices();  // this->skinObj, this->inflDagPaths);
 
     // Get the skin cluster settings.
@@ -2243,7 +2220,10 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
                 double theWeight = this->skinWeightList[vertexIndex * infCount + indexInfluence];
 
                 if (doColors) {
-                    theColor += this->jointsColors[indexInfluence] * theWeight;
+                    if (lockJoints[indexInfluence] == 1)
+                        theColor += lockJntColor * theWeight;
+                    else
+                        theColor += this->jointsColors[indexInfluence] * theWeight;
                     if ((verbose) && (vertexIndex == 144)) {
                         MGlobal::displayInfo(MString(" jnt : [") + indexInfluence +
                                              MString("] VTX 144 R: ") + theColor.r +
@@ -2332,7 +2312,10 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors)
             indexInfluence = this->indicesForInfluenceObjects[indexInfluence];
             this->skinWeightList[vertexIndex * this->nbJoints + indexInfluence] = theWeight;
             if (doColors) {  // and not locked
-                theColor += this->jointsColors[indexInfluence] * theWeight;
+                if (lockJoints[indexInfluence] == 1)
+                    theColor += lockJntColor * theWeight;
+                else
+                    theColor += this->jointsColors[indexInfluence] * theWeight;
             }
         }
         if (doColors) {  // not store lock vert color
@@ -2388,6 +2371,7 @@ MIntArray SkinBrushContext::getInfluenceIndices() {
     //------------------------
     MIntArray influenceIndices;
 
+    this->inflDagPaths.clear();
     skinFn.influenceObjects(this->inflDagPaths);
     int lent = this->inflDagPaths.length();
     // first clear --------------------------
@@ -2440,7 +2424,10 @@ MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray 
             this->skinWeightList[vertexIndex * this->nbJoints + j] = theWeight;
 
             if (doColors) {
-                theColor += this->jointsColors[j] * theWeight;
+                if (lockJoints[j] == 1)
+                    theColor += lockJntColor * theWeight;
+                else
+                    theColor += this->jointsColors[j] * theWeight;
             }
         }
     }
@@ -2582,6 +2569,9 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
     } else if (!this->lockVertices[vertexIndex]) {
         // editVertsWeights.append(val);
         MColor currentColor = this->multiCurrentColors[vertexIndex];
+        MColor jntColor = this->jointsColors[this->influenceIndex];
+        if (lockJoints[this->influenceIndex] == 1) jntColor = lockJntColor;
+
         // float val = std::log10(value * 9 + 1);
         if (!this->mirrorIsActive) {  // we do the colors diferently if mirror is active
 
@@ -2592,8 +2582,7 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
                 if (theCommandIndex == 0) {
                     newW += value;  // ADD
                     newW = std::min(1.0, newW);
-                    multColor = currentColor * (1.0 - newW) +
-                                this->jointsColors[this->influenceIndex] * newW;  // white
+                    multColor = currentColor * (1.0 - newW) + jntColor * newW;  // white
                 } else if (theCommandIndex == 1) {
                     newW -= value;  // Remove
                     newW = std::max(0.0, newW);
@@ -2601,8 +2590,7 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
                 } else if (theCommandIndex == 2) {
                     newW += value * newW;  // AddPercent
                     newW = std::min(1.0, newW);
-                    multColor = currentColor * (1.0 - newW) +
-                                this->jointsColors[this->influenceIndex] * newW;  // white
+                    multColor = currentColor * (1.0 - newW) + jntColor * newW;  // white
                 } else if (theCommandIndex == 3) {
                     newW = value;                                              // Absolute
                     multColor = currentColor * (1.0 - value) + black * value;  // white
@@ -2653,9 +2641,8 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
 
     // MGlobal::displayInfo("perform Paint");
     double multiplier = 1.0;
-    if (!this->postSetting && this->commandIndex != 4)
-        multiplier = .1;  // less applying if dragging paint
-    bool isCommandLock = this->commandIndex >= 6 && this->modifierNoneShiftControl != 2;
+    if (!postSetting && commandIndex != 4) multiplier = .1;  // less applying if dragging paint
+    bool isCommandLock = commandIndex >= 6 && modifierNoneShiftControl != 2;
     // if (this->modifierNoneShiftControl == 2 && this->commandIndex >= 6) return status;
     if (!volumeVal) {
         MColorArray multiEditColors, soloEditColors;
@@ -2696,14 +2683,14 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             // end add to array of values to set  at the end---------------
 
             // now for colors -------------------------------------------------
-            if (this->useColorSetsWhilePainting) {
+            if (this->useColorSetsWhilePainting || !this->postSetting) {
                 setColor(index, value, editVertsIndices, multiEditColors, soloEditColors);
             }
         }
         // store this paint ---------------
         this->previousPaint = dicVertsDist;
 
-        if (this->useColorSetsWhilePainting) {
+        if (this->useColorSetsWhilePainting || !this->postSetting) {
             // do actually set colors -----------------------------------
             if (this->soloColorVal == 0) {
                 meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
@@ -2737,7 +2724,7 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
             this->performRefreshViewPort = 0;
     }
     */
-    if (this->useColorSetsWhilePainting) {
+    if (this->useColorSetsWhilePainting || !this->postSetting) {
         if (this->commandIndex >= 6) {  // if locking or unlocking
             // without that it doesn't refresh because mesh is not invalidated, meaning the
             // skinCluster hasn't changed

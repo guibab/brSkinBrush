@@ -348,7 +348,7 @@ MStatus skinBrushTool::undoIt() {
     MGlobal::setActiveSelectionList(undoSelection);
     MGlobal::setHiliteList(undoHilite);
     */
-    return MStatus::kSuccess;
+    return status;
 }
 MStatus skinBrushTool::callBrushRefresh() {
     /*

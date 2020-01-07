@@ -29,6 +29,7 @@
 #include <maya/MFloatPointArray.h>
 #include <maya/MFnCamera.h>
 #include <maya/MFnDoubleArrayData.h>
+#include <maya/MFnMatrixData.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnSingleIndexedComponent.h>
 #include <maya/MFnSkinCluster.h>
@@ -528,18 +529,19 @@ class SkinBrushContext : public MPxContext {
     MDoubleArray skinWeightList, fullUndoSkinWeightList, skinWeightsForUndo;
     MIntArray indicesForInfluenceObjects;  // on skinCluster for sparse array
 
-    std::vector<bool> influenceLocks;
-    MIntArray lockJoints, ignoreLockJoints, lockVertices;
-
     // mirror things -----
     bool mirrorIsActive = false;
     MIntArray mirrorInfluences, mirrorVertices;
     bool changeOfMirrorData = false;
 
+    std::vector<bool> influenceLocks;
+    MIntArray lockJoints, ignoreLockJoints, lockVertices;
+
     // colorSet ------------------------
     MDGModifier colorSetMod;
     MDoubleArray soloColorsValues;
     MColor lockVertColor = MColor((float)0.2, (float)0.2, (float)0.2);
+    MColor lockJntColor = MColor((float)0.2, (float)0.2, (float)0.2);
     MString fullColorSet = MString("multiColorsSet");
     MString soloColorSet = MString("soloColorsSet");
     MString fullColorSet2 = MString("multiColorsSet2");
