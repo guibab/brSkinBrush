@@ -140,5 +140,13 @@
 #define kInteractiveValue2Flag "-iv2"
 #define kInteractiveValue2FlagLong "-interactiveValue2"
 
+#define kMinColorFlag "-mnc"
+#define kMinColorFlagLong "-minColor"
+#define kMaxColorFlag "-mxc"
+#define kMaxColorFlagLong "-maxColor"
+
 #define kImportPythonFlag "-imp"
 #define kImportPythonFlagLong "-importPython"
+
+#define kVerboseFlag "-vrb"
+#define kVerboseFlagLong "-verbose"

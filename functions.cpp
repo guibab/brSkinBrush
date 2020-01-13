@@ -222,17 +222,19 @@ MStatus getListColorsJoints(MObject &skinCluster, MColorArray &jointsColors, boo
     return stat;
 }
 
-MStatus getListLockJoints(MObject &skinCluster, MIntArray &jointsLocks) {
+MStatus getListLockJoints(MObject &skinCluster, int nbJoints, MIntArray &jointsLocks) {
     MStatus stat;
 
     MFnDependencyNode skinClusterDep(skinCluster);
     MPlug influenceColor_plug = skinClusterDep.findPlug("lockWeights");
 
-    int nbJoints = influenceColor_plug.numElements();
+    int nbPlugs = influenceColor_plug.numElements();
     jointsLocks.clear();
     jointsLocks.setLength(nbJoints);
+    for (int i = 0; i < nbJoints; ++i) jointsLocks.set(0, i);
+    if (nbPlugs > nbJoints) jointsLocks.setLength(nbPlugs);
 
-    for (int i = 0; i < nbJoints; ++i) {
+    for (int i = 0; i < nbPlugs; ++i) {
         // weightList[i]
         MPlug lockPlug = influenceColor_plug.elementByPhysicalIndex(i);
         int isLocked = 0;
@@ -475,11 +477,25 @@ MStatus getListColors(MObject &skinCluster, int nbVertices, MColorArray &currCol
 
 MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoints,
                   MDoubleArray &fullWeightArray, std::map<int, double> &valuesToSet,
-                  MDoubleArray &theWeights, bool normalize, double mutliplier) {
+                  MDoubleArray &theWeights, bool normalize, double mutliplier, bool verbose) {
     MStatus stat;
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
     //
+    if (verbose)
+        MGlobal::displayInfo(MString("-> editArray | command ") + command +
+                             MString(" | influence ") + influence);
+    if (verbose)
+        MGlobal::displayInfo(MString("-> editArray | nbJoints ") + nbJoints +
+                             MString(" | lockJoints ") + lockJoints.length());
+    if (lockJoints.length() < nbJoints) {
+        MGlobal::displayInfo(MString("-> editArray FAILED | nbJoints ") + nbJoints +
+                             MString(" | lockJoints ") + lockJoints.length());
+        return MStatus::kFailure;
+    }
+    if (verbose)
+        MGlobal::displayInfo(MString("-> editArray | theWeights ") + theWeights.length() +
+                             MString(" | fullWeightArray ") + fullWeightArray.length());
     if (command == 5) {  // sharpen  -----------------------
         int i = 0;
         for (const auto &elem : valuesToSet) {
@@ -502,22 +518,53 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
     } else {
         // do the command --------------------------
         int i = -1;  // i is a short index instead of theVert
-        unsigned int jnt;
+        if (verbose)
+            MGlobal::displayInfo(MString("-> editArray | valuesToSet ") + valuesToSet.size());
+        if (verbose) MGlobal::displayInfo(MString("-> editArray | mutliplier ") + mutliplier);
         for (const auto &elem : valuesToSet) {
             i++;
             int theVert = elem.first;
             double theVal = mutliplier * elem.second;
             // get the sum of weights
+            if (verbose)
+                MGlobal::displayInfo(MString("-> editArray | theVert ") + theVert +
+                                     MString(" | i ") + i + MString(" | theVal ") + theVal);
 
             double sumUnlockWeights = 0.0;
-            for (jnt = 0; jnt < nbJoints; ++jnt) {
-                if (lockJoints[jnt] == 0) {
-                    sumUnlockWeights += fullWeightArray[theVert * nbJoints + jnt];
-                }
-                theWeights[i * nbJoints + jnt] =
-                    fullWeightArray[theVert * nbJoints + jnt];  // preset array
-            }
+            for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                int indexArray_theWeight = i * nbJoints + jnt;
+                int indexArray_fullWeightArray = theVert * nbJoints + jnt;
 
+                // if (verbose) MGlobal::displayInfo(MString("-> editArray | jnt ") + jnt +
+                // MString("-> editArray | indexArray_theWeight ") + indexArray_theWeight); if
+                // (verbose) MGlobal::displayInfo(MString("-> editArray | indexArray_fullWeightArray
+                // ") + indexArray_fullWeightArray);
+
+                if (indexArray_theWeight > theWeights.length()) {
+                    MGlobal::displayInfo(
+                        MString(
+                            "-> editArray FAILED | indexArray_theWeight  > theWeights.length()") +
+                        indexArray_theWeight + MString(" > ") + theWeights.length());
+                    return MStatus::kFailure;
+                }
+                if (indexArray_fullWeightArray > fullWeightArray.length()) {
+                    MGlobal::displayInfo(MString("-> editArray FAILED | indexArray_fullWeightArray "
+                                                 " > fullWeightArray.length()") +
+                                         indexArray_fullWeightArray + MString(" > ") +
+                                         fullWeightArray.length());
+                    return MStatus::kFailure;
+                }
+
+                if (verbose)
+                    MGlobal::displayInfo(MString("-> editArray | lockJoints[") + jnt +
+                                         MString("] : ") + lockJoints[jnt]);
+                if (lockJoints[jnt] == 0) {
+                    sumUnlockWeights += fullWeightArray[indexArray_fullWeightArray];
+                }
+                theWeights[indexArray_theWeight] =
+                    fullWeightArray[indexArray_fullWeightArray];  // preset array
+            }
+            if (verbose) MGlobal::displayInfo(MString("-> editArray | AFTER joints  loop"));
             double currentW = fullWeightArray[theVert * nbJoints + influence];
             // if (((command == 1) || (command == 3)) && (currentW > 0.99999)) { // value is 1 we
             // cant do anything
@@ -551,7 +598,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
 
             // do the locks !!
             double sum = 0.0;
-            for (jnt = 0; jnt < nbJoints; ++jnt) {
+            for (int jnt = 0; jnt < nbJoints; ++jnt) {
                 if (lockJoints[jnt] == 1) {
                     continue;
                 }
@@ -578,11 +625,11 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
             if ((sum == 0) ||
                 (sum <
                  0.5 * sumUnlockWeights)) {  // zero problem revert weights ----------------------
-                for (jnt = 0; jnt < nbJoints; ++jnt) {
+                for (int jnt = 0; jnt < nbJoints; ++jnt) {
                     theWeights[i * nbJoints + jnt] = fullWeightArray[theVert * nbJoints + jnt];
                 }
             } else if (normalize && (sum != sumUnlockWeights)) {  // normalize ---------------
-                for (jnt = 0; jnt < nbJoints; ++jnt)
+                for (int jnt = 0; jnt < nbJoints; ++jnt)
                     if (lockJoints[jnt] == 0) {
                         theWeights[i * nbJoints + jnt] /= sum;               // to 1
                         theWeights[i * nbJoints + jnt] *= sumUnlockWeights;  // to sum weights

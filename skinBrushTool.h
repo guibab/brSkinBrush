@@ -148,6 +148,9 @@ class skinBrushTool : public MPxToolCommand {
     void setDrawPoints(bool value);
     void setDrawTransparency(bool value);
 
+    void setMinColor(double value);
+    void setMaxColor(double value);
+
    private:
     MColor colorVal;
     int curveVal;
@@ -181,6 +184,9 @@ class skinBrushTool : public MPxToolCommand {
     bool drawEdges = true;
     bool drawPoints = true;
     bool drawTransparency = true;
+
+    double minSoloColor = 0.0;
+    double maxSoloColor = 1.0;
 
     MIntArray influenceIndices;
     MDagPath meshDag;
@@ -316,6 +322,7 @@ class SkinBrushContext : public MPxContext {
     void setEnterToolCommand(MString value);
     void setExitToolCommand(MString value);
     void setFlood();
+    void setVerbose(bool value);
     void setPickMaxInfluence(bool value);
     void setPickInfluence(bool value);
     void setFractionOversampling(bool value);
@@ -343,6 +350,9 @@ class SkinBrushContext : public MPxContext {
     void setSoloColorType(int value);
     void setInfluenceByName(MString value);
     void setPostSetting(bool value);
+
+    void setMinColor(double value);
+    void setMaxColor(double value);
 
     void setPruneWeights(double value);
     void setInteractiveValue(double value, int ind);
@@ -385,6 +395,8 @@ class SkinBrushContext : public MPxContext {
     bool getDrawTransparency();
     int getSoloColorType();
     bool getPostSetting();
+    double getMinColor();
+    double getMaxColor();
 
    private:
     bool verbose = false;
@@ -552,8 +564,8 @@ class SkinBrushContext : public MPxContext {
     // MString noColorSet = MString("noColorsSet");
     std::vector<float> intensityValues;  // (length, 0);
 
-    float minSoloColor = 0.0;
-    float maxSoloColor = 1.0;
+    double minSoloColor = 0.0;
+    double maxSoloColor = 1.0;
 
     MColorArray multiCurrentColors, jointsColors,
         soloCurrentColors;  // lock vertices color are not stored inside these arrays

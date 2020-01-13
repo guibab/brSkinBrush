@@ -91,6 +91,9 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kMeshDragDrawPointsFlag, kMeshDragDrawPointsFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kMeshDragDrawTransFlag, kMeshDragDrawTransFlagLong, MSyntax::kBoolean);
 
+    syntax.addFlag(kMinColorFlag, kMinColorFlagLong, MSyntax::kDouble);
+    syntax.addFlag(kMaxColorFlag, kMaxColorFlagLong, MSyntax::kDouble);
+
     // syntax.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kSmoothRepeatFlag, kSmoothRepeatFlagLong, MSyntax::kLong);
 
@@ -224,6 +227,16 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
     }
     if (argData.isFlagSet(kMeshDragDrawTransFlag)) {
         status = argData.getFlagArgument(kMeshDragDrawTransFlag, 0, drawTransparency);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+
+    if (argData.isFlagSet(kMinColorFlag)) {
+        status = argData.getFlagArgument(kMinColorFlag, 0, minSoloColor);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+
+    if (argData.isFlagSet(kMaxColorFlag)) {
+        status = argData.getFlagArgument(kMaxColorFlag, 0, maxSoloColor);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
 
@@ -467,6 +480,11 @@ MStatus skinBrushTool::finalize() {
     cmd += " " + MString(kMeshDragDrawTransFlag) + " ";
     cmd += drawTransparency;
 
+    cmd += " " + MString(kMinColorFlag) + " ";
+    cmd += minSoloColor;
+    cmd += " " + MString(kMaxColorFlag) + " ";
+    cmd += maxSoloColor;
+
     cmd += " brSkinBrushContext1;";
 
     MGlobal::setOptionVarValue("brSkinBrushContext1", cmd);
@@ -488,6 +506,10 @@ void skinBrushTool::setColor(MColor value) { colorVal = value; }
 void skinBrushTool::setCurve(int value) { curveVal = value; }
 
 void skinBrushTool::setDrawBrush(bool value) { drawBrushVal = value; }
+
+void skinBrushTool::setMinColor(double value) { minSoloColor = value; }
+
+void skinBrushTool::setMaxColor(double value) { maxSoloColor = value; }
 
 void skinBrushTool::setDrawRange(bool value) { drawRangeVal = value; }
 

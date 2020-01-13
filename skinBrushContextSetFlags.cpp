@@ -53,17 +53,24 @@ void SkinBrushContext::setFlood() {
     this->skinValuesToSet.clear();
     double value = strengthVal;
 
-    if (this->commandIndex == 4) value = smoothStrengthVal;
+    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+    // UnLockVertices
+    int theCommandIndex = this->commandIndex;
+    if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+
+    if (theCommandIndex == 4) value = smoothStrengthVal;
     for (int i = 0; i < this->numVertices; ++i) {
         this->verticesPainted.insert(i);
         this->skinValuesToSet.insert(std::make_pair(i, value));
     }
     doTheAction();
     if (verbose)
-        MGlobal::displayInfo(MString("SET FLOOD IS CALLED command ") + this->commandIndex +
+        MGlobal::displayInfo(MString("SET FLOOD IS CALLED command ") + theCommandIndex +
                              MString(" value ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
+
+void SkinBrushContext::setVerbose(bool value) { verbose = value; }
 
 void SkinBrushContext::setFractionOversampling(bool value) {
     fractionOversamplingVal = value;
@@ -154,19 +161,28 @@ void SkinBrushContext::setDrawTriangles(bool value) {
 
 void SkinBrushContext::setDrawEdges(bool value) {
     drawEdges = value;
-    MGlobal::displayInfo(MString("setDrawEdges CALLED ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
 
 void SkinBrushContext::setDrawPoints(bool value) {
     drawPoints = value;
-    MGlobal::displayInfo(MString("setDrawPoints CALLED ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
 
 void SkinBrushContext::setDrawTransparency(bool value) {
     drawTransparency = value;
-    MGlobal::displayInfo(MString("setDrawTransparency CALLED ") + value);
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setMinColor(double value) {
+    minSoloColor = value;
+    refreshDeformerColor(this->influenceIndex);
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setMaxColor(double value) {
+    maxSoloColor = value;
+    refreshDeformerColor(this->influenceIndex);
     MToolsInfo::setDirtyFlag(*this);
 }
 
@@ -359,6 +375,9 @@ bool SkinBrushContext::getDrawTransparency() { return drawTransparency; }
 int SkinBrushContext::getSoloColorType() { return soloColorTypeVal; }
 bool SkinBrushContext::getCoverage() { return coverageVal; }
 int SkinBrushContext::getInfluenceIndex() { return influenceIndex; }
+
+double SkinBrushContext::getMinColor() { return minSoloColor; }
+double SkinBrushContext::getMaxColor() { return maxSoloColor; }
 
 MString SkinBrushContext::getInfluenceName() {
     // MGlobal::displayInfo("getInfluenceName CALLED");

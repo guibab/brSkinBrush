@@ -36,6 +36,7 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kExitToolCommandFlag, kExitToolCommandFlagLong, MSyntax::kString);
 
     syn.addFlag(kFloodFlag, kFloodFlagLong, MSyntax::kNoArg);
+    syn.addFlag(kVerboseFlag, kVerboseFlagLong, MSyntax::kBoolean);
 
     syn.addFlag(kFractionOversamplingFlag, kFractionOversamplingFlagLong, MSyntax::kBoolean);
     syn.addFlag(kIgnoreLockFlag, kIgnoreLockFlagLong, MSyntax::kBoolean);
@@ -81,6 +82,9 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kInteractiveValueFlag, kInteractiveValueFlagLong, MSyntax::kDouble);
     syn.addFlag(kInteractiveValue1Flag, kInteractiveValue1FlagLong, MSyntax::kDouble);
     syn.addFlag(kInteractiveValue2Flag, kInteractiveValue2FlagLong, MSyntax::kDouble);
+
+    syn.addFlag(kMinColorFlag, kMinColorFlagLong, MSyntax::kDouble);
+    syn.addFlag(kMaxColorFlag, kMaxColorFlagLong, MSyntax::kDouble);
 
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
@@ -151,6 +155,11 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         // double value;
         // status = argData.getFlagArgument(kFloodFlag, 0, value);
         smoothContext->setFlood();
+    }
+    if (argData.isFlagSet(kVerboseFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kVerboseFlag, 0, value);
+        smoothContext->setVerbose(value);
     }
 
     if (argData.isFlagSet(kRefreshFlag)) {
@@ -364,6 +373,18 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setDrawTransparency(value);
     }
 
+    if (argData.isFlagSet(kMinColorFlag)) {
+        double value;
+        status = argData.getFlagArgument(kMinColorFlag, 0, value);
+        smoothContext->setMinColor(value);
+    }
+
+    if (argData.isFlagSet(kMaxColorFlag)) {
+        double value;
+        status = argData.getFlagArgument(kMaxColorFlag, 0, value);
+        smoothContext->setMaxColor(value);
+    }
+
     return status;
 }
 
@@ -447,6 +468,10 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kMeshDragDrawTransFlag)) setResult(smoothContext->getDrawTransparency());
 
     if (argData.isFlagSet(kPostSettingFlag)) setResult(smoothContext->getPostSetting());
+
+    if (argData.isFlagSet(kMinColorFlag)) setResult(smoothContext->getMinColor());
+
+    if (argData.isFlagSet(kMaxColorFlag)) setResult(smoothContext->getMaxColor());
 
     return MStatus::kSuccess;
 }

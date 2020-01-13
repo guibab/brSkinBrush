@@ -65,7 +65,8 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     setInViewMessage(true);
 
     MGlobal::executeCommand(enterToolCommandVal);
-    MGlobal::displayInfo(MString(" --------->  moduleImportString : ") + moduleImportString);
+    if (verbose)
+        MGlobal::displayInfo(MString(" --------->  moduleImportString : ") + moduleImportString);
     MGlobal::executePythonCommand(
         moduleImportString + MString("toolOnSetupEnd, toolOffCleanup, toolOnSetupStart, fnFonts, "
                                      "headsUpMessage, updateDisplayStrengthOrSize\n"));
@@ -93,7 +94,7 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         */
         this->skinWeightList.clear();
         this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-        getListLockJoints(skinObj, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
         getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
         status = fillArrayValuesDEP(skinObj, true);  // get the skin data and all the colors
         /*
@@ -194,7 +195,7 @@ void SkinBrushContext::refreshJointsLocks() {
     if (verbose) MGlobal::displayInfo(" - refreshJointsLocks-");
     if (!skinObj.isNull()) {
         // Get the skin cluster node from the history of the mesh.
-        getListLockJoints(skinObj, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
     }
 }
 
@@ -213,7 +214,7 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     */
     querySkinClusterValues(this->skinObj, verticesIndices, true);
     // query the Locks
-    getListLockJoints(skinObj, this->lockJoints);
+    getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
     MIntArray editVertsIndices;
     getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
 
@@ -243,7 +244,7 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
 
 void SkinBrushContext::refreshDeformerColor(int deformerInd) {
     if (!skinObj.isNull()) {
-        getListLockJoints(skinObj, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
         getListColorsJoints(skinObj, this->jointsColors, this->verbose);  // get the joints colors
     } else {
         MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
@@ -285,7 +286,7 @@ void SkinBrushContext::refresh() {
 
     if (!skinObj.isNull()) {
         // Get the skin cluster node from the history of the mesh.
-        getListLockJoints(skinObj, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
         getListColorsJoints(skinObj, this->jointsColors, this->verbose);  // get the joints colors
         status = getListLockVertices(skinObj, this->lockVertices, editVertsIndices);  // problem ?
         if (MS::kSuccess != status) {
@@ -461,6 +462,10 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
         // start fill jnts boundingBox
         // --------------------------------------------------------------------
         if (this->BBoxOfDeformers.size() == 0) {  // fill it
+            double jointDisplayVal;
+            MGlobal::executeCommand("jointDisplayScale - q", jointDisplayVal);
+            MGlobal::displayInfo(MString("jointDisplayScale :  ") + jointDisplayVal);
+
             int lent = this->inflDagPaths.length();
             if (verbose) MGlobal::displayInfo("\nfilling BBoxOfDeformers \n");
             MPoint zero(0, 0, 0);
@@ -500,14 +505,21 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
                     newDef.maxPt = bbox.max();
                 } else {
                     MFnDagNode dag(path);
+                    MStatus plugStat;
+                    MPlug radiusPlug = dag.findPlug("radius", &plugStat);
+                    double multVal = jointDisplayVal;
+                    if (plugStat == MStatus::kSuccess) {
+                        multVal *= radiusPlug.asDouble();
+                    }
+
                     newDef.center = zero * worldMatrix;
-                    newDef.width = 0.5 * right.length();
-                    newDef.height = 0.5 * up.length();
-                    newDef.depth = 0.5 * side.length();
+                    newDef.width = 0.5 * right.length() * multVal;
+                    newDef.height = 0.5 * up.length() * multVal;
+                    newDef.depth = 0.5 * side.length() * multVal;
 
                     newDef.mat = worldMatrix;
-                    newDef.minPt = MPoint(-0.25, -0.25, -0.25);
-                    newDef.maxPt = MPoint(0.25, 0.25, 0.25);
+                    newDef.minPt = multVal * MPoint(-0.5, -0.5, -0.5);
+                    newDef.maxPt = multVal * MPoint(0.5, 0.5, 0.5);
                 }
                 newDef.up = up;
                 newDef.right = right;
@@ -1471,8 +1483,23 @@ void SkinBrushContext::doTheAction() {
     MIntArray editVertsIndices((int)this->verticesPainted.size(), 0);
     MIntArray undoLocks, redoLocks;
 
+    MStatus status;
+    if (this->lockJoints.length() < this->nbJoints) {
+        if (verbose)
+            MGlobal::displayInfo(MString("-> doTheAction | before getListLockJoints | nbJoints ") +
+                                 nbJoints + MString(" | lockJoints ") + lockJoints.length());
+        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
+        if (this->lockJoints.length() < this->nbJoints) {
+            this->lockJoints = MIntArray(this->nbJoints, 0);
+            if (verbose)
+                MGlobal::displayInfo(MString("-> doTheAction | fix the size of lock array"));
+        }
+    }
+
     MDoubleArray prevWeights((int)this->verticesPainted.size() * this->nbJoints, 0);
     int i = 0;
+    if (verbose) MGlobal::displayInfo(MString("doTheAction"));
+
     for (const auto &theVert : this->verticesPainted) {
         editVertsIndices[i] = theVert;
         // if (theVert == 241)MGlobal::displayInfo(MString("241  in this->verticesPainted "));
@@ -1493,8 +1520,19 @@ void SkinBrushContext::doTheAction() {
         // MGlobal::displayInfo("editing locks");
         redoLocks.copy(this->lockVertices);
     } else {
-        if (this->skinValuesToSet.size() > 0)
-            applyCommand(this->influenceIndex, this->skinValuesToSet, !this->mirrorIsActive);
+        if (this->skinValuesToSet.size() > 0) {
+            if (verbose)
+                MGlobal::displayInfo(MString("before applyCommand this->skinValuesToSet.size is ") +
+                                     this->skinValuesToSet.size());
+            status =
+                applyCommand(this->influenceIndex, this->skinValuesToSet, !this->mirrorIsActive);
+            if (status == MStatus::kFailure) {
+                MGlobal::displayError(
+                    MString("something went wrong \ n EXIT the brush and RESTART it"));
+                return;
+            }
+            if (verbose) MGlobal::displayInfo(MString("after applyCommand"));
+        }
 
         if (!this->postSetting) {  // only store if not constant setting
             int i = 0;
@@ -1508,6 +1546,7 @@ void SkinBrushContext::doTheAction() {
         }
     }
     // MGlobal::displayInfo(MString("c| Vtx 241 ") + this->lockVertices[241]);
+    if (verbose) MGlobal::displayInfo(MString("before refreshColors"));
     refreshColors(editVertsIndices, multiEditColors, soloEditColors);
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet);
@@ -1520,11 +1559,13 @@ void SkinBrushContext::doTheAction() {
     */
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
-
+    if (verbose) MGlobal::displayInfo(MString("after refreshColors"));
     if (theCommandIndex >= 6) {  // if locking or unlocking
         // without that it doesn't refresh because mesh is not invalidated, meaning the skinCluster
         // hasn't changed
+        if (verbose) MGlobal::displayInfo(MString("before meshFn.updateSurface"));
         meshFn.updateSurface();
+        if (verbose) MGlobal::displayInfo(MString("after meshFn.updateSurface"));
     }
     /*
     if (theCommandIndex >= 6) {
@@ -1554,6 +1595,8 @@ void SkinBrushContext::doTheAction() {
     cmd->setStrength(strengthVal);
 
     // storing options for the finalize optionVar
+    cmd->setMinColor(minSoloColor);
+    cmd->setMaxColor(maxSoloColor);
     cmd->setSoloColor(soloColorVal);
     cmd->setSoloColorType(soloColorTypeVal);
     cmd->setUseColorSetsWhilePainting(useColorSetsWhilePainting);
@@ -1594,7 +1637,9 @@ void SkinBrushContext::doTheAction() {
     // (MPxToolCommand)::redoIt at this point but in this case it
     // is not necessary since the the smoothing already has been
     // performed. There is no need to apply the values twice.
+    if (verbose) MGlobal::displayInfo(MString("cmd->finalize"));
     cmd->finalize();
+    if (verbose) MGlobal::displayInfo(MString("maya2019RefreshColors"));
     maya2019RefreshColors();
 }
 // ---------------------------------------------------------------------
@@ -1626,7 +1671,10 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
     // paint 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // unlockVertices
     MStatus status;
-    if (verbose) MGlobal::displayInfo(MString(" applyCommand Index is ") + theCommandIndex);
+    if (verbose)
+        MGlobal::displayInfo(MString("-> applyCommand | theCommandIndex is ") + theCommandIndex);
+    if (this->lockJoints.length() < this->nbJoints) {
+    }
     if (theCommandIndex < 6) {  // not lock or unlock verts
         // MDoubleArray previousWeights(this->nbJoints*valuesToSetOrdered.size(), 0.0);
 
@@ -1638,6 +1686,9 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
         MDoubleArray theWeights((int)this->nbJoints * valuesToSetOrdered.size(), 0.0);
         int repeatLimit = 1;
         if (theCommandIndex == 4 || theCommandIndex == 5) repeatLimit = this->smoothRepeat;
+        if (verbose)
+            MGlobal::displayInfo(MString("-> applyCommand | repeatLimit is ") + repeatLimit);
+
         for (int repeat = 0; repeat < repeatLimit; ++repeat) {
             if (theCommandIndex == 4) {  // smooth
                 int i = 0;
@@ -1653,18 +1704,26 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
                     i++;
                 }
             } else {
+                if (verbose)
+                    MGlobal::displayInfo(
+                        MString("-> applyCommand | before editArray this->ignoreLockVal is ") +
+                        this->ignoreLockVal);
                 if (this->ignoreLockVal) {
                     status =
                         editArray(theCommandIndex, influence, this->nbJoints,
                                   this->ignoreLockJoints, this->skinWeightList, valuesToSetOrdered,
-                                  theWeights, this->doNormalize, multiplier);
+                                  theWeights, this->doNormalize, multiplier, verbose);
                 } else {
                     if (this->lockJoints[influence] == 1 && theCommandIndex != 5)
                         return status;  //  if locked and it's not sharpen --> do nothing
                     status = editArray(theCommandIndex, influence, this->nbJoints, this->lockJoints,
                                        this->skinWeightList, valuesToSetOrdered, theWeights,
-                                       this->doNormalize, multiplier);
+                                       this->doNormalize, multiplier, verbose);
                 }
+                if (status == MStatus::kFailure) {
+                    return status;
+                }
+                if (verbose) MGlobal::displayInfo(MString("-> applyCommand | after editArray "));
             }
             // now set the weights -----------------------------------------------------
             // doPruneWeight(theWeights, this->nbJoints, this->pruneWeight);
@@ -1672,6 +1731,9 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
 
             int i = 0;
             // int prevVert = -1;
+            if (verbose)
+                MGlobal::displayInfo(MString("-> applyCommand | valuesToSetOrdered size is  ") +
+                                     valuesToSetOrdered.size());
             for (const auto &elem : valuesToSetOrdered) {
                 int theVert = elem.first;
                 // if (prevVert > theVert) MGlobal::displayInfo(MString("indices don't grow ") +
@@ -1688,6 +1750,7 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
                 i++;
             }
         }
+        if (verbose) MGlobal::displayInfo(MString("-> applyCommand | out of repeat loop  "));
         MIntArray objVertices;
         for (const auto &elem : valuesToSetOrdered) {
             int theVert = elem.first;
@@ -1703,12 +1766,16 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
         MFnSkinCluster skinFn(skinObj, &status);
         CHECK_MSTATUS_AND_RETURN_IT(status);
         this->skinWeightsForUndo.clear();
+        if (verbose) MGlobal::displayInfo(MString(" applyCommand | before skinFn.setWeights"));
+
         skinFn.setWeights(meshDag, weightsObj, influenceIndices, theWeights, normalize,
                           &this->skinWeightsForUndo);
-
+        if (verbose)
+            MGlobal::displayInfo(MString(" applyCommand | before refreshPointsAndNormals"));
         // in do press common
         // update values ---------------
         refreshPointsNormals();
+        if (verbose) MGlobal::displayInfo(MString(" applyCommand | FINISH"));
     }
     return status;
 }
@@ -2279,6 +2346,11 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors)
                              this->nbJointsBig + MString(" influenceIndices ") +
                              this->influenceIndices.length());
     this->nbJoints = infCount;
+
+    if (this->nbJoints > lockJoints.length()) {  // fixing a tough bug
+        lockJoints.setLength(nbJoints);
+        for (int i = 0; i < nbJoints; ++i) lockJoints.set(0, i);
+    }
 
     // For the first component, the weights are ordered by influence object in the same order that
     // is returned by the MFnSkinCluster::influenceObjects method.

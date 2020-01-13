@@ -45,7 +45,7 @@ MStatus findOrigMesh(MObject& theSkinCluster, MObject& origMesh, bool verbose);
 MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currColors, bool verbose,
                       bool useMPlug = false);
 MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors, bool verbose);
-MStatus getListLockJoints(MObject& skinCluster, MIntArray& jointsLocks);
+MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray& jointsLocks);
 MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArray& lockedIndices);
 MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList);
 MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
@@ -56,7 +56,8 @@ MStatus editLocks(MObject& skinCluster, MIntArray& vertsToLock, bool addToLock,
                   MIntArray& vertsLocks);
 MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoints,
                   MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
-                  MDoubleArray& theWeights, bool normalize = true, double mutliplier = 1.0);
+                  MDoubleArray& theWeights, bool normalize = true, double mutliplier = 1.0,
+                  bool verbose = false);
 MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, int indexCurrVert,
                          int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
                          MDoubleArray& theWeights, double strengthVal);
