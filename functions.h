@@ -42,10 +42,13 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
                         bool verbose);
 MStatus findMesh(MObject& theSkinCluster, MDagPath& theMeshPath, bool verbose);
 MStatus findOrigMesh(MObject& theSkinCluster, MObject& origMesh, bool verbose);
-MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currColors, bool verbose,
-                      bool useMPlug = false);
-MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors, bool verbose);
-MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray& jointsLocks);
+// MStatus getListColors( MObject& skinCluster, int nbVertices, MColorArray & currColors, bool
+// verbose,  bool useMPlug = false);
+MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
+                            MIntArray indicesForInfluenceObjects, MColorArray& jointsColors,
+                            bool verbose);
+MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray indicesForInfluenceObjects,
+                          MIntArray& jointsLocks);
 MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArray& lockedIndices);
 MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList);
 MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,

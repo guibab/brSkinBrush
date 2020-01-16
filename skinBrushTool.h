@@ -134,9 +134,13 @@ class skinBrushTool : public MPxToolCommand {
     void setInfluenceName(MString name);
     void setMesh(MDagPath dagPath);
     void setNormalize(bool value);
-    void setSelection(MSelectionList selection, MSelectionList hilite);
+    // void setSelection(MSelectionList selection, MSelectionList hilite);
+
     void setSkinCluster(MObject skinCluster);
-    void setVertexComponents(MObject components);
+    void setSkinClusterName(MString skinClusterName);
+    MStatus getSkinClusterObj();
+
+    // void setVertexComponents(MObject components);
     void setWeights(MDoubleArray weights);
     void setUnoVertices(MIntArray editVertsIndices);
     void setUnoLocks(MIntArray locks);
@@ -176,7 +180,8 @@ class skinBrushTool : public MPxToolCommand {
     int influenceIndex = 0, commandIndex = 0;
     int smoothRepeat = 3;
     // int smoothDepth = 1;// smooth depth is the same as repeat
-    int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
+    int soloColorTypeVal = 1;  // 1 lava
+    int soloColorVal = 0;
     bool postSetting = true;
 
     bool useColorSetsWhilePainting = false;
@@ -190,14 +195,16 @@ class skinBrushTool : public MPxToolCommand {
 
     MIntArray influenceIndices;
     MDagPath meshDag;
+    MObject skinObj;
+    MString skinName;
+
     bool normalize;
     MString influenceName;
-    MSelectionList redoHilite;
-    MSelectionList redoSelection;
+    // MSelectionList redoHilite;
+    // MSelectionList redoSelection;
     MDoubleArray redoWeights;
-    MObject skinObj;
-    MSelectionList undoHilite;
-    MSelectionList undoSelection;
+    // MSelectionList undoHilite;
+    // MSelectionList undoSelection;
     MDoubleArray undoWeights;
     MIntArray undoVertices;
     MObject vertexComponents;
@@ -506,9 +513,6 @@ class SkinBrushContext : public MPxContext {
                                         // true.
 
     MObject allVtxCompObj;
-    MObject smoothedCompObj;  // The single index component object for
-                              // holding only the indices of the
-                              // current stroke for undo/redo.
 
     // the skin cluster
     MObject skinObj;

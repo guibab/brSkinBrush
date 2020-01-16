@@ -262,7 +262,11 @@ MStatus skinBrushTool::redoIt() {
 
     MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") +
                          this->commandIndex);
-
+    status = getSkinClusterObj();
+    if (status != MStatus::kSuccess) {
+        MGlobal::displayError(MString("skinBrushTool::redoIt error getting the skin "));
+        return status;
+    }
     // Apply the redo weights and get the current weights for undo.
     MFnSkinCluster skinFn(skinObj, &status);
     CHECK_MSTATUS_AND_RETURN_IT(status);
@@ -311,7 +315,11 @@ MStatus skinBrushTool::undoIt() {
 
     MGlobal::displayInfo(MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
                          this->commandIndex);
-
+    status = getSkinClusterObj();
+    if (status != MStatus::kSuccess) {
+        MGlobal::displayError(MString("skinBrushTool::undoIt error getting the skin "));
+        return status;
+    }
     MFnSkinCluster skinFn(skinObj, &status);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
@@ -363,6 +371,7 @@ MStatus skinBrushTool::undoIt() {
     */
     return status;
 }
+
 MStatus skinBrushTool::callBrushRefresh() {
     /*
     ----------------
@@ -422,10 +431,13 @@ MStatus skinBrushTool::finalize() {
     cmd += commandIndex;
     cmd += " " + MString(kSoloColorFlag) + " ";
     cmd += soloColorVal;
-    cmd += " " + MString(kSoloColorTypeFlag) + " ";
-    cmd += soloColorTypeVal;
+
     cmd += " " + MString(kCoverageFlag) + " ";
     cmd += coverageVal;
+
+    cmd += " " + MString(kSoloColorTypeFlag) + " ";
+    cmd += soloColorTypeVal;
+
     cmd += " " + MString(kMessageFlag) + " ";
     cmd += messageVal;
 
@@ -558,7 +570,10 @@ void skinBrushTool::setDrawTransparency(bool value) { drawTransparency = value; 
 
 void skinBrushTool::setSoloColorType(int value) { soloColorTypeVal = value; }
 
-void skinBrushTool::setSoloColor(int value) { soloColorVal = value; }
+void skinBrushTool::setSoloColor(int value) {
+    soloColorVal = value;
+    // MGlobal::displayInfo(MString("setSoloColor [") + soloColorVal + MString("]"));
+}
 
 void skinBrushTool::setCoverage(bool value) { coverageVal = value; }
 
@@ -572,18 +587,46 @@ void skinBrushTool::setInfluenceIndices(MIntArray indices) { influenceIndices = 
 
 void skinBrushTool::setInfluenceName(MString name) { influenceName = name; }
 
+MStatus skinBrushTool::getSkinClusterObj() {
+    MStatus status = MS::kSuccess;
+
+    return status;
+    MSelectionList selList;
+    status = MGlobal::getSelectionListByName(skinName, selList);
+    if (status != MStatus::kSuccess) return status;
+    status = selList.getDependNode(0, skinObj);
+
+    MFnDependencyNode nodeFn(skinObj);
+    MGlobal::displayInfo(MString("    input skin name: ") + nodeFn.name());
+
+    status = findMesh(skinObj, meshDag, true);
+    return status;
+    /*
+    MFnDependencyNode nodeFn(skinCluster_);
+    if (verbose) MGlobal::displayInfo(MString("    input skin name: ") + nodeFn.name());
+
+
+    foundSkinCluster = true;
+    // now get the mesh .... seems to CRASH
+    useSelection = false;
+    */
+}
+
 void skinBrushTool::setMesh(MDagPath dagPath) { meshDag = dagPath; }
 
 void skinBrushTool::setNormalize(bool value) { normalize = value; }
 
-void skinBrushTool::setSelection(MSelectionList selection, MSelectionList hilite) {
+/*
+void skinBrushTool::setSelection(MSelectionList selection, MSelectionList hilite)
+{
     undoSelection = selection;
     undoHilite = hilite;
 }
+*/
 
 void skinBrushTool::setSkinCluster(MObject skinCluster) { skinObj = skinCluster; }
 
-void skinBrushTool::setVertexComponents(MObject components) { vertexComponents = components; }
+void skinBrushTool::setSkinClusterName(MString skinClusterName) { skinName = skinClusterName; }
 
 void skinBrushTool::setWeights(MDoubleArray weights) { undoWeights = weights; }
 

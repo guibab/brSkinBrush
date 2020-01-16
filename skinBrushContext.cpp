@@ -83,9 +83,9 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     status = getMesh();
     MIntArray editVertsIndices;
     if (!skinObj.isNull()) {
-        getListColorsJoints(skinObj, jointsColors, verbose);  // get the joints colors
+        getListColorsJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, jointsColors,
+                            verbose);  // get the joints colors
 
-        // status = fillArrayValues(skinObj, true); // WAY TOO SLOW ... but accurate ?
         /*
         MGlobal::displayInfo(MString("SKN this->skinWeightList ") + this->skinWeightList.length());
         MGlobal::displayInfo(MString("SKN this->nbJoints  ") + this->nbJoints);
@@ -94,15 +94,16 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         */
         this->skinWeightList.clear();
         this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
         getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
+
+        // status = fillArrayValues(skinObj, true); // WAY TOO SLOW ... but accurate ?
         status = fillArrayValuesDEP(skinObj, true);  // get the skin data and all the colors
         /*
         MGlobal::displayInfo(MString ("DEP this->skinWeightList ") + this->skinWeightList.length());
         MGlobal::displayInfo(MString ("DEP this->nbJoints  " )+ this->nbJoints);
         displayWeightValue(vertexIndex);
         */
-
         if (verbose)
             MGlobal::displayInfo(MString("nb found joints colors ") + jointsColors.length());
     } else {
@@ -195,7 +196,7 @@ void SkinBrushContext::refreshJointsLocks() {
     if (verbose) MGlobal::displayInfo(" - refreshJointsLocks-");
     if (!skinObj.isNull()) {
         // Get the skin cluster node from the history of the mesh.
-        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
     }
 }
 
@@ -214,7 +215,7 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     */
     querySkinClusterValues(this->skinObj, verticesIndices, true);
     // query the Locks
-    getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
+    getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
     MIntArray editVertsIndices;
     getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
 
@@ -244,8 +245,9 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
 
 void SkinBrushContext::refreshDeformerColor(int deformerInd) {
     if (!skinObj.isNull()) {
-        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
-        getListColorsJoints(skinObj, this->jointsColors, this->verbose);  // get the joints colors
+        getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
+        getListColorsJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->jointsColors,
+                            this->verbose);  // get the joints colors
     } else {
         MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
         return;
@@ -286,8 +288,9 @@ void SkinBrushContext::refresh() {
 
     if (!skinObj.isNull()) {
         // Get the skin cluster node from the history of the mesh.
-        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
-        getListColorsJoints(skinObj, this->jointsColors, this->verbose);  // get the joints colors
+        getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
+        getListColorsJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->jointsColors,
+                            this->verbose);  // get the joints colors
         status = getListLockVertices(skinObj, this->lockVertices, editVertsIndices);  // problem ?
         if (MS::kSuccess != status) {
             MGlobal::displayError(MString("error getListLockVertices"));
@@ -772,7 +775,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
             }
             else {
                     setColor(ptIndex, weight, editVertsIndices, colors, colorsSolo);
-                    if (this->soloColorVal)col = colorsSolo[i];
+                    if (this->soloColorVal == 1)col = colorsSolo[i];
                     else col = colors[i];
             }
             */
@@ -783,7 +786,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
 
             setColor(ptIndex, weight, editVertsIndices, colors, colorsSolo);
             if (theCommandIndex != 6) {  // not painting locks
-                if (this->soloColorVal) {
+                if (this->soloColorVal == 1) {
                     col = colorsSolo[i];
                 } else {
                     col = colors[i];
@@ -796,7 +799,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
                 // MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ),
                 // pow(col.b, gammaValue )); MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1),
                 // log2(col.b + 1));
-                if (this->soloColorVal) {
+                if (this->soloColorVal == 1) {
                     colorsSolo[i] = col;
                 } else {
                     colors[i] = col;
@@ -804,7 +807,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
             }
         }
         if (drawPoints) {
-            if (this->soloColorVal)
+            if (this->soloColorVal == 1)
                 newCol = weight * baseColor + (1.0 - weight) * this->soloCurrentColors[ptIndex];
             else
                 newCol = weight * baseColor + (1.0 - weight) * this->multiCurrentColors[ptIndex];
@@ -833,7 +836,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     MColor col;
 
     for (int i = 0; i < nbVtx; i++) {
-            if (this->soloColorVal)col = colorsSolo[i];
+            if (this->soloColorVal == 1)col = colorsSolo[i];
             else col = colors[i];
             float h, s, v;
             col.get(MColor::kHSV, h, s, v);
@@ -842,7 +845,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
             //MColor newCol = MColor(pow(col.r, gammaValue ), pow(col.g, gammaValue ), pow(col.b,
     gammaValue ));
             //MColor newCol = MColor(log2(col.r + 1), log2(col.g + 1), log2(col.b + 1));
-            if (this->soloColorVal)colorsSolo[i] = col;
+            if (this->soloColorVal == 1)colorsSolo[i] = col;
             else colors[i] = col;
     }
     */
@@ -868,7 +871,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
         // if (this->interactiveValue == 2.0) style = MHWRender::MUIDrawManager::kShaded;
         drawManager.setPaintStyle(style);  // kFlat // kShaded //kStippled
 
-        if (this->soloColorVal) {
+        if (this->soloColorVal == 1) {
             drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colorsSolo,
                              &indices);
         } else {
@@ -1488,7 +1491,7 @@ void SkinBrushContext::doTheAction() {
         if (verbose)
             MGlobal::displayInfo(MString("-> doTheAction | before getListLockJoints | nbJoints ") +
                                  nbJoints + MString(" | lockJoints ") + lockJoints.length());
-        getListLockJoints(skinObj, this->nbJoints, this->lockJoints);
+        getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
         if (this->lockJoints.length() < this->nbJoints) {
             this->lockJoints = MIntArray(this->nbJoints, 0);
             if (verbose)
@@ -1597,7 +1600,9 @@ void SkinBrushContext::doTheAction() {
     // storing options for the finalize optionVar
     cmd->setMinColor(minSoloColor);
     cmd->setMaxColor(maxSoloColor);
+
     cmd->setSoloColor(soloColorVal);
+
     cmd->setSoloColorType(soloColorTypeVal);
     cmd->setUseColorSetsWhilePainting(useColorSetsWhilePainting);
     cmd->setDrawTriangles(drawTriangles);
@@ -1617,11 +1622,16 @@ void SkinBrushContext::doTheAction() {
     cmd->setUnoLocks(undoLocks);
     cmd->setRedoLocks(redoLocks);
 
+    MFnDependencyNode skinDep(this->skinObj);
+    MString skinName = skinDep.name();
+
     cmd->setMesh(meshDag);
     cmd->setSkinCluster(skinObj);
+    // cmd->setSkinClusterName(skinName);
+
     cmd->setInfluenceIndices(influenceIndices);
     cmd->setInfluenceName(getInfluenceName());
-    cmd->setVertexComponents(smoothedCompObj);
+    // cmd->setVertexComponents(smoothedCompObj);
 
     cmd->setUnoVertices(editVertsIndices);
     if (!this->postSetting) {
@@ -1631,8 +1641,9 @@ void SkinBrushContext::doTheAction() {
     }
 
     cmd->setNormalize(normalize);
-    cmd->setSelection(prevSelection, prevHilite);
+    // cmd->setSelection(prevSelection, prevHilite);
     // cmd->redoIt();
+
     // Regular context implementations usually call
     // (MPxToolCommand)::redoIt at this point but in this case it
     // is not necessary since the the smoothing already has been
@@ -1673,8 +1684,6 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
     MStatus status;
     if (verbose)
         MGlobal::displayInfo(MString("-> applyCommand | theCommandIndex is ") + theCommandIndex);
-    if (this->lockJoints.length() < this->nbJoints) {
-    }
     if (theCommandIndex < 6) {  // not lock or unlock verts
         // MDoubleArray previousWeights(this->nbJoints*valuesToSetOrdered.size(), 0.0);
 
@@ -1940,7 +1949,6 @@ MStatus SkinBrushContext::getMesh() {
     // vertices. This is needed to improve performance for undo/redo.
     // See skinBrushTool::undoIt() for more information.
     MFnSingleIndexedComponent compFn;
-    smoothedCompObj = compFn.create(MFn::kMeshVertComponent);
     // Get the indices of all influences.
     influenceIndices = getInfluenceIndices();  // this->skinObj, this->inflDagPaths);
 
@@ -2339,18 +2347,25 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors)
 
     matrix_plug.getExistingArrayAttributeIndices(this->deformersIndices);
 
-    this->nbJointsBig = this->deformersIndices[this->deformersIndices.length() - 1] +
-                        1;  // matrix_plug.evaluateNumElements();
+    this->nbJointsBig = 0;
+    for (int el : this->deformersIndices) {
+        if (el > this->nbJointsBig) this->nbJointsBig = el;
+    }
+    this->nbJointsBig += 1;
+    // this->nbJointsBig = this->deformersIndices[this->deformersIndices.length() - 1] +
+    // 1;//matrix_plug.evaluateNumElements();
     if (verbose)
         MGlobal::displayInfo(MString(" nb jnts ") + this->nbJoints + MString(" nb jnts Big ") +
                              this->nbJointsBig + MString(" influenceIndices ") +
                              this->influenceIndices.length());
     this->nbJoints = infCount;
 
-    if (this->nbJoints > lockJoints.length()) {  // fixing a tough bug
-        lockJoints.setLength(nbJoints);
-        for (int i = 0; i < nbJoints; ++i) lockJoints.set(0, i);
+    /*
+    if (this->nbJoints > lockJoints.length()) { // fixing a tough bug
+            lockJoints.setLength(nbJoints);
+            for (int i = 0; i < nbJoints; ++i) lockJoints.set(0, i);
     }
+    */
 
     // For the first component, the weights are ordered by influence object in the same order that
     // is returned by the MFnSkinCluster::influenceObjects method.
@@ -2384,7 +2399,7 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors)
             indexInfluence = this->indicesForInfluenceObjects[indexInfluence];
             this->skinWeightList[vertexIndex * this->nbJoints + indexInfluence] = theWeight;
             if (doColors) {  // and not locked
-                if (lockJoints[indexInfluence] == 1)
+                if (this->lockJoints[indexInfluence] == 1)
                     theColor += lockJntColor * theWeight;
                 else
                     theColor += this->jointsColors[indexInfluence] * theWeight;
@@ -2454,21 +2469,32 @@ MIntArray SkinBrushContext::getInfluenceIndices() {
     this->inflNames.setLength(lent);
     this->inflNamePixelSize.setLength(2 * lent);
     this->indicesForInfluenceObjects.setLength(lent);
+    MStatus stat;
+    this->nbJoints = lent;
     for (i = 0; i < lent; i++) {
         influenceIndices.append((int)i);
-        MFnDependencyNode influenceFn(this->inflDagPaths[i].node());
+        MFnDependencyNode influenceFn(this->inflDagPaths[i].node(), &stat);
+        if (stat != MS::kSuccess) {
+            MGlobal::displayError(MString("Crashing query influence ") + i);
+        }
         this->inflNames[i] = influenceFn.name();
         // get pixels size ----------
         MIntArray result;
         MString cmd2 = MString("fnFonts (\"") + this->inflNames[i] + MString("\")");
         MGlobal::executePythonCommand(cmd2, result);
-        this->inflNamePixelSize[2 * i] = result[0];
-        this->inflNamePixelSize[2 * i + 1] = result[1];
+        if (result.length() >= 2) {
+            this->inflNamePixelSize[2 * i] = result[0];
+            this->inflNamePixelSize[2 * i + 1] = result[1];
+        } else {
+            this->inflNamePixelSize[2 * i] = 5;
+            this->inflNamePixelSize[2 * i + 1] = 5;
+        }
         int indexLogical = skinFn.indexForInfluenceObject(this->inflDagPaths[i]);
         this->indicesForInfluenceObjects[indexLogical] = i;
         // MGlobal::displayInfo(MString(" [") + i + MString(" || ") + indexLogical + MString("] ") +
         // this->inflNames[i] + MString(" "));
     }
+
     return influenceIndices;
 }
 
@@ -2617,7 +2643,7 @@ void SkinBrushContext::prepareArray(std::unordered_map<int, float> &dicVertsDist
 
 void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVertsIndices,
                                 MColorArray &multiEditColors, MColorArray &soloEditColors) {
-    if (verbose) MGlobal::displayInfo(MString("         --> actually painting weights"));
+    // if (verbose) MGlobal::displayInfo(MString("         --> actually painting weights"));
     MColor white(1, 1, 1, 1);
     MColor black(0, 0, 0, 1);
     MColor soloColor, multColor;

@@ -121,7 +121,7 @@ MStatus findMesh(MObject &skinCluster, MDagPath &theMeshPath, bool verbose) {
     theSkinCluster.getOutputGeometry(objectsDeformed);
     int objectsDeformedCount = objectsDeformed.length();
     bool doContinue = false;
-    if (objectsDeformedCount == 0) {
+    if (objectsDeformedCount != 0) {
         int j = 0;
         // for (int j = 0; j < objectsDeformedCount; j++) {
         theMeshPath.getAPathTo(objectsDeformed[j]);
@@ -149,8 +149,10 @@ MStatus findOrigMesh(MObject &skinCluster, MObject &origMesh, bool verbose) {
     return MS::kSuccess;
 }
 
-MStatus getListColorsJoints(MObject &skinCluster, MColorArray &jointsColors, bool verbose) {
-    MStatus stat;
+MStatus getListColorsJoints(MObject &skinCluster, int nbJoints,
+                            MIntArray indicesForInfluenceObjects, MColorArray &jointsColors,
+                            bool verbose) {
+    MStatus stat = MS::kSuccess;
     if (verbose)
         MGlobal::displayInfo(MString("---------------- [getListColorsJoints()]------------------"));
 
@@ -167,30 +169,60 @@ MStatus getListColorsJoints(MObject &skinCluster, MColorArray &jointsColors, boo
             MGlobal::displayInfo(jointName + " " + i);
         }
     }
-    //----------------------------------------------------------------
-
-    MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor");
-    int nbElements = influenceColor_plug.numElements();
+    // start
     jointsColors.clear();
-    MIntArray plugIndices;
-    influenceColor_plug.getExistingArrayAttributeIndices(plugIndices);
-    int nbJoints = plugIndices[plugIndices.length() - 1] + 1;
-    if (verbose)
-        MGlobal::displayInfo(influenceColor_plug.name() + " nbJoints [" + nbJoints +
-                             "] nbElements [" + nbElements + "]");
     jointsColors.setLength(nbJoints);
     float black[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     for (int i = 0; i < nbJoints; ++i) {
         jointsColors.set(black, i);
     }
-    for (int i = 0; i < nbElements; ++i) {
+
+    //----------------------------------------------------------------
+    MFnDependencyNode skinClusterDep(skinCluster);
+    MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor", &stat);
+    if (stat != MS::kSuccess) {
+        MGlobal::displayError(MString("fail finding influenceColor plug "));
+        return stat;
+    }
+    int nbElements = influenceColor_plug.numElements();
+    // MIntArray plugIndices;
+    // influenceColor_plug.getExistingArrayAttributeIndices(plugIndices, &stat);
+    // CHECK_MSTATUS_AND_RETURN_IT(stat);
+
+    // int plugIndicesLength = plugIndices.length();
+    // int indexPlug = plugIndicesLength - 1;
+    // if indexPlug>0
+    // if (indexPlug < 0) {
+    //	MGlobal::displayError(MString("influenceColor plug size is ZERO "));
+    //	return MS::kFailure;
+    //}
+    // int maxIndex = plugIndices[indexPlug] + 1;
+    if (verbose)
+        MGlobal::displayInfo(influenceColor_plug.name() + " nbJoints [" + nbJoints +
+                             "] nbElements [" + nbElements + "]");
+    for (int i = 0; i < nbElements; ++i) {  // for each joint
         // MGlobal::displayInfo(i);
         // weightList[i]
+
+        // if (i >= nbJoints) {
+        //	MGlobal::displayError(MString("influenceColor nb elements : ") + i + MString(" nb
+        //joints: ") + nbJoints); 	break;
+        //}
         MPlug colorPlug = influenceColor_plug.elementByPhysicalIndex(i);
         int logicalInd = colorPlug.logicalIndex();
-
-        logicalInd = i;  // fix colors bug on joints
+        if (verbose) {
+            int indexInfluence = indicesForInfluenceObjects[logicalInd];
+            MGlobal::displayInfo(MString("i : ") + i + MString("logical Index: ") + logicalInd +
+                                 MString(" | indicesForInfluenceObjects ") + indexInfluence);
+        }
+        logicalInd = indicesForInfluenceObjects[logicalInd];
+        // logicalInd = i; // fix colors bug on joints
+        if (logicalInd < 0 || logicalInd >= nbJoints) {
+            MGlobal::displayError(MString("CRASH i : ") + i + MString("logical Index: ") +
+                                  colorPlug.logicalIndex() +
+                                  MString(" | indicesForInfluenceObjects ") + logicalInd);
+            continue;
+        }
 
         if (colorPlug.isConnected()) {
             MPlugArray connections;
@@ -222,21 +254,21 @@ MStatus getListColorsJoints(MObject &skinCluster, MColorArray &jointsColors, boo
     return stat;
 }
 
-MStatus getListLockJoints(MObject &skinCluster, int nbJoints, MIntArray &jointsLocks) {
+MStatus getListLockJoints(MObject &skinCluster, int nbJoints, MIntArray indicesForInfluenceObjects,
+                          MIntArray &jointsLocks) {
     MStatus stat;
 
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug influenceColor_plug = skinClusterDep.findPlug("lockWeights");
+    MPlug influenceLock_plug = skinClusterDep.findPlug("lockWeights");
 
-    int nbPlugs = influenceColor_plug.numElements();
+    int nbPlugs = influenceLock_plug.numElements();
     jointsLocks.clear();
     jointsLocks.setLength(nbJoints);
     for (int i = 0; i < nbJoints; ++i) jointsLocks.set(0, i);
-    if (nbPlugs > nbJoints) jointsLocks.setLength(nbPlugs);
 
     for (int i = 0; i < nbPlugs; ++i) {
         // weightList[i]
-        MPlug lockPlug = influenceColor_plug.elementByPhysicalIndex(i);
+        MPlug lockPlug = influenceLock_plug.elementByPhysicalIndex(i);
         int isLocked = 0;
         if (lockPlug.isConnected()) {
             MPlugArray connections;
@@ -248,7 +280,15 @@ MStatus getListLockJoints(MObject &skinCluster, int nbJoints, MIntArray &jointsL
         } else {
             isLocked = lockPlug.asInt();
         }
-        jointsLocks.set(isLocked, i);
+        int logicalInd = lockPlug.logicalIndex();
+        logicalInd = indicesForInfluenceObjects[logicalInd];
+        if (logicalInd < 0 || logicalInd >= nbJoints) {
+            MGlobal::displayError(MString("CRASH i : ") + i + MString("logical Index: ") +
+                                  lockPlug.logicalIndex() +
+                                  MString(" | indicesForInfluenceObjects ") + logicalInd);
+            continue;
+        }
+        jointsLocks.set(isLocked, logicalInd);
         // MGlobal::displayInfo(lockPlug.name() + " " + isLocked);
     }
     return stat;
@@ -391,90 +431,86 @@ MStatus editLocks(MObject &skinCluster, MIntArray &inputVertsToLock, bool addToL
     stat = lockedVerticesPlug.setValue(tmpIntArray.create(theArrayValues));  // to set the attribute
     return stat;
 }
+/*
+MStatus	getListColors( MObject& skinCluster, int nbVertices, MColorArray & currColors, bool verbose,
+bool useMPlug) { MStatus stat; MFnDagNode skinClusterDag(skinCluster); MFnDependencyNode
+skinClusterDep(skinCluster); MColorArray jointsColors; getListColorsJoints(skinCluster,
+jointsColors, verbose);
 
-MStatus getListColors(MObject &skinCluster, int nbVertices, MColorArray &currColors, bool verbose,
-                      bool useMPlug) {
-    MStatus stat;
-    MFnDagNode skinClusterDag(skinCluster);
-    MFnDependencyNode skinClusterDep(skinCluster);
-    MColorArray jointsColors;
-    getListColorsJoints(skinCluster, jointsColors, verbose);
+        if (!useMPlug) {
+                MFnSkinCluster theSkinCluster(skinCluster);
+                int nbJoints = jointsColors.length();
 
-    if (!useMPlug) {
-        MFnSkinCluster theSkinCluster(skinCluster);
-        int nbJoints = jointsColors.length();
+                // now get the weights ----------------------------------------
+                MObject allVerticesObj;
 
-        // now get the weights ----------------------------------------
-        MObject allVerticesObj;
+                MFnSingleIndexedComponent allVertices;
+                MDoubleArray fullOrigWeights;
 
-        MFnSingleIndexedComponent allVertices;
-        MDoubleArray fullOrigWeights;
+                allVertices.setCompleteData(nbVertices);
+                allVerticesObj = allVertices.create(MFn::kMeshVertComponent);
+                unsigned int infCount;
 
-        allVertices.setCompleteData(nbVertices);
-        allVerticesObj = allVertices.create(MFn::kMeshVertComponent);
-        unsigned int infCount;
+                MDagPath path;
+                theSkinCluster.getPathAtIndex(0, path);
+                theSkinCluster.getWeights(path, allVerticesObj, fullOrigWeights, infCount);
 
-        MDagPath path;
-        theSkinCluster.getPathAtIndex(0, path);
-        theSkinCluster.getWeights(path, allVerticesObj, fullOrigWeights, infCount);
+                // now get the colors per vertices ----------------------------------------
+                int currentWeightsLength = fullOrigWeights.length();
+                int indexInfluence, i, indexWeight;
+                double theWeight, maxWeight;
 
-        // now get the colors per vertices ----------------------------------------
-        int currentWeightsLength = fullOrigWeights.length();
-        int indexInfluence, i, indexWeight;
-        double theWeight, maxWeight;
+                currColors.clear();
+                currColors.setLength(nbVertices);
 
-        currColors.clear();
-        currColors.setLength(nbVertices);
-
-        for (i = 0; i < nbVertices; ++i) {
-            MColor theColor;
-            maxWeight = 0.;
-            for (indexInfluence = 0; indexInfluence < nbJoints; indexInfluence++) {
-                indexWeight = i * nbJoints + indexInfluence;
-                theWeight = fullOrigWeights[indexWeight];
-                if (theWeight > 0.) {
-                    theColor += jointsColors[indexInfluence] * theWeight;
+                for (i = 0; i < nbVertices; ++i) {
+                        MColor theColor;
+                        maxWeight = 0.;
+                        for (indexInfluence = 0; indexInfluence < nbJoints; indexInfluence++) {
+                                indexWeight = i * nbJoints + indexInfluence;
+                                theWeight = fullOrigWeights[indexWeight];
+                                if (theWeight > 0.) {
+                                        theColor += jointsColors[indexInfluence] * theWeight;
+                                }
+                                currColors[i] = theColor;
+                        }
                 }
-                currColors[i] = theColor;
-            }
         }
-    } else {
-        MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
-        // MGlobal::displayInfo(weight_list_plug.name());
-        int nbElements = weight_list_plug.numElements();
-        currColors.clear();
-        currColors.setLength(nbVertices);
+        else {
+                MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
+                //MGlobal::displayInfo(weight_list_plug.name());
+                int nbElements = weight_list_plug.numElements();
+                currColors.clear();
+                currColors.setLength(nbVertices);
 
-        for (int i = 0; i < nbVertices; ++i) {
-            // weightList[i]
-            // if (i > 50) break;
-            MPlug ith_weights_plug = weight_list_plug.elementByPhysicalIndex(i);
-            int vertexIndex = ith_weights_plug.logicalIndex();
-            // MGlobal::displayInfo(ith_weights_plug.name());
+                for (int i = 0; i < nbVertices; ++i) {
+                        // weightList[i]
+                        //if (i > 50) break;
+                        MPlug ith_weights_plug = weight_list_plug.elementByPhysicalIndex(i);
+                        int vertexIndex = ith_weights_plug.logicalIndex();
+                        //MGlobal::displayInfo(ith_weights_plug.name());
 
-            // weightList[i].weight
-            MPlug plug_weights = ith_weights_plug.child(0);  // access first compound child
-            int nb_weights = plug_weights.numElements();
-            // MGlobal::displayInfo(plug_weights.name() + nb_weights);
-            MColor theColor;
-            for (int j = 0; j < nb_weights; j++) {  // for each joint
-                MPlug weight_plug = plug_weights.elementByPhysicalIndex(j);
-                // weightList[i].weight[j]
-                int indexInfluence = weight_plug.logicalIndex();
-                double theWeight = weight_plug.asDouble();
-                // MGlobal::displayInfo(weight_plug.name() + " " + indexInfluence + " " +
-                // theWeight);
-                if (theWeight > 0.01) {
-                    theColor += jointsColors[indexInfluence] * theWeight;
+                        // weightList[i].weight
+                        MPlug plug_weights = ith_weights_plug.child(0); // access first compound
+child int  nb_weights = plug_weights.numElements();
+                        //MGlobal::displayInfo(plug_weights.name() + nb_weights);
+                        MColor theColor;
+                        for (int j = 0; j < nb_weights; j++) { // for each joint
+                                MPlug weight_plug = plug_weights.elementByPhysicalIndex(j);
+                                // weightList[i].weight[j]
+                                int indexInfluence = weight_plug.logicalIndex();
+                                double theWeight = weight_plug.asDouble();
+                                //MGlobal::displayInfo(weight_plug.name() + " " + indexInfluence + "
+" + theWeight); if (theWeight > 0.01) { theColor += jointsColors[indexInfluence] * theWeight;
+                                }
+                        }
+                        currColors[vertexIndex] = theColor;
                 }
-            }
-            currColors[vertexIndex] = theColor;
         }
-    }
 
-    return MS::kSuccess;
+        return MS::kSuccess;
 }
-
+*/
 MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoints,
                   MDoubleArray &fullWeightArray, std::map<int, double> &valuesToSet,
                   MDoubleArray &theWeights, bool normalize, double mutliplier, bool verbose) {
@@ -555,9 +591,8 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
                     return MStatus::kFailure;
                 }
 
-                if (verbose)
-                    MGlobal::displayInfo(MString("-> editArray | lockJoints[") + jnt +
-                                         MString("] : ") + lockJoints[jnt]);
+                // if (verbose) MGlobal::displayInfo(MString("-> editArray | lockJoints[") + jnt+
+                // MString("] : ") + lockJoints[jnt]);
                 if (lockJoints[jnt] == 0) {
                     sumUnlockWeights += fullWeightArray[indexArray_fullWeightArray];
                 }

@@ -183,7 +183,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     if (argData.isFlagSet(kListVerticesIndicesFlag)) {
         bool foundListVerticesIndices = true;
         MIntArray indicesVertices;
-        int nbVerts;
         int nbUse = argData.numberOfFlagUses(kListVerticesIndicesFlag);
         MString toDisplay("List Vertices : ");
         for (int i = 0; i < nbUse; i++) {

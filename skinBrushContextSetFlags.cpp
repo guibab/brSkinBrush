@@ -389,8 +389,12 @@ MString SkinBrushContext::getInfluenceName() {
 }
 
 MString SkinBrushContext::getSkinClusterName() {
-    MFnDependencyNode skinDep(this->skinObj);
-    return skinDep.name();
+    if (!skinObj.isNull()) {
+        MFnDependencyNode skinDep(this->skinObj);
+        return skinDep.name();
+    } else {
+        return MString("");
+    }
 }
 
 MString SkinBrushContext::getMeshName() { return this->meshDag.fullPathName(); }
