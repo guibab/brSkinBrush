@@ -740,6 +740,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
         theCommandIndex = 7;                                       // unlockVertices
     if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
     if (drawTransparency || drawPoints) {
         if (theCommandIndex > 6)
             baseColor = white;
@@ -1318,12 +1319,26 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
             dicVertsDistSummedUp = dicVertsDistToGrow;
         }
 
-        if (event.isModifierNone())
+        if (event.isModifierNone()) {
             this->modifierNoneShiftControl = 0;
-        else if (event.isModifierShift())
-            this->modifierNoneShiftControl = 1;
-        else if (event.isModifierControl())
-            this->modifierNoneShiftControl = 2;
+        }
+
+        if (event.isModifierShift() || event.isModifierControl()) {
+            if (event.isModifierShift()) {
+                if (event.isModifierControl()) {
+                    // both shift and control pressed, merge new selections
+                    this->modifierNoneShiftControl = 3;
+                } else {
+                    // shift only, xor new selections with previous ones
+                    this->modifierNoneShiftControl = 1;
+                }
+            } else if (event.isModifierControl()) {
+                // control only, remove new selections from the previous list
+                this->modifierNoneShiftControl = 2;
+            }
+        } else {
+            this->modifierNoneShiftControl = 0;
+        }
 
         prepareArray(dicVertsDistSummedUp);
         performPaint(dicVertsDistSummedUp, dicVertsRed);
@@ -1527,6 +1542,7 @@ void SkinBrushContext::doTheAction() {
     if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
         theCommandIndex = 7;                                       // unlockVertices
     if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
     // MGlobal::displayInfo(MString("a| Vtx 241 ") + this->lockVertices[241]);
     if (theCommandIndex >= 6) {
         undoLocks.copy(this->lockVertices);
@@ -1691,6 +1707,7 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
     if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
         theCommandIndex = 7;                                       // unlockVertices
     if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
 
     double multiplier = 1.0;
     // if (!this->postSetting && theCommandIndex != 4) multiplier = .1; // less applying if dragging
@@ -2641,9 +2658,10 @@ bool SkinBrushContext::expandHit(int faceHit, MFloatPoint hitPoint,
 
 void SkinBrushContext::prepareArray(std::unordered_map<int, float> &dicVertsDist) {
     double valueStrength = strengthVal;
-    if (this->modifierNoneShiftControl == 2 || this->commandIndex == 4)
+    if (this->modifierNoneShiftControl >= 2 || this->commandIndex == 4) {
         valueStrength = smoothStrengthVal;  // smooth always we use the smooth value different of
                                             // the regular value
+    }
 
     if (fractionOversamplingVal) valueStrength /= oversamplingVal;
 
@@ -2668,6 +2686,7 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
     if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
         theCommandIndex = 7;                                       // unlockVertices
     if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
 
     if (theCommandIndex >= 6) {  // painting locks
         // if (!this->mirrorIsActive) {// we do the colors diferently if mirror is active

@@ -57,8 +57,9 @@ void SkinBrushContext::setFlood() {
     // UnLockVertices
     int theCommandIndex = this->commandIndex;
     if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
+    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
 
-    if (theCommandIndex == 4) value = smoothStrengthVal;
+    if (theCommandIndex == 4 || this->modifierNoneShiftControl >= 2) value = smoothStrengthVal;
     for (int i = 0; i < this->numVertices; ++i) {
         this->verticesPainted.insert(i);
         this->skinValuesToSet.insert(std::make_pair(i, value));
