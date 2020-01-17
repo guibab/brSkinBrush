@@ -185,6 +185,8 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
 
 void SkinBrushContext::toolOffCleanup() {
     setInViewMessage(false);
+    meshFn.updateSurface();  // try avoiding crashes
+
     MGlobal::executeCommand(exitToolCommandVal);
 
     MGlobal::executePythonCommand("toolOffCleanup()");
@@ -984,6 +986,7 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     // the brush size and strength values.
     startScreenX = this->screenX;
     startScreenY = this->screenY;
+    storedDistance = 0.0;  // for the drag screen middle click
 
     // Reset the adjustment from the previous drag.
     initAdjust = false;
@@ -1388,17 +1391,29 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
             slider = "Strength";
             dragDistance = deltaPos.y;
             max = 1;
-
-            speed *= 0.1;
+            speed *= 0.1;  // smaller for the upd and down
         }
-
-        // The control modifier scales the speed for a fine adjustment.
-        // if (event.isModifierControl())
-        if (event.isModifierShift()) speed *= 0.1;
+        double prevDist = 0.0;
+        // The shift modifier scales the speed for a fine adjustment.
+        if (event.isModifierShift()) {
+            if (!shiftMiddleDrag) {             // if we weren't in shift we reset
+                storedDistance = dragDistance;  // store the pixels to remove
+                shiftMiddleDrag = true;
+            }
+            prevDist = storedDistance * speed;  // store the previsou drag done
+            speed *= 0.1;
+        } else {
+            if (shiftMiddleDrag) {
+                storedDistance = dragDistance;
+                shiftMiddleDrag = false;
+            }
+            prevDist = storedDistance * speed;  // store the previous drag done
+        }
+        dragDistance -= storedDistance;
 
         // Calculate the new value by adding the drag distance to the
         // start value.
-        double value = baseValue + dragDistance * speed;
+        double value = baseValue + prevDist + dragDistance * speed;
 
         // Clamp the values to the min/max range.
         if (value < min)

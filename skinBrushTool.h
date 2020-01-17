@@ -442,6 +442,8 @@ class SkinBrushContext : public MPxContext {
     double rangeVal;
     double sizeVal;
     double strengthVal, smoothStrengthVal;
+    bool shiftMiddleDrag = false;  // for the mniddleClick drag
+    double storedDistance = 0.0;   // for the mniddleClick drag
 
     int undersamplingVal;
     bool volumeVal;
