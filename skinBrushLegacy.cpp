@@ -5,16 +5,14 @@
 // ---------------------------------------------------------------------
 
 MStatus SkinBrushContext::doPress(MEvent &event) {
-    selectionStatus = doPressCommon(event);
-    CHECK_MSTATUS_AND_RETURN_SILENT(selectionStatus);
+    MStatus status = doPressCommon(event);
+    CHECK_MSTATUS_AND_RETURN_SILENT(status);
 
     doDrag(event);
     return MStatus::kSuccess;
 }
 
 MStatus SkinBrushContext::doDrag(MEvent &event) {
-    CHECK_MSTATUS_AND_RETURN_SILENT(selectionStatus);
-
     MStatus status = MStatus::kSuccess;
 
     status = doDragCommon(event);
@@ -95,8 +93,6 @@ void SkinBrushContext::drawCircle(MPoint point, MMatrix mat, double radius) {
 }
 
 MStatus SkinBrushContext::doRelease(MEvent &event) {
-    CHECK_MSTATUS_AND_RETURN_SILENT(selectionStatus);
-
     doReleaseCommon(event);
     return MStatus::kSuccess;
 }

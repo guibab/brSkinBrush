@@ -249,7 +249,7 @@ class SkinBrushContext : public MPxContext {
     // common methods
     MStatus doPressCommon(MEvent event);
     MStatus doDragCommon(MEvent event);
-    void doReleaseCommon(MEvent event);
+    MStatus doReleaseCommon(MEvent event);
     void doTheAction();
 
     MStatus getMesh();
@@ -495,7 +495,7 @@ class SkinBrushContext : public MPxContext {
                                 // the press event.
     float previousHitDistance;  // The closest distance to the mesh on
 
-    MStatus selectionStatus;
+    MStatus pressStatus;
 
     MFnMesh meshFn;
     MDagPath meshDag;
@@ -614,10 +614,7 @@ class SkinBrushContext : public MPxContext {
     int modifierNoneShiftControl = 0;  // store the modifier type
 
     // std::vector <std::pair<int, float>> faceVertsDistSTART;
-    int previousfaceHit;  // the faceIndex that was hit during the press common
-
-    bool doAddingDots = false;
-
+    int previousfaceHit;   // the faceIndex that was hit during the press common
     int biggestInfluence;  // for while we search for biggest influence
 };
 

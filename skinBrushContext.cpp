@@ -629,19 +629,14 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
 
 MStatus SkinBrushContext::doPress(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
                                   const MHWRender::MFrameContext &context) {
-    selectionStatus = doPressCommon(event);
-    CHECK_MSTATUS_AND_RETURN_SILENT(selectionStatus);
-
+    pressStatus = doPressCommon(event);
+    CHECK_MSTATUS_AND_RETURN_SILENT(pressStatus);
     doDrag(event, drawMgr, context);
-
     return MStatus::kSuccess;
 }
 
 MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                                  const MHWRender::MFrameContext &context) {
-    CHECK_MSTATUS_AND_RETURN_SILENT(selectionStatus);
-
-    // MGlobal::displayInfo("MUIDrawManager doDrag ");
     MStatus status = MStatus::kSuccess;
 
     status = doDragCommon(event);
@@ -657,6 +652,7 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
     // display when painting or setting the brush size
     // -----------------------------------------------------------------
     if (drawBrushVal || event.mouseButton() == MEvent::kMiddleMouse) {
+        CHECK_MSTATUS_AND_RETURN_SILENT(pressStatus);
         drawManager.beginDrawable();
 
         drawManager.setColor(MColor((pow(colorVal.r, 0.454f)), (pow(colorVal.g, 0.454f)),
@@ -907,10 +903,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
 
 MStatus SkinBrushContext::doRelease(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
                                     const MHWRender::MFrameContext &context) {
-    CHECK_MSTATUS_AND_RETURN_SILENT(selectionStatus);
-
-    doReleaseCommon(event);
-    return MStatus::kSuccess;
+    return doReleaseCommon(event);
 }
 
 MStatus SkinBrushContext::refreshPointsNormals() {
@@ -1018,8 +1011,6 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
         surfacePointAdjust = this->centerOfBrush;
         worldVectorAdjust = this->worldVector;
     }
-    // no need apparently, it gets done in the drag
-    // maya2019RefreshColors();
     return status;
 }
 /*
@@ -1216,14 +1207,6 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         MFloatPointArray AllHitPoints;
         AllHitPoints.append(this->centerOfBrush);
 
-        if (this->doAddingDots) {
-            growArrayOfHits(this->dicVertsDistSTART);
-            for (const auto &element : this->dicVertsDistSTART) {
-                float value = (float)1.0 - (element.second / this->sizeVal);
-                auto ret = dicVertsDistSummedUp.insert(std::make_pair(element.first, value));
-                if (!ret.second) ret.first->second += value;
-            }
-        }
         // --------- LINE OF PIXELS --------------------
         std::vector<std::pair<short, short>> line2dOfPixels;
         // get pixels of the line of pixels
@@ -1239,43 +1222,19 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
             this->dicVertsDistSTART.clear();
             expandHit(faceHit, hitPoint, this->dicVertsDistSTART);  // for next beginning
         }
+
         if (!this->successFullDragHit && !successFullHit2)  // moving in empty zone
             return MStatus::kNotFound;
+
         this->successFullDragHit = successFullHit2;
 
         // else
         //	MGlobal::displayInfo("FAILED HIT");
 
         int incrementValue = 1;
-        if (this->doAddingDots) {  // we compute the increment for how many hits
-
-            double worldDistanceBetweenHits;
-            if (!successFullHit) {
-                // now get the world position where it would hit if same distance as previous hit !!
-                MPoint worldPt;
-                MVector worldVector;
-                view.viewToWorld(this->screenX, this->screenY, worldPt, worldVector);
-                MPoint hitPosiForSameDist = worldPt + this->previousHitDistance * worldVector;
-                worldDistanceBetweenHits = this->centerOfBrush.distanceTo(hitPosiForSameDist);
-
-                this->centerOfBrush = hitPosiForSameDist;
-            } else {
-                worldDistanceBetweenHits = this->centerOfBrush.distanceTo(hitPoint);
-                this->previousHitDistance = this->pressDistance;
-                this->centerOfBrush = hitPoint;
-            }
-
-            // number of brush stamps to make ---------------
-            int nbStamps = std::max(1, int(worldDistanceBetweenHits / this->sizeVal) *
-                                           6);  //  *this->stepsToDrawLineVal;
-            // MGlobal::displayInfo(MString("nbStamps ") + nbStamps + MString(" stepsLine ") +
-            // this->stepsToDrawLineVal);
-            incrementValue = std::max(1, nbPixelsOfLine / nbStamps);
-        } else {
-            if (this->successFullDragHit) {
-                this->previousHitDistance = this->pressDistance;
-                this->centerOfBrush = hitPoint;
-            }
+        if (this->successFullDragHit) {
+            this->previousHitDistance = this->pressDistance;
+            this->centerOfBrush = hitPoint;
         }
         if (incrementValue < nbPixelsOfLine) {
             for (int i = incrementValue; i < nbPixelsOfLine; i += incrementValue) {
@@ -1287,20 +1246,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
                 if (successFullHit2) {
                     AllHitPoints.append(hitPoint);
 
-                    if (this->doAddingDots) {
-                        std::unordered_map<int, float> dicVertsDist;
-                        successFullHit2 = expandHit(faceHit, hitPoint, dicVertsDist);
-                        growArrayOfHits(dicVertsDist);
-
-                        for (const auto &element : dicVertsDist) {
-                            float value = 1.0 - (element.second / this->sizeVal);
-                            auto ret =
-                                dicVertsDistSummedUp.insert(std::make_pair(element.first, value));
-                            if (!ret.second) ret.first->second += value;
-                        }
-                    } else {
-                        successFullHit2 = expandHit(faceHit, hitPoint, dicVertsDistToGrow);
-                    }
+                    successFullHit2 = expandHit(faceHit, hitPoint, dicVertsDistToGrow);
                 }
                 // else
                 //	MGlobal::displayInfo("-------- FAILED HIT 2");
@@ -1314,10 +1260,8 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
         }
 
         // let's expand these arrays ----------------
-        if (!this->doAddingDots) {
-            growArrayOfHitsFromCenters(dicVertsDistToGrow, AllHitPoints);
-            dicVertsDistSummedUp = dicVertsDistToGrow;
-        }
+        growArrayOfHitsFromCenters(dicVertsDistToGrow, AllHitPoints);
+        dicVertsDistSummedUp = dicVertsDistToGrow;
 
         if (event.isModifierNone()) {
             this->modifierNoneShiftControl = 0;
@@ -1486,13 +1430,14 @@ MGlobal::executeCommand(cmd);
     return status;
 }
 
-void SkinBrushContext::doReleaseCommon(MEvent event) {
+MStatus SkinBrushContext::doReleaseCommon(MEvent event) {
     // Don't continue if no mesh has been set.
-    if (meshFn.object().isNull()) return;
+    if (meshFn.object().isNull()) return MS::kFailure;
     this->refreshDone = false;
     // Define, which brush setting has been adjusted and needs to get
     // stored.
     if (event.mouseButton() == MEvent::kMiddleMouse) {
+        CHECK_MSTATUS_AND_RETURN_SILENT(pressStatus);
         if (sizeAdjust) {
             sizeVal = adjustValue;
         } else {
@@ -1506,6 +1451,7 @@ void SkinBrushContext::doReleaseCommon(MEvent event) {
     if (performBrush) {
         doTheAction();
     }
+    return MS::kSuccess;
 }
 
 void SkinBrushContext::doTheAction() {
@@ -2665,12 +2611,10 @@ void SkinBrushContext::prepareArray(std::unordered_map<int, float> &dicVertsDist
 
     if (fractionOversamplingVal) valueStrength /= oversamplingVal;
 
-    if (!this->doAddingDots) {  // set upToOne
-        for (auto &element : dicVertsDist) {
-            float value = 1.0 - (element.second / this->sizeVal);
-            value = (float)getFalloffValue(value, valueStrength);
-            element.second = value;
-        }
+    for (auto &element : dicVertsDist) {
+        float value = 1.0 - (element.second / this->sizeVal);
+        value = (float)getFalloffValue(value, valueStrength);
+        element.second = value;
     }
 }
 
@@ -2997,6 +2941,7 @@ void SkinBrushContext::getVerticesInVolumeRange(int index, MIntArray volumeIndic
 //      double              The brush curve-based falloff value.
 //
 double SkinBrushContext::getFalloffValue(double value, double strength) {
+    // MGlobal::displayInfo(MString("Curve ") + curveVal);
     if (curveVal == 0) return 1.0 * strength;
     // linear
     else if (curveVal == 1)
