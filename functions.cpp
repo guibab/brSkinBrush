@@ -593,7 +593,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
 
                 // if (verbose) MGlobal::displayInfo(MString("-> editArray | lockJoints[") + jnt+
                 // MString("] : ") + lockJoints[jnt]);
-                if (lockJoints[jnt] == 0) {
+                if (lockJoints[jnt] == 0) {  // not locked
                     sumUnlockWeights += fullWeightArray[indexArray_fullWeightArray];
                 }
                 theWeights[indexArray_theWeight] =
@@ -629,7 +629,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
             double oldRest = sumUnlockWeights - currentW;
             double div = sumUnlockWeights;
 
-            if (newRest != 0.0) div = oldRest / newRest * sumUnlockWeights;
+            if (newRest != 0.0) div = oldRest / newRest;  // produit en croix
 
             // do the locks !!
             double sum = 0.0;

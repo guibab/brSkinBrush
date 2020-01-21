@@ -406,8 +406,8 @@ MStatus skinBrushTool::callBrushRefresh() {
         MGlobal::executeCommandOnIdle(melCmd);
         */
         MGlobal::executePythonCommandOnIdle(cmd);
+        MGlobal::executePythonCommand("afterPaint()");
     }
-
     return MStatus::kSuccess;
 }
 

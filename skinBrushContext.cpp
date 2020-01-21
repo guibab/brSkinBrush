@@ -69,7 +69,7 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         MGlobal::displayInfo(MString(" --------->  moduleImportString : ") + moduleImportString);
     MGlobal::executePythonCommand(
         moduleImportString + MString("toolOnSetupEnd, toolOffCleanup, toolOnSetupStart, fnFonts, "
-                                     "headsUpMessage, updateDisplayStrengthOrSize\n"));
+                                     "headsUpMessage, updateDisplayStrengthOrSize, afterPaint\n"));
     MGlobal::executePythonCommand("toolOnSetupStart()");
 
     this->pickMaxInfluenceVal = false;
@@ -638,6 +638,9 @@ MStatus SkinBrushContext::doPress(MEvent &event, MHWRender::MUIDrawManager &draw
 MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                                  const MHWRender::MFrameContext &context) {
     MStatus status = MStatus::kSuccess;
+    if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
+        return MS::kFailure;
+    }
 
     status = doDragCommon(event);
     if (this->postSetting && !this->useColorSetsWhilePainting) {
@@ -937,8 +940,8 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
     view = M3dView::active3dView();
 
     if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
-        this->pickMaxInfluenceVal = false;
-        this->pickInfluenceVal = false;
+        // this->pickMaxInfluenceVal = false;  into release
+        // this->pickInfluenceVal = false;into release
         this->BBoxOfDeformers.clear();
 
         if (biggestInfluence != this->influenceIndex && biggestInfluence != -1) {
@@ -1433,6 +1436,10 @@ MGlobal::executeCommand(cmd);
 MStatus SkinBrushContext::doReleaseCommon(MEvent event) {
     // Don't continue if no mesh has been set.
     if (meshFn.object().isNull()) return MS::kFailure;
+    if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
+        this->pickMaxInfluenceVal = false;
+        this->pickInfluenceVal = false;
+    }
     this->refreshDone = false;
     // Define, which brush setting has been adjusted and needs to get
     // stored.
@@ -1629,6 +1636,7 @@ void SkinBrushContext::doTheAction() {
     cmd->finalize();
     if (verbose) MGlobal::displayInfo(MString("maya2019RefreshColors"));
     maya2019RefreshColors();
+    MGlobal::executePythonCommand("afterPaint()");
 }
 // ---------------------------------------------------------------------
 // Commands
