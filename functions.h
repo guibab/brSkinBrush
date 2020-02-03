@@ -12,6 +12,7 @@
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnIntArrayData.h>
 #include <maya/MFnMesh.h>
+#include <maya/MFnNurbsSurface.h>
 #include <maya/MFnSingleIndexedComponent.h>
 #include <maya/MFnSkinCluster.h>
 #include <maya/MGlobal.h>
@@ -20,6 +21,7 @@
 #include <maya/MObject.h>
 #include <maya/MObjectArray.h>
 #include <maya/MPlug.h>
+#include <maya/MPointArray.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -40,6 +42,7 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
                bool VIsPeriodic, MIntArray& vertices);
 MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinCluster,
                         bool verbose);
+MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose);
 MStatus findMesh(MObject& theSkinCluster, MDagPath& theMeshPath, bool verbose);
 MStatus findOrigMesh(MObject& theSkinCluster, MObject& origMesh, bool verbose);
 // MStatus getListColors( MObject& skinCluster, int nbVertices, MColorArray & currColors, bool
@@ -65,6 +68,7 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
                          int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
                          MDoubleArray& theWeights, double strengthVal);
 MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWeight);
+MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nrbs);
 
 bool RayIntersectsBBox(MPoint minPt, MPoint maxPt, MPoint Orig, MVector dest);
 

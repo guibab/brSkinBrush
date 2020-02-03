@@ -258,63 +258,14 @@ MStatus skinBrushTool::doIt(const MArgList& args) {
 }
 
 MStatus skinBrushTool::redoIt() {
-    MStatus status = MStatus::kSuccess;
-
     MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") +
                          this->commandIndex);
-    status = getSkinClusterObj();
-    if (status != MStatus::kSuccess) {
-        MGlobal::displayError(MString("skinBrushTool::redoIt error getting the skin "));
-        return status;
-    }
-    // Apply the redo weights and get the current weights for undo.
-    MFnSkinCluster skinFn(skinObj, &status);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
-
-    if (this->commandIndex < 6 && this->redoWeights.length()) {
-        MFnSingleIndexedComponent compFn;
-        MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
-        compFn.addElements(this->undoVertices);
-
-        skinFn.setWeights(meshDag, weightsObj, influenceIndices, redoWeights, true);  // normalize);
-        // refresh the tool points positions ---------
-    }
-    if (this->commandIndex >= 6) {
-        MGlobal::displayInfo("redo it updateSurface : lock / unlock vertices");
-
-        MObjectArray objectsDeformed;
-        skinFn.getOutputGeometry(objectsDeformed);
-        MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
-        MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", &stat);
-        if (MS::kSuccess != status) {
-            MGlobal::displayError(MString("cant find lockerdVertices plug"));
-            return status;
-        }
-        // now set the value ---------------------------
-        MFnIntArrayData tmpIntArray;
-
-        MIntArray theArrayValues;
-        for (unsigned int vtx = 0; vtx < redoLocks.length(); ++vtx) {
-            if (redoLocks[vtx] == 1) theArrayValues.append(vtx);
-        }
-        status = lockedVerticesPlug.setValue(
-            tmpIntArray.create(theArrayValues));  // to set the attribute
-
-        // we need a hard refresh of invalidate for the undo / redo ---
-
-        MFnMesh meshFn;
-        meshFn.setObject(meshDag);
-        meshFn.updateSurface();
-    }
-    callBrushRefresh();
-    return MStatus::kSuccess;
+    return setWeights(true);
 }
 
-MStatus skinBrushTool::undoIt() {
+MStatus skinBrushTool::setWeights(bool isUndo) {
     MStatus status = MStatus::kSuccess;
 
-    MGlobal::displayInfo(MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
-                         this->commandIndex);
     status = getSkinClusterObj();
     if (status != MStatus::kSuccess) {
         MGlobal::displayError(MString("skinBrushTool::undoIt error getting the skin "));
@@ -323,17 +274,49 @@ MStatus skinBrushTool::undoIt() {
     MFnSkinCluster skinFn(skinObj, &status);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
-    if (this->commandIndex < 6 && this->undoWeights.length()) {
-        MFnSingleIndexedComponent compFn;
-        MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
-        compFn.addElements(this->undoVertices);
+    int theWeightsLength;
+    if (isUndo)
+        theWeightsLength = this->undoWeights.length();
+    else
+        theWeightsLength = this->redoWeights.length();
+    MFnMesh meshFn;
+    meshFn.setObject(meshDag);
+    MFnNurbsSurface nrbsFn;
+    nrbsFn.setObject(nurbsDag);
 
-        // Apply the previous weights and get the current weights for
-        // redo.
-        // skinFn.setWeights(meshDag, weightsObj, influenceIndices, this->undoWeights, normalize,
-        // &redoWeights);
-        skinFn.setWeights(meshDag, weightsObj, influenceIndices, this->undoWeights, true,
-                          &redoWeights);
+    if (this->commandIndex < 6 && theWeightsLength > 0) {
+        MObject weightsObj;
+        if (!isNurbs) {
+            MFnSingleIndexedComponent compFn;
+            weightsObj = compFn.create(MFn::kMeshVertComponent);
+            compFn.addElements(this->undoVertices);
+            if (isUndo) {
+                skinFn.setWeights(meshDag, weightsObj, influenceIndices, this->undoWeights, true,
+                                  &redoWeights);
+            } else {
+                skinFn.setWeights(meshDag, weightsObj, influenceIndices, this->redoWeights, true);
+            }
+        } else {
+            MFnDoubleIndexedComponent doubleFn;
+            weightsObj = doubleFn.create(MFn::kSurfaceCVComponent);
+            // MFnSingleIndexedComponent theVertex;
+            int uVal, vVal;
+            for (int vert : this->undoVertices) {
+                vVal = (int)vert % (int)numCVsInV_;
+                uVal = (int)vert / (int)numCVsInV_;
+                doubleFn.addElement(uVal, vVal);
+            }
+            if (isUndo) {
+                skinFn.setWeights(nurbsDag, weightsObj, influenceIndices, this->undoWeights, true,
+                                  &redoWeights);
+            } else {
+                skinFn.setWeights(nurbsDag, weightsObj, influenceIndices, this->redoWeights, true);
+            }
+        }
+
+        if (isNurbs) {
+            transferPointNurbsToMesh(meshFn, nrbsFn);  // we transfer the points postions
+        }
     }
 
     if (this->commandIndex >= 6) {
@@ -357,11 +340,13 @@ MStatus skinBrushTool::undoIt() {
         status = lockedVerticesPlug.setValue(
             tmpIntArray.create(theArrayValues));  // to set the attribute
         // we need a hard refresh of invalidate for the undo / redo ---
-        MFnMesh meshFn;
-        meshFn.setObject(meshDag);
+    }
+    if ((this->commandIndex >= 6) || isNurbs) {
         meshFn.updateSurface();
     }
+
     callBrushRefresh();
+    return status;
     /*
     MGlobal::getActiveSelectionList(redoSelection);
     MGlobal::getHiliteList(redoHilite);
@@ -369,7 +354,12 @@ MStatus skinBrushTool::undoIt() {
     MGlobal::setActiveSelectionList(undoSelection);
     MGlobal::setHiliteList(undoHilite);
     */
-    return status;
+}
+
+MStatus skinBrushTool::undoIt() {
+    MGlobal::displayInfo(MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
+                         this->commandIndex);
+    return setWeights(true);
 }
 
 MStatus skinBrushTool::callBrushRefresh() {
@@ -614,6 +604,8 @@ MStatus skinBrushTool::getSkinClusterObj() {
 
 void skinBrushTool::setMesh(MDagPath dagPath) { meshDag = dagPath; }
 
+void skinBrushTool::setNurbs(MDagPath dagPath) { nurbsDag = dagPath; }
+
 void skinBrushTool::setNormalize(bool value) { normalize = value; }
 
 /*
@@ -625,6 +617,8 @@ void skinBrushTool::setSelection(MSelectionList selection, MSelectionList hilite
 */
 
 void skinBrushTool::setSkinCluster(MObject skinCluster) { skinObj = skinCluster; }
+void skinBrushTool::setIsNurbs(bool value) { isNurbs = value; }
+void skinBrushTool::setnumCVInV(int value) { numCVsInV_ = value; }
 
 void skinBrushTool::setSkinClusterName(MString skinClusterName) { skinName = skinClusterName; }
 

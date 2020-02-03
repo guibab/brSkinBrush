@@ -29,8 +29,10 @@
 #include <maya/MFloatPointArray.h>
 #include <maya/MFnCamera.h>
 #include <maya/MFnDoubleArrayData.h>
+#include <maya/MFnDoubleIndexedComponent.h>
 #include <maya/MFnMatrixData.h>
 #include <maya/MFnMesh.h>
+#include <maya/MFnNurbsSurface.h>
 #include <maya/MFnSingleIndexedComponent.h>
 #include <maya/MFnSkinCluster.h>
 #include <maya/MFrameContext.h>
@@ -98,6 +100,7 @@ class skinBrushTool : public MPxToolCommand {
     MStatus doIt(const MArgList &args);
     MStatus redoIt();
     MStatus undoIt();
+    MStatus setWeights(bool isUndo);
     MStatus callBrushRefresh();
     MStatus finalize();
 
@@ -133,10 +136,14 @@ class skinBrushTool : public MPxToolCommand {
     void setInfluenceIndices(MIntArray indices);
     void setInfluenceName(MString name);
     void setMesh(MDagPath dagPath);
+    void setNurbs(MDagPath dagPath);
     void setNormalize(bool value);
     // void setSelection(MSelectionList selection, MSelectionList hilite);
 
     void setSkinCluster(MObject skinCluster);
+    void setIsNurbs(bool value);
+    void setnumCVInV(int value);
+
     void setSkinClusterName(MString skinClusterName);
     MStatus getSkinClusterObj();
 
@@ -194,9 +201,11 @@ class skinBrushTool : public MPxToolCommand {
     double maxSoloColor = 1.0;
 
     MIntArray influenceIndices;
-    MDagPath meshDag;
+    MDagPath meshDag, nurbsDag;
     MObject skinObj;
     MString skinName;
+    bool isNurbs = false;
+    int numCVsInV_ = 0;
 
     bool normalize;
     MString influenceName;
@@ -498,8 +507,17 @@ class SkinBrushContext : public MPxContext {
     MStatus pressStatus;
 
     MFnMesh meshFn;
-    MDagPath meshDag;
+    MFnNurbsSurface nurbsFn;
+    bool isNurbs = false;
+
+    MDagPath meshDag, nurbsDag;
     unsigned int numVertices = 0, numFaces = 0;
+
+    unsigned int numElements = 0;
+    unsigned int numCVsInV_ = 0, numCVsInU_ = 0;
+    bool UIsPeriodic_ = false, VIsPeriodic_ = false;
+    unsigned int UDeg_ = 0, VDeg_ = 0;
+
     MIntArray vtxSelection;  // The currently selected vertices. This
                              // is used for flooding.
 

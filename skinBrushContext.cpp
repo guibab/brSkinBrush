@@ -97,8 +97,8 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
         getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
 
-        // status = fillArrayValues(skinObj, true); // WAY TOO SLOW ... but accurate ?
-        status = fillArrayValuesDEP(skinObj, true);  // get the skin data and all the colors
+        status = fillArrayValues(skinObj, true);  // WAY TOO SLOW ... but accurate ?
+        // status = fillArrayValuesDEP(skinObj, true); // get the skin data and all the colors
         /*
         MGlobal::displayInfo(MString ("DEP this->skinWeightList ") + this->skinWeightList.length());
         MGlobal::displayInfo(MString ("DEP this->nbJoints  " )+ this->nbJoints);
@@ -204,17 +204,19 @@ void SkinBrushContext::refreshJointsLocks() {
 
 void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     // this command is used when undo is called
-    /*
-    if (verbose) MGlobal::displayInfo(" - refreshThisVertices-");
-    MString toDisplay("List Vertices : ");
-    int nbVerts = verticesIndices.length();
-    for (int i = 0; i < nbVerts; ++i) {
+
+    if (verbose) {
+        MGlobal::displayInfo(" - refreshThisVertices-");
+        MString toDisplay("List Vertices : ");
+        int nbVerts = verticesIndices.length();
+        for (int i = 0; i < nbVerts; ++i) {
             int vtxIndex = verticesIndices[i];
             toDisplay += vtxIndex;
             toDisplay += MString(" - ");
+        }
+        MGlobal::displayInfo(toDisplay);
     }
-    MGlobal::displayInfo(toDisplay);
-    */
+
     querySkinClusterValues(this->skinObj, verticesIndices, true);
     // query the Locks
     getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
@@ -297,7 +299,7 @@ void SkinBrushContext::refresh() {
         if (MS::kSuccess != status) {
             MGlobal::displayError(MString("error getListLockVertices"));
         }
-        status = fillArrayValues(skinObj, true);  // get the skin data and all the colors
+        status = fillArrayValuesDEP(skinObj, true);  // get the skin data and all the colors
     } else {
         MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
         return;
@@ -1608,9 +1610,14 @@ void SkinBrushContext::doTheAction() {
 
     MFnDependencyNode skinDep(this->skinObj);
     MString skinName = skinDep.name();
-
     cmd->setMesh(meshDag);
+
+    if (isNurbs) {
+        cmd->setNurbs(nurbsDag);
+        cmd->setnumCVInV(numCVsInV_);
+    }
     cmd->setSkinCluster(skinObj);
+    cmd->setIsNurbs(isNurbs);
     // cmd->setSkinClusterName(skinName);
 
     cmd->setInfluenceIndices(influenceIndices);
@@ -1762,9 +1769,30 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, do
         CHECK_MSTATUS_AND_RETURN_IT(status);
         this->skinWeightsForUndo.clear();
         if (verbose) MGlobal::displayInfo(MString(" applyCommand | before skinFn.setWeights"));
+        if (!isNurbs) {
+            skinFn.setWeights(meshDag, weightsObj, influenceIndices, theWeights, normalize,
+                              &this->skinWeightsForUndo);
+        } else {
+            MFnDoubleIndexedComponent doubleFn;
+            MObject weightsObjNurbs = doubleFn.create(MFn::kSurfaceCVComponent);
+            // MFnSingleIndexedComponent theVertex;
+            int uVal, vVal;
+            for (int vert : objVertices) {
+                if (verbose)
+                    MGlobal::displayInfo(MString(" vert  : ") + vert +
+                                         MString("  |  numCVsInV_ : ") + numCVsInV_);
 
-        skinFn.setWeights(meshDag, weightsObj, influenceIndices, theWeights, normalize,
-                          &this->skinWeightsForUndo);
+                vVal = (int)vert % (int)numCVsInV_;
+                uVal = (int)vert / (int)numCVsInV_;
+                if (verbose)
+                    MGlobal::displayInfo(MString(" vert  : ") + vert + MString(" : ") + uVal +
+                                         MString("  |  ") + vVal);
+                doubleFn.addElement(uVal, vVal);
+            }
+            skinFn.setWeights(nurbsDag, weightsObjNurbs, influenceIndices, theWeights, normalize,
+                              &this->skinWeightsForUndo);
+            transferPointNurbsToMesh(meshFn, nurbsFn);  // we transfer the points postions
+        }
         if (verbose)
             MGlobal::displayInfo(MString(" applyCommand | before refreshPointsAndNormals"));
         // in do press common
@@ -1846,13 +1874,12 @@ MStatus SkinBrushContext::refreshColors(MIntArray &editVertsIndices, MColorArray
             multiEditColors[i] = multiColor;
             soloEditColors[i] = soloColor;
         }
-        /*
-        if (theVert == 241) {
-                MGlobal::displayInfo(MString("refreshColors| Vtx 241 ") + isVtxLocked);
-                MGlobal::displayInfo(MString("r ") + multiEditColors[i].r + MString(" g ") +
-        multiEditColors[i].g + MString("b ") + multiEditColors[i].b );
+
+        if (verbose && theVert == 4) {
+            MGlobal::displayInfo(MString("refreshColors| Vtx 4 | isLocked ") + isVtxLocked);
+            MGlobal::displayInfo(MString("r ") + multiEditColors[i].r + MString(" g ") +
+                                 multiEditColors[i].g + MString("b ") + multiEditColors[i].b);
         }
-        */
     }
     return status;
 }
@@ -1884,15 +1911,38 @@ MStatus SkinBrushContext::getMesh() {
     MStatus status = MStatus::kSuccess;
     // Clear the previous data.
     meshDag = MDagPath();
+    nurbsDag = MDagPath();
     skinObj = MObject();
     // -----------------------------------------------------------------
     // mesh
     // -----------------------------------------------------------------
-
     MDagPath dagPath;
     status = getSelection(meshDag);
     CHECK_MSTATUS_AND_RETURN_IT(status);
+    if (meshDag.apiType() == MFn::kNurbsSurface) {  // if is nurbs
+        isNurbs = true;
+        MObject foundMesh;
+        findNurbsTesselate(meshDag, foundMesh, true);
+        // nurbsDag = meshDag;
+        status = MDagPath::getAPathTo(foundMesh, meshDag);
+        // MFnNurbsSurface MfnSurface(dagPath);
+        status = getSelection(nurbsDag);
+        nurbsFn.setObject(nurbsDag);
 
+        numCVsInV_ = nurbsFn.numCVsInV();
+        numCVsInU_ = nurbsFn.numCVsInU();
+        UIsPeriodic_ = nurbsFn.formInU() == MFnNurbsSurface::kPeriodic;
+        VIsPeriodic_ = nurbsFn.formInV() == MFnNurbsSurface::kPeriodic;
+        UDeg_ = nurbsFn.degreeU();
+        VDeg_ = nurbsFn.degreeV();
+        // int vertInd;
+        if (VIsPeriodic_) numCVsInV_ -= VDeg_;
+        if (UIsPeriodic_) numCVsInU_ -= UDeg_;
+    } else {
+        isNurbs = false;
+    }
+    MGlobal::displayInfo(MString(" is nurbs : ") + isNurbs);
+    MGlobal::displayInfo(MString(" painting : ") + meshDag.fullPathName());
     // Set the mesh.
     meshFn.setObject(meshDag);
     numVertices = (unsigned)meshFn.numVertices();
@@ -1918,18 +1968,27 @@ MStatus SkinBrushContext::getMesh() {
     // meshFn.getPoints(this->vertexArray);
     this->mayaRawPoints = meshFn.getRawPoints(&status);
     this->lockVertices = MIntArray(this->numVertices, 0);
+
     // -----------------------------------------------------------------
     // skin cluster
     // -----------------------------------------------------------------
     // Get the skin cluster node from the history of the mesh.
     MObject skinClusterObj;
-    status = getSkinCluster(meshDag, skinClusterObj);
+    if (isNurbs) {
+        status = getSkinCluster(nurbsDag, skinClusterObj);
+    } else {
+        status = getSkinCluster(meshDag, skinClusterObj);
+    }
     CHECK_MSTATUS_AND_RETURN_IT(status);
     // Store the skin cluster for undo.
     skinObj = skinClusterObj;
     // for the influences ----------------
     // Create a component object representing all vertices of the mesh.
-    allVtxCompObj = allVertexComponents(meshDag);
+    if (isNurbs) {
+        allVtxCompObj = allVertexComponents(meshDag);
+    } else {
+        allVtxCompObj = allVertexComponents(nurbsDag);
+    }
 
     // Create a component object representing only the modified
     // vertices. This is needed to improve performance for undo/redo.
@@ -2198,9 +2257,9 @@ MStatus SkinBrushContext::getSelection(MDagPath &dagPath) {
         }
     }
 
-    if (!dagPath.hasFn(MFn::kMesh)) {
+    if (!(dagPath.hasFn(MFn::kMesh) || dagPath.hasFn(MFn::kNurbsSurface))) {
         dagPath = MDagPath();
-        MGlobal::displayWarning("Only mesh objects are supported.");
+        MGlobal::displayWarning("Only mesh and nurbs objects are supported.");
         return MStatus::kNotFound;
     }
 
@@ -2260,7 +2319,11 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
     CHECK_MSTATUS_AND_RETURN_IT(status);
     unsigned int infCount;
 
-    skinFn.getWeights(meshDag, allVtxCompObj, this->skinWeightList, infCount);
+    if (!isNurbs) {
+        status = skinFn.getWeights(meshDag, allVtxCompObj, this->skinWeightList, infCount);
+    } else {
+        status = skinFn.getWeights(nurbsDag, allVtxCompObj, this->skinWeightList, infCount);
+    }
     CHECK_MSTATUS_AND_RETURN_IT(status);
     this->nbJoints = infCount;
 
@@ -2295,8 +2358,8 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
             }
             if (doColors) {  // not store lock vert color
                 this->multiCurrentColors[vertexIndex] = theColor;
-                if ((verbose) && (vertexIndex == 144)) {
-                    MGlobal::displayInfo(MString(" VTX 144 R: ") + theColor.r + MString("  G: ") +
+                if ((verbose) && (vertexIndex == 4)) {
+                    MGlobal::displayInfo(MString(" VTX 4 R: ") + theColor.r + MString("  G: ") +
                                          theColor.g + MString("  B: ") + theColor.b +
                                          MString("  "));
                 }
@@ -2488,16 +2551,32 @@ MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray 
                                                  bool doColors) {
     MStatus status = MS::kSuccess;
 
-    MFnSingleIndexedComponent compFn;
-    MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
-    compFn.addElements(verticesIndices);
-
     if (meshDag.node().isNull()) return MStatus::kNotFound;
 
     MFnSkinCluster skinFn(skinCluster, &status);
     MDoubleArray weightsVertices;
     unsigned int infCount;
-    skinFn.getWeights(meshDag, weightsObj, weightsVertices, infCount);
+
+    if (!isNurbs) {
+        MFnSingleIndexedComponent compFn;
+        MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
+        compFn.addElements(verticesIndices);
+        status = skinFn.getWeights(meshDag, weightsObj, weightsVertices, infCount);
+    } else {
+        MFnDoubleIndexedComponent doubleFn;
+        MObject weightsObjNurbs = doubleFn.create(MFn::kSurfaceCVComponent);
+        // MFnSingleIndexedComponent theVertex;
+        int uVal, vVal;
+        for (int vert : verticesIndices) {
+            vVal = (int)vert % (int)numCVsInV_;
+            uVal = (int)vert / (int)numCVsInV_;
+            doubleFn.addElement(uVal, vVal);
+        }
+        status = skinFn.getWeights(nurbsDag, weightsObjNurbs, weightsVertices, infCount);
+    }
+    if (status != MS::kSuccess) {
+        MGlobal::displayError("querySkinClusterValues | can't Query skin values \n");
+    }
 
     for (unsigned int i = 0; i < verticesIndices.length(); ++i) {
         int vertexIndex = verticesIndices[i];
@@ -2832,10 +2911,28 @@ MStatus SkinBrushContext::performPaint(std::unordered_map<int, float> &dicVertsD
 //      MObject             The component object for all mesh vertices.
 //
 MObject SkinBrushContext::allVertexComponents(MDagPath meshDag) {
-    MFnSingleIndexedComponent compFn;
-    MObject vtxComponents = compFn.create(MFn::kMeshVertComponent);
-    MFnMesh meshFn(meshDag);
-    compFn.setCompleteData((int)numVertices);
+    MObject vtxComponents;
+    if (!isNurbs) {
+        MFnSingleIndexedComponent compFn;
+        vtxComponents = compFn.create(MFn::kMeshVertComponent);
+        MFnMesh meshFn(meshDag);
+        compFn.setCompleteData((int)numVertices);
+        numElements = numVertices;
+    } else {
+        MFnDoubleIndexedComponent allCVs;
+        int sizeInV = nurbsFn.numCVsInV();
+        int sizeInU = nurbsFn.numCVsInU();
+        /*
+        for (int indexU = 0; indexU < sizeInU; indexU++) {
+                for (int indexV = 0; indexV < sizeInV; indexV++) {
+                        allCVs.addElement(indexU, indexV);
+                }
+        }
+        */
+        vtxComponents = allCVs.create(MFn::kSurfaceCVComponent);
+        allCVs.setCompleteData(sizeInU, sizeInV);
+        numElements = allCVs.elementCount();
+    }
     return vtxComponents;
 }
 

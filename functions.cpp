@@ -2,7 +2,7 @@
 
 #include <limits>
 
-unsigned int getMIntArrayIndex(MIntArray &myArray, int searching) {
+unsigned int getMIntArrayIndex(MIntArray& myArray, int searching) {
     unsigned int toReturn = -1;
     for (unsigned int element = 0; element < myArray.length(); ++element) {
         if (myArray[element] == searching) {
@@ -14,7 +14,7 @@ unsigned int getMIntArrayIndex(MIntArray &myArray, int searching) {
 }
 
 void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsPeriodic,
-               bool VIsPeriodic, MIntArray &vertices) {
+               bool VIsPeriodic, MIntArray& vertices) {
     int resCV;
     // plus U
     int UNext = storedU + 1;
@@ -59,8 +59,65 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
     // vertInd = numCVsInV * indexU + indexV;
 }
 
+MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nrbs) {
+    MStatus stat = MS::kSuccess;
+    MPointArray allpts;
+    stat = nrbs.getCVs(allpts);
+    msh.setPoints(allpts);
+
+    return stat;
+}
+
+MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose) {
+    if (verbose) MGlobal::displayInfo(MString(" ---- findNurbsTesselate ----"));
+    MStatus stat;
+    // the deformed mesh comes into the visible mesh
+    // through its "inmesh" plug
+    MFnDependencyNode deformedNameMesh(NurbsPath.node());
+    MPlug outMeshPlug = deformedNameMesh.findPlug("nurbsTesselate", &stat);
+
+    if (stat == MS::kSuccess) {
+        MPlugArray connections;
+        outMeshPlug.connectedTo(connections, false, true);
+        for (int i = 0; i < connections.length(); ++i) {
+            MPlug conn = connections[0];
+            if (verbose) MGlobal::displayInfo(MString("---- connected to is : ") + conn.name());
+
+            MFnDependencyNode sourceNode;
+            sourceNode.setObject(conn.node());
+            if (verbose)
+                MGlobal::displayInfo(MString("---- connected to is Name : ") + sourceNode.name());
+            MeshObj = sourceNode.object();
+            return MS::kSuccess;
+        }
+        /*
+                        outMeshPlug = outMeshPlug.elementByLogicalIndex(0);
+                        MPlugArray connections;
+                        outMeshPlug.connectedTo(connections, false, true);
+                        for (int i = 0; i < connections.length(); ++i) {
+                                MPlug conn = connections[0];
+                                if (verbose) MGlobal::displayInfo(MString("---- connected to is : ")
+           + conn.name()); MFnDependencyNode sourceNode; sourceNode.setObject(conn.node()); if
+           (verbose) MGlobal::displayInfo(MString("---- connected to is Name : ") +
+           sourceNode.name()); MPlug outputPolygonPlug = sourceNode.findPlug("outputPolygon",
+           &stat); if (stat == MS::kSuccess) { MPlugArray connectionsPoly;
+                                        outputPolygonPlug.connectedTo(connectionsPoly, false, true);
+                                        if (connectionsPoly.length() > 0) {
+                                                MPlug theConn = connectionsPoly[0];
+                                                if (verbose) MGlobal::displayInfo(MString("----
+           outputPolygon connected to is : ") + theConn.name()); MeshObj = theConn.node(); return
+           MS::kSuccess;
+                                        }
+
+                                }
+                        }
+        */
+    }
+    return MS::kFailure;
+}
+
 // from the mesh retrieves the skinCluster
-MStatus findSkinCluster(MDagPath MeshPath, MObject &theSkinCluster, int indSkinCluster,
+MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinCluster,
                         bool verbose) {
     if (verbose) MGlobal::displayInfo(MString(" ---- findSkinCluster ----"));
     MStatus stat;
@@ -114,7 +171,7 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject &theSkinCluster, int indSkinC
     return MS::kFailure;
 }
 
-MStatus findMesh(MObject &skinCluster, MDagPath &theMeshPath, bool verbose) {
+MStatus findMesh(MObject& skinCluster, MDagPath& theMeshPath, bool verbose) {
     if (verbose) MGlobal::displayInfo(MString(" ---- findMesh ----"));
     MFnSkinCluster theSkinCluster(skinCluster);
     MObjectArray objectsDeformed;
@@ -136,7 +193,7 @@ MStatus findMesh(MObject &skinCluster, MDagPath &theMeshPath, bool verbose) {
     return MS::kFailure;
 }
 
-MStatus findOrigMesh(MObject &skinCluster, MObject &origMesh, bool verbose) {
+MStatus findOrigMesh(MObject& skinCluster, MObject& origMesh, bool verbose) {
     if (verbose) MGlobal::displayInfo(MString(" ---- find Orig Mesh ----"));
     MFnSkinCluster theSkinCluster(skinCluster);
     MObjectArray objectsDeformed;
@@ -149,8 +206,8 @@ MStatus findOrigMesh(MObject &skinCluster, MObject &origMesh, bool verbose) {
     return MS::kSuccess;
 }
 
-MStatus getListColorsJoints(MObject &skinCluster, int nbJoints,
-                            MIntArray indicesForInfluenceObjects, MColorArray &jointsColors,
+MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
+                            MIntArray indicesForInfluenceObjects, MColorArray& jointsColors,
                             bool verbose) {
     MStatus stat = MS::kSuccess;
     if (verbose)
@@ -254,8 +311,8 @@ MStatus getListColorsJoints(MObject &skinCluster, int nbJoints,
     return stat;
 }
 
-MStatus getListLockJoints(MObject &skinCluster, int nbJoints, MIntArray indicesForInfluenceObjects,
-                          MIntArray &jointsLocks) {
+MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray indicesForInfluenceObjects,
+                          MIntArray& jointsLocks) {
     MStatus stat;
 
     MFnDependencyNode skinClusterDep(skinCluster);
@@ -294,7 +351,7 @@ MStatus getListLockJoints(MObject &skinCluster, int nbJoints, MIntArray indicesF
     return stat;
 }
 
-MStatus getListLockVertices(MObject &skinCluster, MIntArray &vertsLocks, MIntArray &lockedIndices) {
+MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArray& lockedIndices) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -329,7 +386,7 @@ MStatus getListLockVertices(MObject &skinCluster, MIntArray &vertsLocks, MIntArr
     return stat;
 }
 
-MStatus getSymetryAttributes(MObject &skinCluster, MIntArray &symetryList) {
+MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -353,10 +410,10 @@ MStatus getSymetryAttributes(MObject &skinCluster, MIntArray &symetryList) {
     symetryList = intData.array(&stat);
 }
 
-MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray &theEditVerts,
-                          MIntArray &theMirrorVerts, MIntArray &editAndMirrorVerts,
-                          MDoubleArray &editVertsWeights, MDoubleArray &mirrorVertsWeights,
-                          MDoubleArray &editAndMirrorWeights, bool doMerge) {
+MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
+                          MIntArray& theMirrorVerts, MIntArray& editAndMirrorVerts,
+                          MDoubleArray& editVertsWeights, MDoubleArray& mirrorVertsWeights,
+                          MDoubleArray& editAndMirrorWeights, bool doMerge) {
     // doMerge do we merge the weights ? if painting the same influence or smooth
     MStatus status;
 
@@ -401,8 +458,8 @@ MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray &theEditVerts,
     return status;
 }
 
-MStatus editLocks(MObject &skinCluster, MIntArray &inputVertsToLock, bool addToLock,
-                  MIntArray &vertsLocks) {
+MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToLock,
+                  MIntArray& vertsLocks) {
     MStatus stat;
 
     MFnSkinCluster theSkinCluster(skinCluster);
@@ -511,9 +568,9 @@ child int  nb_weights = plug_weights.numElements();
         return MS::kSuccess;
 }
 */
-MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoints,
-                  MDoubleArray &fullWeightArray, std::map<int, double> &valuesToSet,
-                  MDoubleArray &theWeights, bool normalize, double mutliplier, bool verbose) {
+MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoints,
+                  MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
+                  MDoubleArray& theWeights, bool normalize, double mutliplier, bool verbose) {
     MStatus stat;
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
@@ -534,7 +591,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
                              MString(" | fullWeightArray ") + fullWeightArray.length());
     if (command == 5) {  // sharpen  -----------------------
         int i = 0;
-        for (const auto &elem : valuesToSet) {
+        for (const auto& elem : valuesToSet) {
             int theVert = elem.first;
             double theVal = mutliplier * elem.second + 1.0;
             double substract = theVal / nbJoints;
@@ -557,7 +614,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
         if (verbose)
             MGlobal::displayInfo(MString("-> editArray | valuesToSet ") + valuesToSet.size());
         if (verbose) MGlobal::displayInfo(MString("-> editArray | mutliplier ") + mutliplier);
-        for (const auto &elem : valuesToSet) {
+        for (const auto& elem : valuesToSet) {
             i++;
             int theVert = elem.first;
             double theVal = mutliplier * elem.second;
@@ -675,9 +732,9 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray &lockJoint
     return stat;
 }
 
-MStatus setAverageWeight(std::vector<int> &verticesAround, int currentVertex, int indexCurrVert,
-                         int nbJoints, MIntArray &lockJoints, MDoubleArray &fullWeightArray,
-                         MDoubleArray &theWeights, double strengthVal) {
+MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, int indexCurrVert,
+                         int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
+                         MDoubleArray& theWeights, double strengthVal) {
     MStatus stat;
     int sizeVertices = verticesAround.size();
     unsigned int i, jnt, posi;
@@ -716,7 +773,7 @@ MStatus setAverageWeight(std::vector<int> &verticesAround, int currentVertex, in
     return MS::kSuccess;
 }
 
-MStatus doPruneWeight(MDoubleArray &theWeights, int nbJoints, double pruneCutWeight) {
+MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWeight) {
     MStatus stat;
 
     int vertIndex, jnt, posiInArray;
@@ -748,7 +805,7 @@ MStatus doPruneWeight(MDoubleArray &theWeights, int nbJoints, double pruneCutWei
 };
 
 // void Line(float x1, float y1, float x2, float y2, MIntArray &posiX, MIntArray &posiY)
-void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>> &posi) {
+void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>>& posi) {
     // Bresenham's line algorithm
     bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
     if (steep) {
@@ -790,7 +847,7 @@ void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float
     }
 }
 
-void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>> &posi) {
+void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>>& posi) {
     short dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
     short dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
     short err = (dx > dy ? dx : -dy) / 2, e2;
@@ -859,8 +916,8 @@ bool RayIntersectsBBox(MPoint minPt, MPoint maxPt, MPoint orig, MVector directio
     return true;
 };
 
-MPoint offsetIntersection(const MPoint &rayPoint, const MVector &rayVector,
-                          const MVector &originNormal) {
+MPoint offsetIntersection(const MPoint& rayPoint, const MVector& rayVector,
+                          const MVector& originNormal) {
     // A little hack to shift the input ray point around to get the intersections with the offset
     // planes
     MVector diff = rayPoint - originNormal;
@@ -868,7 +925,7 @@ MPoint offsetIntersection(const MPoint &rayPoint, const MVector &rayVector,
     return rayPoint - (rayVector * prod) + originNormal;
 }
 
-MMatrix bboxMatrix(const MPoint &minPoint, const MPoint &maxPoint, const MMatrix &bbSpace) {
+MMatrix bboxMatrix(const MPoint& minPoint, const MPoint& maxPoint, const MMatrix& bbSpace) {
     // Build the matrix of the bounding box as if it were a transformed 2x2x2 cube centered at the
     // origin
     MPoint c = (minPoint + maxPoint) / 2.0;
@@ -878,14 +935,14 @@ MMatrix bboxMatrix(const MPoint &minPoint, const MPoint &maxPoint, const MMatrix
     return bbSpace * MMatrix(matVals);
 }
 
-inline bool inUnitPlane(const MPoint &inter) {
+inline bool inUnitPlane(const MPoint& inter) {
     // Quickly check if the intersection happened in the unit plane
     return (inter.x <= 1.0 && inter.x >= -1.0) && (inter.y <= 1.0 && inter.y >= -1.0) &&
            (inter.z <= 1.0 && inter.z >= -1.0);
 }
 
-bool bboxIntersection(const MPoint &minPoint, const MPoint &maxPoint, const MMatrix &bbSpace,
-                      const MPoint &rayPoint, const MVector &rayVector, MPoint &intersection) {
+bool bboxIntersection(const MPoint& minPoint, const MPoint& maxPoint, const MMatrix& bbSpace,
+                      const MPoint& rayPoint, const MVector& rayVector, MPoint& intersection) {
     // Get the bbox matrix and its inverse
     MMatrix bbm = bboxMatrix(minPoint, maxPoint, bbSpace);
     MMatrix bbmi = bbm.inverse();
@@ -925,13 +982,13 @@ bool bboxIntersection(const MPoint &minPoint, const MPoint &maxPoint, const MMat
 }
 
 // Tyler find Functions
-void getRawNeighbors(const MIntArray &counts, const MIntArray &indices, int numVerts,
-                     std::vector<std::unordered_set<int>> &faceNeighbors,
-                     std::vector<std::unordered_set<int>> &edgeNeigbors) {
+void getRawNeighbors(const MIntArray& counts, const MIntArray& indices, int numVerts,
+                     std::vector<std::unordered_set<int>>& faceNeighbors,
+                     std::vector<std::unordered_set<int>>& edgeNeigbors) {
     size_t ptr = 0;
     faceNeighbors.resize(numVerts);
     edgeNeigbors.resize(numVerts);
-    for (const int &c : counts) {
+    for (const int& c : counts) {
         for (int i = 0; i < c; ++i) {
             int j = (i + 1) % c;
             int rgt = indices[ptr + i];
@@ -947,12 +1004,12 @@ void getRawNeighbors(const MIntArray &counts, const MIntArray &indices, int numV
     }
 }
 
-void convertToCountIndex(const std::vector<std::unordered_set<int>> &input,
-                         std::vector<int> &counts, std::vector<int> &indices) {
+void convertToCountIndex(const std::vector<std::unordered_set<int>>& input,
+                         std::vector<int>& counts, std::vector<int>& indices) {
     // Convert to the flattened vector/vector for usage.
     // This can have faster access later because it uses contiguous memory
     counts.push_back(0);
-    for (auto &uSet : input) {
+    for (auto& uSet : input) {
         counts.push_back(counts.back() + uSet.size());
         indices.insert(indices.end(), uSet.begin(), uSet.end());
     }
