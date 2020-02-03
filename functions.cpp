@@ -59,10 +59,29 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
     // vertInd = numCVsInV * indexU + indexV;
 }
 
-MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nrbs) {
+MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
     MStatus stat = MS::kSuccess;
     MPointArray allpts;
-    stat = nrbs.getCVs(allpts);
+    bool VIsPeriodic_ = nurbsFn.formInV() == MFnNurbsSurface::kPeriodic;
+    bool UIsPeriodic_ = nurbsFn.formInU() == MFnNurbsSurface::kPeriodic;
+    if (VIsPeriodic_ || UIsPeriodic_) {
+        int numCVsInV_ = nurbsFn.numCVsInV();
+        int numCVsInU_ = nurbsFn.numCVsInU();
+        int UDeg_ = nurbsFn.degreeU();
+        int VDeg_ = nurbsFn.degreeV();
+        // int vertInd;
+        if (VIsPeriodic_) numCVsInV_ -= VDeg_;
+        if (UIsPeriodic_) numCVsInU_ -= UDeg_;
+        for (int uIndex = 0; uIndex < numCVsInU_; uIndex++) {
+            for (int vIndex = 0; vIndex < numCVsInV_; vIndex++) {
+                MPoint pt;
+                nurbsFn.getCV(uIndex, vIndex, pt);
+                allpts.append(pt);
+            }
+        }
+    } else {
+        stat = nurbsFn.getCVs(allpts);
+    }
     msh.setPoints(allpts);
 
     return stat;
@@ -74,7 +93,7 @@ MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose) {
     // the deformed mesh comes into the visible mesh
     // through its "inmesh" plug
     MFnDependencyNode deformedNameMesh(NurbsPath.node());
-    MPlug outMeshPlug = deformedNameMesh.findPlug("nurbsTesselate", &stat);
+    MPlug outMeshPlug = deformedNameMesh.findPlug("nurbsTessellate", &stat);
 
     if (stat == MS::kSuccess) {
         MPlugArray connections;
