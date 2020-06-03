@@ -72,6 +72,8 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kSkinClusterNameFlag, kSkinClusterNameFlagLong, MSyntax::kString);
     syn.addFlag(kMeshNameFlag, kMeshNameFlagLong, MSyntax::kString);
 
+    syn.addFlag(kPaintMirrorToleranceFlag, kPaintMirrorToleranceFlagLong, MSyntax::kDouble);
+    syn.addFlag(kPaintMirrorFlag, kPaintMirrorFlagLong, MSyntax::kLong);
     syn.addFlag(kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong,
                 MSyntax::kBoolean);
     syn.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
@@ -88,6 +90,9 @@ MStatus SkinBrushContextCmd::appendSyntax() {
 
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
+
+    syn.addFlag(kMirrorInfluencesFlag, kMirrorInfluencesFlagLong, MSyntax::kLong);
+    syn.makeFlagMultiUse(kMirrorInfluencesFlag);
 
     return MStatus::kSuccess;
 }
@@ -194,8 +199,20 @@ MStatus SkinBrushContextCmd::doEditFlags() {
             toDisplay += vtxIndex;
             toDisplay += MString(" - ");
         }
-        // nbVerts = indicesVertices_.length();
         smoothContext->refreshTheseVertices(indicesVertices);
+    }
+
+    if (argData.isFlagSet(kMirrorInfluencesFlag)) {
+        MIntArray mirrorInfluencesIndices;
+        int nbUse = argData.numberOfFlagUses(kMirrorInfluencesFlag);
+        for (int i = 0; i < nbUse; i++) {
+            MArgList flagArgs;
+            argData.getFlagArgumentList(kMirrorInfluencesFlag, i, flagArgs);
+            int influenceIndex;
+            flagArgs.get(0, influenceIndex);
+            mirrorInfluencesIndices.append(influenceIndex);
+        }
+        smoothContext->refreshMirrorInfluences(mirrorInfluencesIndices);
     }
 
     if (argData.isFlagSet(kPickMaxInfluenceFlag)) {
@@ -342,6 +359,18 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         smoothContext->setCoverage(value);
     }
 
+    if (argData.isFlagSet(kPaintMirrorToleranceFlag)) {
+        double value;
+        status = argData.getFlagArgument(kPaintMirrorToleranceFlag, 0, value);
+        smoothContext->setMirrorTolerance(value);
+    }
+
+    if (argData.isFlagSet(kPaintMirrorFlag)) {
+        int value;
+        status = argData.getFlagArgument(kPaintMirrorFlag, 0, value);
+        smoothContext->setPaintMirror(value);
+    }
+
     if (argData.isFlagSet(kUseColorSetWhilePaintingFlag)) {
         bool value;
         status = argData.getFlagArgument(kUseColorSetWhilePaintingFlag, 0, value);
@@ -454,6 +483,11 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kSoloColorFlag)) setResult(smoothContext->getSoloColor());
 
     if (argData.isFlagSet(kSoloColorTypeFlag)) setResult(smoothContext->getSoloColorType());
+
+    if (argData.isFlagSet(kPaintMirrorToleranceFlag))
+        setResult(smoothContext->getMirrorTolerance());
+
+    if (argData.isFlagSet(kPaintMirrorFlag)) setResult(smoothContext->getPaintMirror());
 
     if (argData.isFlagSet(kUseColorSetWhilePaintingFlag))
         setResult(smoothContext->getUseColorSetsWhilePainting());

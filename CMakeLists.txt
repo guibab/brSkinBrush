@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(brSkinBrush)
 
-SET(MAYA_VERSION 2018 CACHE STRING "Maya version number")
+SET(MAYA_VERSION 2019 CACHE STRING "Maya version number")
 SET(SOURCE_FILES 
     "functions.h" 
 	"setOverloads.h"
@@ -15,6 +15,11 @@ SET(SOURCE_FILES
 	"skinBrushLegacy.cpp" 
     "skinBrushTool.cpp"    
 )
+
+
+SET(BOOST_ROOT "C:/Boost/boost_1_73_0")
+find_package( Boost )
+
 
 FIND_PACKAGE(OpenGL REQUIRED)
 

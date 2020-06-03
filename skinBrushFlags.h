@@ -113,6 +113,15 @@
 #define kListVerticesIndicesFlag "-liv"
 #define kListVerticesIndicesFlagLong "-listVerticesIndices"
 
+#define kPaintMirrorToleranceFlag "-tol"
+#define kPaintMirrorToleranceFlagLong "-toleranceMirror"
+
+#define kMirrorInfluencesFlag "-mif"
+#define kMirrorInfluencesFlagLong "-mirrorInfluences"
+
+#define kPaintMirrorFlag "-mir"
+#define kPaintMirrorFlagLong "-mirrorPaint"
+
 #define kUseColorSetWhilePaintingFlag "-ucs"
 #define kUseColorSetWhilePaintingFlagLong "-useColorSetsWhilePainting"
 

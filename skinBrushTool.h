@@ -26,6 +26,7 @@
 #include <maya/MDagPathArray.h>
 #include <maya/MEulerRotation.h>
 #include <maya/MEvent.h>
+#include <maya/MFloatMatrix.h>
 #include <maya/MFloatPointArray.h>
 #include <maya/MFnCamera.h>
 #include <maya/MFnDoubleArrayData.h>
@@ -153,6 +154,8 @@ class skinBrushTool : public MPxToolCommand {
     void setUnoLocks(MIntArray locks);
     void setRedoLocks(MIntArray locks);
 
+    void setMirrorTolerance(double value);
+    void setPaintMirror(int value);
     void setUseColorSetsWhilePainting(bool value);
     void setDrawTriangles(bool value);
     void setDrawEdges(bool value);
@@ -191,6 +194,8 @@ class skinBrushTool : public MPxToolCommand {
     int soloColorVal = 0;
     bool postSetting = true;
 
+    int paintMirror = 0;  // intValue
+    double mirrorMinDist = 0.05;
     bool useColorSetsWhilePainting = false;
     bool drawTriangles = true;
     bool drawEdges = true;
@@ -257,11 +262,13 @@ class SkinBrushContext : public MPxContext {
     int getClosestInfluenceToCursor(int screenX, int screenY);
     // common methods
     MStatus doPressCommon(MEvent event);
+    // doDragCommon where the magic happens
     MStatus doDragCommon(MEvent event);
     MStatus doReleaseCommon(MEvent event);
     void doTheAction();
-
+    int getCommandIndexModifiers();
     MStatus getMesh();
+    MStatus getTheOrigMeshForMirror();
 
     void getConnectedVertices();
     void getConnectedVerticesSecond();
@@ -280,11 +287,12 @@ class SkinBrushContext : public MPxContext {
     void refresh();
     void refreshDeformerColor(int influenceInd);
     void refreshTheseVertices(MIntArray verticesIndices);
+    void refreshMirrorInfluences(MIntArray inputMirrorInfluences);
 
-    // MStatus getMirrorInfos();
-    MStatus applyCommand(int influence, std::unordered_map<int, double> &valuesToSet,
-                         bool storeUndo = true);
-    MStatus applyCommandMirror(std::unordered_map<int, double> &valuesToSet);
+    void mergeMirrorArray(std::unordered_map<int, float> &valuesBase,
+                          std::unordered_map<int, float> &valuesMirrored);
+    MStatus applyCommand(int influence, std::unordered_map<int, float> &valuesToSet);
+    MStatus applyCommandMirror();
     MStatus refreshColors(MIntArray &editVertsIndices, MColorArray &multiEditColors,
                           MColorArray &soloEditColors);
     MStatus editSoloColorSet(bool doBlack);
@@ -292,7 +300,12 @@ class SkinBrushContext : public MPxContext {
     MStatus refreshPointsNormals();
 
     void setColor(int vertexIndex, float value, MIntArray &editVertsIndices,
-                  MColorArray &multiEditColors, MColorArray &soloEditColors);
+                  MColorArray &multiEditColors, MColorArray &soloEditColors,
+                  bool useMirror = false);
+
+    void setColorWithMirror(int vertexIndex, float valueBase, float valueMirror,
+                            MIntArray &editVertsIndices, MColorArray &multiEditColors,
+                            MColorArray &soloEditColors);
 
     MStatus querySkinClusterValues(MObject skinCluster, MIntArray &verticesIndices, bool doColors);
     MStatus fillArrayValues(MObject skinCluster, bool doColors);
@@ -302,22 +315,26 @@ class SkinBrushContext : public MPxContext {
                                   bool &maintainMaxInfluences, unsigned int &normalize);
     MIntArray getInfluenceIndices();
     // bool getClosestIndex(MEvent event);
-
+    bool getMirrorHit(bool getNormal, int &faceHit, MFloatPoint &hitPoint);
     bool computeHit(short screenPixelX, short screenPixelY, bool getNormal, int &faceHit,
                     MFloatPoint &hitPoint);
     bool expandHit(int faceHit, MFloatPoint hitPoint, std::unordered_map<int, float> &dicVertsDist);
 
     // MVector SkinBrushContext::getNormal(int vertexInd, int faceIndex);
-    void growArrayOfHits(std::unordered_map<int, float> &dicVertsDist);
     void growArrayOfHitsFromCenters(std::unordered_map<int, float> &dicVertsDist,
                                     MFloatPointArray &AllHitPoints);
 
     // smooth computation
-    MStatus performPaint(std::unordered_map<int, float> &dicVertsDist,
-                         std::unordered_map<int, float> &dicVertsDistRed);
-    void prepareArray(std::unordered_map<int, float> &dicVertsDist);
+    MStatus preparePaint(std::unordered_map<int, float> &dicVertsDist,
+                         std::unordered_map<int, float> &dicVertsDistPrevPaint,
+                         std::vector<float> &intensityValues,
+                         std::unordered_map<int, float> &skinValToSet, bool mirror);
 
-    MObject allVertexComponents(MDagPath meshDag);
+    MStatus SkinBrushContext::doPerformPaint();
+
+    void addBrushShapeFallof(std::unordered_map<int, float> &dicVertsDist);
+
+    MObject allVertexComponents();
     MIntArray getVerticesInVolume();
     void getVerticesInVolumeRange(int index, MIntArray volumeIndices, MIntArray &rangeIndices,
                                   MFloatArray &values);
@@ -352,6 +369,8 @@ class SkinBrushContext : public MPxContext {
     void setSmoothStrength(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
+    void setMirrorTolerance(double value);
+    void setPaintMirror(int value);
     void setUseColorSetsWhilePainting(bool value);
     void setDrawTriangles(bool value);
     void setDrawEdges(bool value);
@@ -385,6 +404,7 @@ class SkinBrushContext : public MPxContext {
     MString getExitToolCommand();
     bool getFractionOversampling();
     bool getIgnoreLock();
+
     int getLineWidth();
     int getMessage();
     int getOversampling();
@@ -404,6 +424,9 @@ class SkinBrushContext : public MPxContext {
     int getCommandIndex();
     int getSmoothRepeat();
     int getSoloColor();
+
+    double getMirrorTolerance();
+    int getPaintMirror();
     bool getUseColorSetsWhilePainting();
     bool getDrawTriangles();
     bool getDrawEdges();
@@ -422,10 +445,14 @@ class SkinBrushContext : public MPxContext {
 
     skinBrushTool *cmd;
 
+    bool firstPaintDone;
     bool performBrush;
     int performRefreshViewPort;
     int maxRefreshValue = 2;
     int undersamplingSteps;
+
+    int paintMirror = 0;
+    double mirrorMinDist = 0.05;
     bool useColorSetsWhilePainting = false;
 
     bool drawTriangles = true;
@@ -494,23 +521,28 @@ class SkinBrushContext : public MPxContext {
                                 // world space.
     // the worldPosition
     MPoint worldPoint;
-    MVector worldVector;   // The view vector from the camera to
-                           // the surface point.
-    MVector normalVector;  // The normal vector to camera
+    MPoint worldMirrorPoint;
+    MVector worldVector;           // The view vector from the camera to
+                                   // the surface point.
+    MVector normalVector;          // The normal vector to camera
+    MVector normalMirroredVector;  // The mirrored normal vector to camera
 
-    MFloatPoint centerOfBrush;  // store the center of the bursh to display
+    MFloatPoint centerOfBrush;        // store the center of the bursh to display
+    MFloatPoint centerOfMirrorBrush;  // store the center of the bursh to display
 
-    float pressDistance;        // The closest distance to the mesh on
-                                // the press event.
-    float previousHitDistance;  // The closest distance to the mesh on
+    MFloatPoint inMatrixHit;        // store the center of the bursh to display
+    MFloatPoint inMatrixHitMirror;  // store the center of the bursh to display
 
+    float pressDistance;  // The closest distance to the mesh on
     MStatus pressStatus;
 
-    MFnMesh meshFn;
+    MFnMesh meshFn, meshOrigFn;
     MFnNurbsSurface nurbsFn;
     bool isNurbs = false;
 
+    MFloatMatrix inclusiveMatrix, inclusiveMatrixInverse;
     MDagPath meshDag, nurbsDag;
+    MDagPath origMeshDag;
     unsigned int numVertices = 0, numFaces = 0;
 
     unsigned int numElements = 0;
@@ -524,13 +556,10 @@ class SkinBrushContext : public MPxContext {
     MObject attrValue;
     MDoubleArray valuesForAttribute, paintArrayValues;  // the array of values to paint
 
+    MMeshIntersector intersectorOrigShape;
     MMeshIntersector intersector;
 
-    std::vector<bool> selectedIndices;  // The current vertex selection
-                                        // in a non-sparse array
-                                        // spanning all vertices.
-                                        // Selected indices are set to
-                                        // true.
+    std::vector<bool> selectedIndices;
 
     MObject allVtxCompObj;
 
@@ -552,6 +581,7 @@ class SkinBrushContext : public MPxContext {
 
     // guillaume values ----------
     MMeshIsectAccelParams accelParams;
+    MMeshIsectAccelParams accelParamsOrigMesh;
     // MIntArray closestIndices;
     // MFloatArray closestDistances;
     bool foundBlurSkinAttribute = false;
@@ -566,9 +596,7 @@ class SkinBrushContext : public MPxContext {
     MIntArray indicesForInfluenceObjects;  // on skinCluster for sparse array
 
     // mirror things -----
-    bool mirrorIsActive = false;
-    MIntArray mirrorInfluences, mirrorVertices;
-    bool changeOfMirrorData = false;
+    MIntArray mirrorInfluences;  // indices of the mirror influences
 
     std::vector<bool> influenceLocks;
     MIntArray lockJoints, ignoreLockJoints, lockVertices;
@@ -586,8 +614,6 @@ class SkinBrushContext : public MPxContext {
     bool toggleColorState = false;  // use to swap from colorSet and colorSet2
 
     // MString noColorSet = MString("noColorsSet");
-    std::vector<float> intensityValues;  // (length, 0);
-
     double minSoloColor = 0.0;
     double maxSoloColor = 1.0;
 
@@ -617,17 +643,31 @@ class SkinBrushContext : public MPxContext {
 
     const float *rawNormals;
     const float *mayaRawPoints;
+    const float *mayaOrigRawPoints;
+    MFloatPoint origHitPoint;
+
     MPointArray meshPoints;
     // MFloatPointArray vertexArray; // the position of all the vertices
     int fullVertexListLength = 0;
 
     // HITs vairables ------------------------
     bool successFullHit = false;
+    bool successFullMirrorHit = false;  // need to transfer this info to doDragCommon I believe
     bool successFullDragHit = false;
+    bool successFullDragMirrorHit = false;
     bool refreshDone = false;
+
+    MFloatPointArray AllHitPoints, AllHitPointsMirror;
+
     std::unordered_map<int, float> dicVertsDistSTART, previousPaint;
-    std::unordered_map<int, double> skinValuesToSet;
+    std::unordered_map<int, float> dicVertsMirrorDistSTART, previousMirrorPaint;
+    std::unordered_map<int, float> skinValuesToSet;
+    std::unordered_map<int, float> skinValuesMirrorToSet;
     std::set<int> verticesPainted;  // the vertices that have been painted for a redraw purpose
+
+    std::unordered_map<int, std::pair<float, float>> mirroredJoinedArray;
+    std::vector<float> intensityValuesOrig;    // (length, 0);
+    std::vector<float> intensityValuesMirror;  // (length, 0);
 
     int modifierNoneShiftControl = 0;  // store the modifier type
 

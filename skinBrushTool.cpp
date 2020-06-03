@@ -84,6 +84,8 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kSoloColorTypeFlag, kSoloColorTypeFlagLong, MSyntax::kLong);
     syntax.addFlag(kCoverageFlag, kCoverageLong, MSyntax::kBoolean);
 
+    syntax.addFlag(kPaintMirrorToleranceFlag, kPaintMirrorToleranceFlagLong, MSyntax::kDouble);
+    syntax.addFlag(kPaintMirrorFlag, kPaintMirrorFlagLong, MSyntax::kLong);
     syntax.addFlag(kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong,
                    MSyntax::kBoolean);
     syntax.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
@@ -207,7 +209,14 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
         status = argData.getFlagArgument(kInfluenceIndexFlag, 0, influenceIndex);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
-
+    if (argData.isFlagSet(kPaintMirrorToleranceFlag)) {
+        status = argData.getFlagArgument(kPaintMirrorToleranceFlag, 0, mirrorMinDist);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+    if (argData.isFlagSet(kPaintMirrorFlag)) {
+        status = argData.getFlagArgument(kPaintMirrorFlag, 0, paintMirror);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
     if (argData.isFlagSet(kUseColorSetWhilePaintingFlag)) {
         status =
             argData.getFlagArgument(kUseColorSetWhilePaintingFlag, 0, useColorSetsWhilePainting);
@@ -265,6 +274,14 @@ MStatus skinBrushTool::redoIt() {
 
 MStatus skinBrushTool::setWeights(bool isUndo) {
     MStatus status = MStatus::kSuccess;
+    int theWeightsLength;
+    if (isUndo)
+        theWeightsLength = this->undoWeights.length();
+    else
+        theWeightsLength = this->redoWeights.length();
+    if (theWeightsLength == 0) {
+        return status;
+    }
 
     status = getSkinClusterObj();
     if (status != MStatus::kSuccess) {
@@ -274,11 +291,6 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
     MFnSkinCluster skinFn(skinObj, &status);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
-    int theWeightsLength;
-    if (isUndo)
-        theWeightsLength = this->undoWeights.length();
-    else
-        theWeightsLength = this->redoWeights.length();
     MFnMesh meshFn;
     meshFn.setObject(meshDag);
     MFnNurbsSurface nrbsFn;
@@ -471,6 +483,10 @@ MStatus skinBrushTool::finalize() {
     cmd += " " + MString(kSmoothRepeatFlag) + " ";
     cmd += smoothRepeat;
 
+    cmd += " " + MString(kPaintMirrorToleranceFlag) + " ";
+    cmd += mirrorMinDist;
+    cmd += " " + MString(kPaintMirrorFlag) + " ";
+    cmd += paintMirror;
     cmd += " " + MString(kUseColorSetWhilePaintingFlag) + " ";
     cmd += useColorSetsWhilePainting;
     cmd += " " + MString(kMeshDragDrawTrianglesFlag) + " ";
@@ -548,6 +564,10 @@ void skinBrushTool::setVolume(bool value) { volumeVal = value; }
 void skinBrushTool::setCommandIndex(int value) { commandIndex = value; }
 
 void skinBrushTool::setSmoothRepeat(int value) { smoothRepeat = value; }
+
+void skinBrushTool::setMirrorTolerance(double value) { mirrorMinDist = value; }
+
+void skinBrushTool::setPaintMirror(int value) { paintMirror = value; }
 
 void skinBrushTool::setUseColorSetsWhilePainting(bool value) { useColorSetsWhilePainting = value; }
 

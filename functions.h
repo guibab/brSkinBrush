@@ -1,7 +1,6 @@
 #ifndef _functions_h
 
 #define _functions_h
-
 // MAYA HEADER FILES:
 
 #include <maya/MBoundingBox.h>
@@ -36,6 +35,10 @@
 const float PI = 3.14159265359f;
 const float DEGTORAD = PI / 180.0f;
 
+typedef float coord_t;
+typedef std::tuple<coord_t, coord_t, coord_t> point_t;
+coord_t distance_sq(const point_t& a, const point_t& b);
+coord_t distance(const point_t& a, const point_t& b);
 // FUNCTION DECLARATION:
 unsigned int getMIntArrayIndex(MIntArray& myArray, int searching);
 void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsPeriodic,
@@ -43,6 +46,8 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
 MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinCluster,
                         bool verbose);
 MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose);
+MStatus findNurbsTesselateOrig(MDagPath meshPath, MObject& origMeshObj, bool verbose);
+
 MStatus findMesh(MObject& theSkinCluster, MDagPath& theMeshPath, bool verbose);
 MStatus findOrigMesh(MObject& theSkinCluster, MObject& origMesh, bool verbose);
 // MStatus getListColors( MObject& skinCluster, int nbVertices, MColorArray & currColors, bool
@@ -64,6 +69,12 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
                   MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
                   MDoubleArray& theWeights, bool normalize = true, double mutliplier = 1.0,
                   bool verbose = false);
+MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJoints,
+                        MIntArray& lockJoints, MDoubleArray& fullWeightArray,
+                        std::map<int, std::pair<float, float>>& valuesToSetMirror,
+                        MDoubleArray& theWeights, bool normalize = true, double mutliplier = 1.0,
+                        bool verbose = false);
+
 MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, int indexCurrVert,
                          int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
                          MDoubleArray& theWeights, double strengthVal);
@@ -86,5 +97,8 @@ void getRawNeighbors(const MIntArray& counts, const MIntArray& indices, int numV
                      std::vector<std::unordered_set<int>>& edgeNeigbors);
 void convertToCountIndex(const std::vector<std::unordered_set<int>>& input,
                          std::vector<int>& counts, std::vector<int>& indices);
+
+float pack_float(float x, float y);
+int unpack_float(float f, float* x, float* y);
 
 #endif

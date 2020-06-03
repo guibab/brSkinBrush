@@ -1,6 +1,43 @@
 #include "functions.h"
 
+#include <math.h>
+
 #include <limits>
+
+/* yourBiggestNumber * scaleFactor < cp */
+double scaleFactor = 65530.0;
+double cp = 256.0 * 256.0;
+
+/* packs given two floats into one float */
+float pack_float(float x, float y) {
+    int x1 = (int)(x * scaleFactor);
+    int y1 = (int)(y * scaleFactor);
+    float f = (y1 * cp) + x1;
+    return f;
+}
+/* unpacks given float to two floats */
+int unpack_float(float f, float* x, float* y) {
+    double dy = floor(f / cp);
+    double dx = f - (dy * cp);
+    *y = (float)(dy / scaleFactor);
+    *x = (float)(dx / scaleFactor);
+    return 0;
+}
+
+coord_t distance_sq(const point_t& a, const point_t& b) {  // or boost::geometry::distance
+    coord_t x = std::get<0>(a) - std::get<0>(b);
+    coord_t y = std::get<1>(a) - std::get<1>(b);
+    coord_t z = std::get<2>(a) - std::get<2>(b);
+    return x * x + y * y + z * z;
+}
+coord_t distance(const point_t& a, const point_t& b) {  // or boost::geometry::distance
+    coord_t x = std::get<0>(a) - std::get<0>(b);
+    coord_t y = std::get<1>(a) - std::get<1>(b);
+    coord_t z = std::get<2>(a) - std::get<2>(b);
+    return std::sqrt(x * x + y * y + z * z);
+}
+
+bool comp(int a, int b) { return (a < b); }
 
 unsigned int getMIntArrayIndex(MIntArray& myArray, int searching) {
     unsigned int toReturn = -1;
@@ -77,14 +114,48 @@ MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
                 MPoint pt;
                 nurbsFn.getCV(uIndex, vIndex, pt);
                 allpts.append(pt);
+                // msh.setPoint(vIndex, pt);
+                // msh.updateSurface();
             }
         }
     } else {
         stat = nurbsFn.getCVs(allpts);
     }
     msh.setPoints(allpts);
+    msh.updateSurface();
+    msh.setDisplayColors(true);
 
     return stat;
+}
+
+MStatus findNurbsTesselateOrig(MDagPath meshPath, MObject& origMeshObj, bool verbose) {
+    if (verbose) MGlobal::displayInfo(MString(" |||| findNurbsTesselateOrig ||||"));
+    MStatus stat;
+    // the deformed mesh comes into the visible mesh
+    // through its "inmesh" plug
+    MFnDependencyNode deformedNameMesh(meshPath.node());
+    MPlug outMeshPlug = deformedNameMesh.findPlug("origMeshNurbs", &stat);
+    MGlobal::displayInfo(MString("---- searching from: ") + outMeshPlug.name());
+    if (stat == MS::kSuccess) {
+        MPlugArray connections;
+        outMeshPlug.connectedTo(connections, false, true);
+        int nbconnections = connections.length();
+        for (int i = 0; i < nbconnections; ++i) {
+            MPlug conn = connections[0];
+            if (verbose) MGlobal::displayInfo(MString("---- connected to is : ") + conn.name());
+
+            MFnDependencyNode sourceNode;
+            sourceNode.setObject(conn.node());
+            if (verbose)
+                MGlobal::displayInfo(MString("---- connected to is Name : ") + sourceNode.name());
+            origMeshObj = sourceNode.object();
+            return MS::kSuccess;
+        }
+    } else {
+        if (verbose) MGlobal::displayInfo(MString(" CANT FIND origMesh Attribute"));
+    }
+
+    return MS::kFailure;
 }
 
 MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose) {
@@ -109,28 +180,6 @@ MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose) {
             MeshObj = sourceNode.object();
             return MS::kSuccess;
         }
-        /*
-                        outMeshPlug = outMeshPlug.elementByLogicalIndex(0);
-                        MPlugArray connections;
-                        outMeshPlug.connectedTo(connections, false, true);
-                        for (int i = 0; i < connections.length(); ++i) {
-                                MPlug conn = connections[0];
-                                if (verbose) MGlobal::displayInfo(MString("---- connected to is : ")
-           + conn.name()); MFnDependencyNode sourceNode; sourceNode.setObject(conn.node()); if
-           (verbose) MGlobal::displayInfo(MString("---- connected to is Name : ") +
-           sourceNode.name()); MPlug outputPolygonPlug = sourceNode.findPlug("outputPolygon",
-           &stat); if (stat == MS::kSuccess) { MPlugArray connectionsPoly;
-                                        outputPolygonPlug.connectedTo(connectionsPoly, false, true);
-                                        if (connectionsPoly.length() > 0) {
-                                                MPlug theConn = connectionsPoly[0];
-                                                if (verbose) MGlobal::displayInfo(MString("----
-           outputPolygon connected to is : ") + theConn.name()); MeshObj = theConn.node(); return
-           MS::kSuccess;
-                                        }
-
-                                }
-                        }
-        */
     }
     return MS::kFailure;
 }
@@ -733,6 +782,165 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
                 theWeights[i * nbJoints + jnt] = weightValue;
             }
 
+            if ((sum == 0) ||
+                (sum <
+                 0.5 * sumUnlockWeights)) {  // zero problem revert weights ----------------------
+                for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                    theWeights[i * nbJoints + jnt] = fullWeightArray[theVert * nbJoints + jnt];
+                }
+            } else if (normalize && (sum != sumUnlockWeights)) {  // normalize ---------------
+                for (int jnt = 0; jnt < nbJoints; ++jnt)
+                    if (lockJoints[jnt] == 0) {
+                        theWeights[i * nbJoints + jnt] /= sum;               // to 1
+                        theWeights[i * nbJoints + jnt] *= sumUnlockWeights;  // to sum weights
+                    }
+            }
+        }
+    }
+    return stat;
+}
+
+MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJoints,
+                        MIntArray& lockJoints, MDoubleArray& fullWeightArray,
+                        std::map<int, std::pair<float, float>>& valuesToSetMirror,
+                        MDoubleArray& theWeights, bool normalize, double mutliplier, bool verbose) {
+    MStatus stat;
+    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+    // UnLockVertices
+    //
+    if (lockJoints.length() < nbJoints) {
+        MGlobal::displayInfo(MString("-> editArrayMirror FAILED | nbJoints ") + nbJoints +
+                             MString(" | lockJoints ") + lockJoints.length());
+        return MStatus::kFailure;
+    }
+    if (verbose)
+        MGlobal::displayInfo(MString("-> editArrayMirror | theWeights ") + theWeights.length() +
+                             MString(" | fullWeightArray ") + fullWeightArray.length());
+    if (command == 5) {  // sharpen  -----------------------
+        int i = 0;
+        for (const auto& elem : valuesToSetMirror) {
+            int theVert = elem.first;
+            float valueBase = elem.second.first;
+            float valueMirror = elem.second.second;
+
+            float sumValue = std::min(float(1.0), valueBase + valueMirror);
+            float biggestValue = std::max(valueBase, valueMirror);
+
+            double theVal = mutliplier * (double)biggestValue + 1.0;
+            double substract = theVal / nbJoints;
+            double sum = 0.0;
+            for (int j = 0; j < nbJoints; ++j) {
+                // check the zero val ----------
+                double jntVal = (fullWeightArray[theVert * nbJoints + j] * theVal) - substract;
+                jntVal = std::max(0.0, std::min(jntVal, 1.0));  // clamp
+                theWeights[i * nbJoints + j] = jntVal;
+                if (normalize) sum += jntVal;
+            }
+            // now normalize
+            if ((normalize) && (sum != 1.0))
+                for (int j = 0; j < nbJoints; ++j) theWeights[i * nbJoints + j] /= sum;
+            i++;
+        }
+    } else {
+        // do the other command --------------------------
+        int i = -1;  // i is a short index instead of theVert
+        if (verbose)
+            MGlobal::displayInfo(MString("-> editArrayMirror | valuesToSet ") +
+                                 valuesToSetMirror.size());
+        if (verbose) MGlobal::displayInfo(MString("-> editArrayMirror | mutliplier ") + mutliplier);
+        for (const auto& elem : valuesToSetMirror) {
+            i++;
+            int theVert = elem.first;
+            double valueBase = mutliplier * (double)elem.second.first;
+            double valueMirror = mutliplier * (double)elem.second.second;
+
+            double sumUnlockWeights = 0.0;
+            for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                int indexArray_theWeight = i * nbJoints + jnt;
+                int indexArray_fullWeightArray = theVert * nbJoints + jnt;
+                if (lockJoints[jnt] == 0) {  // not locked
+                    sumUnlockWeights += fullWeightArray[indexArray_fullWeightArray];
+                }
+                theWeights[indexArray_theWeight] =
+                    fullWeightArray[indexArray_fullWeightArray];  // preset array
+            }
+
+            if (verbose) MGlobal::displayInfo(MString("-> editArrayMirror | AFTER joints  loop"));
+            double currentW = fullWeightArray[theVert * nbJoints + influence];
+            double currentWMirror = fullWeightArray[theVert * nbJoints + influenceMirror];
+            // 1 Remove 3 Absolute
+            /*
+            if (
+                    (command == 1 || command == 3) &&
+                    currentW > (sumUnlockWeights - .0001)
+                    ) { // value is 1(max) we cant do anything
+                    continue; // we pass to next vertex
+            }
+            */
+            double newW = currentW;
+            double newWMirror = currentWMirror;
+            double sumNewWs = newW + newWMirror;
+
+            if (command == 0) {  // ADD
+                newW = std::min(1.0, newW + valueBase);
+                newWMirror = std::min(1.0, newWMirror + valueMirror);
+                sumNewWs = newW + newWMirror;
+                if (sumNewWs > 1.0) {
+                    newW /= sumNewWs;
+                    newWMirror /= sumNewWs;
+                }
+            } else if (command == 1) {  // Remove
+                newW = std::max(0.0, newW - valueBase);
+                newWMirror = std::max(0.0, newWMirror - valueMirror);
+            } else if (command == 2) {  // AddPercent
+                newW += valueBase * newW;
+                newW = std::min(1.0, newW);
+                newWMirror += valueMirror * newWMirror;
+                newWMirror = std::min(1.0, newWMirror);
+                sumNewWs = newW + newWMirror;
+                if (sumNewWs > 1.0) {
+                    newW /= sumNewWs;
+                    newWMirror /= sumNewWs;
+                }
+            } else if (command == 3) {  // Absolute
+                newW = valueBase;
+                newWMirror = valueMirror;
+            }
+            newW = std::min(newW, sumUnlockWeights);              // clamp to max sumUnlockWeights
+            newWMirror = std::min(newWMirror, sumUnlockWeights);  // clamp to max sumUnlockWeights
+
+            double newRest = sumUnlockWeights - newW - newWMirror;
+            double oldRest = sumUnlockWeights - currentW - currentWMirror;
+            double div = sumUnlockWeights;
+
+            if (newRest != 0.0) {  // produit en croix
+                div = oldRest / newRest;
+            }
+            // do the locks !!
+            double sum = 0.0;
+            for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                if (lockJoints[jnt] == 1) {
+                    continue;
+                }
+                // check the zero val ----------
+                double weightValue = fullWeightArray[theVert * nbJoints + jnt];
+                if (jnt == influence) {
+                    weightValue = newW;
+                } else if (jnt == influenceMirror) {
+                    weightValue = newWMirror;
+                } else {
+                    if ((newW + newWMirror) == sumUnlockWeights) {
+                        weightValue = 0.0;
+                    } else {
+                        weightValue /= div;
+                    }
+                }
+                if (normalize) {
+                    weightValue = std::max(0.0, std::min(weightValue, sumUnlockWeights));  // clamp
+                }
+                sum += weightValue;
+                theWeights[i * nbJoints + jnt] = weightValue;
+            }
             if ((sum == 0) ||
                 (sum <
                  0.5 * sumUnlockWeights)) {  // zero problem revert weights ----------------------

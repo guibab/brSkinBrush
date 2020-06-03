@@ -150,6 +150,19 @@ void SkinBrushContext::setVolume(bool value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
+void SkinBrushContext::setMirrorTolerance(double value) {
+    mirrorMinDist = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setPaintMirror(int value) {
+    paintMirror = value;
+    if (value != 0) {
+        getTheOrigMeshForMirror();
+    }
+    MToolsInfo::setDirtyFlag(*this);
+}
+
 void SkinBrushContext::setUseColorSetsWhilePainting(bool value) {
     useColorSetsWhilePainting = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -348,6 +361,7 @@ MString SkinBrushContext::getExitToolCommand() { return exitToolCommandVal; }
 bool SkinBrushContext::getFractionOversampling() { return fractionOversamplingVal; }
 
 bool SkinBrushContext::getIgnoreLock() { return ignoreLockVal; }
+
 int SkinBrushContext::getLineWidth() { return lineWidthVal; }
 int SkinBrushContext::getMessage() { return messageVal; }
 int SkinBrushContext::getOversampling() { return oversamplingVal; }
@@ -368,6 +382,9 @@ bool SkinBrushContext::getVolume() { return volumeVal; }
 int SkinBrushContext::getCommandIndex() { return commandIndex; }
 int SkinBrushContext::getSmoothRepeat() { return smoothRepeat; }
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
+
+double SkinBrushContext::getMirrorTolerance() { return mirrorMinDist; }
+int SkinBrushContext::getPaintMirror() { return paintMirror; }
 bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhilePainting; }
 bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
 bool SkinBrushContext::getDrawEdges() { return drawEdges; }
