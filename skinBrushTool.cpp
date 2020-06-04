@@ -274,6 +274,7 @@ MStatus skinBrushTool::redoIt() {
 
 MStatus skinBrushTool::setWeights(bool isUndo) {
     MStatus status = MStatus::kSuccess;
+
     int theWeightsLength;
     if (isUndo)
         theWeightsLength = this->undoWeights.length();
@@ -292,9 +293,14 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     MFnMesh meshFn;
-    meshFn.setObject(meshDag);
+    bool validMesh = meshDag.isValid();
+    if (validMesh) {
+        meshFn.setObject(meshDag);
+    }
     MFnNurbsSurface nrbsFn;
-    nrbsFn.setObject(nurbsDag);
+    if (isNurbs) {
+        nrbsFn.setObject(nurbsDag);
+    }
 
     if (this->commandIndex < 6 && theWeightsLength > 0) {
         MObject weightsObj;
@@ -324,13 +330,13 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
             } else {
                 skinFn.setWeights(nurbsDag, weightsObj, influenceIndices, this->redoWeights, true);
             }
-        }
-
-        if (isNurbs) {
-            transferPointNurbsToMesh(meshFn, nrbsFn);  // we transfer the points postions
+            if (validMesh) {
+                transferPointNurbsToMesh(meshFn, nrbsFn);  // we transfer the points postions
+            } else {
+                MGlobal::displayInfo("mesh not valid need to clean it");
+            }
         }
     }
-
     if (this->commandIndex >= 6) {
         MGlobal::displayInfo("undo it with refresh: lock / unlock vertices");
 
@@ -353,11 +359,15 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
             tmpIntArray.create(theArrayValues));  // to set the attribute
         // we need a hard refresh of invalidate for the undo / redo ---
     }
-    if ((this->commandIndex >= 6) || isNurbs) {
+    if (this->commandIndex >= 6 || (isNurbs && validMesh)) {
         meshFn.updateSurface();
     }
 
     callBrushRefresh();
+    if (isNurbs) {
+        MGlobal::executePythonCommand(moduleImportString + MString("cleanTheNurbs\n"));
+        MGlobal::executePythonCommand("cleanTheNurbs()\n");
+    }
     return status;
     /*
     MGlobal::getActiveSelectionList(redoSelection);

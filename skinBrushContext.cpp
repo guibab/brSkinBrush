@@ -1427,7 +1427,8 @@ void SkinBrushContext::doTheAction() {
     // the tool command along with the necessary data for undo and redo.
     // The same goes for the select mode.
     MColorArray multiEditColors, soloEditColors;
-    MIntArray editVertsIndices((int)this->verticesPainted.size(), 0);
+    int nbVerticesPainted = (int)this->verticesPainted.size();
+    MIntArray editVertsIndices(nbVerticesPainted, 0);
     MIntArray undoLocks, redoLocks;
 
     MStatus status;
@@ -1443,11 +1444,17 @@ void SkinBrushContext::doTheAction() {
         }
     }
     MDoubleArray prevWeights((int)this->verticesPainted.size() * this->nbJoints, 0);
+
+    std::vector<int> intArray;
+    intArray.resize(this->verticesPainted.size());
+    // mayaArray.get(&intArray[0]);
+
     int i = 0;
     for (const auto &theVert : this->verticesPainted) {
         editVertsIndices[i] = theVert;
         i++;
     }
+
     int theCommandIndex = getCommandIndexModifiers();
     if (theCommandIndex >= 6) {  // lock or unlock
         undoLocks.copy(this->lockVertices);
@@ -1491,7 +1498,7 @@ void SkinBrushContext::doTheAction() {
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
     if (verbose) MGlobal::displayInfo(MString("after refreshColors"));
-    if (theCommandIndex >= 6 || isNurbs) {  // if locking or unlocking
+    if (theCommandIndex >= 6) {  // if locking or unlocking
         // without that it doesn't refresh because mesh is not invalidated, meaning the skinCluster
         // hasn't changed
         meshFn.updateSurface();
@@ -1507,7 +1514,6 @@ void SkinBrushContext::doTheAction() {
     }
 
     cmd = (skinBrushTool *)newToolCommand();
-
     cmd->setColor(colorVal);
     cmd->setCurve(curveVal);
     cmd->setDrawBrush(drawBrushVal);

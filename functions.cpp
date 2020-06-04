@@ -98,7 +98,13 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
 
 MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
     MStatus stat = MS::kSuccess;
+    MPlug mshPnts = msh.findPlug("pnts", &stat);
+    /*
+    MPointArray allVtx;
+    msh.getPoints(allVtx);
+    */
     MPointArray allpts;
+
     bool VIsPeriodic_ = nurbsFn.formInV() == MFnNurbsSurface::kPeriodic;
     bool UIsPeriodic_ = nurbsFn.formInU() == MFnNurbsSurface::kPeriodic;
     if (VIsPeriodic_ || UIsPeriodic_) {
@@ -116,14 +122,28 @@ MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
                 allpts.append(pt);
                 // msh.setPoint(vIndex, pt);
                 // msh.updateSurface();
+                /*
+                MPoint currentVtx = allVtx[vIndex];
+
+                double dst = pt.distanceTo(currentVtx);
+                if (dst > 0.001) {
+                        MPlug ptnPlug = mshPnts.elementByPhysicalIndex(vIndex);
+                        MPoint currentPntValues(ptnPlug.child(0).asDouble(),
+                ptnPlug.child(1).asDouble(), ptnPlug.child(2).asDouble()); MPoint basePoint =
+                currentVtx - currentPntValues; MPoint newPntValues = pt - basePoint;
+                        ptnPlug.child(0).setDouble(newPntValues.x);
+                        ptnPlug.child(1).setDouble(newPntValues.y);
+                        ptnPlug.child(2).setDouble(newPntValues.z);
+                }
+                */
             }
         }
     } else {
         stat = nurbsFn.getCVs(allpts);
     }
     msh.setPoints(allpts);
-    msh.updateSurface();
-    msh.setDisplayColors(true);
+    // msh.updateSurface();
+    // msh.setDisplayColors(true);
 
     return stat;
 }
