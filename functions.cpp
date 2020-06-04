@@ -996,25 +996,58 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
             sumWeigths[jnt] += fullWeightArray[posi];
         }
     }
-    double total = 0.0;
-    double totalBaseVtx = 0.0;
+    double totalBaseVtxUnlock = 0.0, totalBaseVtxLock = 0.0;
+    ;
+    double totalVtxUnlock = 0.0, totalVtxLock = 0.0;
+
     for (jnt = 0; jnt < nbJoints; jnt++) {
+        // get if jnt is locked
+        bool isLockJnt = lockJoints[jnt] == 1;
         int posi = currentVertex * nbJoints + jnt;
-        double origValue = fullWeightArray[posi];
+        // get currentWeight of currentVtx
+        double currentW = fullWeightArray[posi];
 
         sumWeigths[jnt] /= sizeVertices;
         sumWeigths[jnt] =
-            strengthVal * sumWeigths[jnt] + (1.0 - strengthVal) * origValue;  // add with strength
+            strengthVal * sumWeigths[jnt] + (1.0 - strengthVal) * currentW;  // add with strength
+        double targetW = sumWeigths[jnt];
 
-        total += sumWeigths[jnt];
-        totalBaseVtx += origValue;
+        // sum it all
+        if (!isLockJnt) {
+            totalBaseVtxUnlock += currentW;
+            totalVtxUnlock += targetW;
+        } else {
+            totalBaseVtxLock += currentW;
+            totalVtxLock += targetW;
+        }
     }
-    if (total > 0. && totalBaseVtx > 0.) {
-        double mult = totalBaseVtx / total;
+    // setting part ---------------
+    double normalizedValueAvailable = 1.0 - totalBaseVtxLock;
+
+    if (normalizedValueAvailable > 0.0 && totalVtxUnlock > 0.0) {  // we have room to set weights
+        double mult = normalizedValueAvailable / totalVtxUnlock;
+        for (jnt = 0; jnt < nbJoints; jnt++) {
+            bool isLockJnt = lockJoints[jnt] == 1;
+            int posiToSet = indexCurrVert * nbJoints + jnt;
+            int posi = currentVertex * nbJoints + jnt;
+
+            double currentW = fullWeightArray[posi];
+            double targetW = sumWeigths[jnt];
+
+            if (isLockJnt) {
+                theWeights[posiToSet] = currentW;
+            } else {
+                targetW *= mult;  // normalement divide par 1, sauf cas lock joints
+                theWeights[posiToSet] = targetW;
+            }
+        }
+    } else {  // normalize problem let's revert
         for (jnt = 0; jnt < nbJoints; jnt++) {
             int posiToSet = indexCurrVert * nbJoints + jnt;
-            sumWeigths[jnt] *= mult;  // normalement divide par 1
-            theWeights[posiToSet] = sumWeigths[jnt];
+            int posi = currentVertex * nbJoints + jnt;
+
+            double currentW = fullWeightArray[posi];
+            theWeights[posiToSet] = currentW;  // set the base Weight
         }
     }
     return MS::kSuccess;

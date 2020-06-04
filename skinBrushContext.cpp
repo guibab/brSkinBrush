@@ -2211,11 +2211,15 @@ void SkinBrushContext::getConnectedVerticesSecond() {
     for (int faceTmp = 0; faceTmp < numFaces; ++faceTmp) {
         std::vector<int> tmpSet;
         MIntArray surroundingVertices = perFaceVertices[faceTmp];
+        /*
         tmpSet.resize(surroundingVertices.length());
         for (unsigned int itVtx = 0; itVtx < surroundingVertices.length(); itVtx++)
-            tmpSet[itVtx] = surroundingVertices[itVtx];
-        std::sort(tmpSet.begin(), tmpSet.end());
+                tmpSet[itVtx] = surroundingVertices[itVtx];
+        */
+        tmpSet.resize(surroundingVertices.length());
+        surroundingVertices.get(&tmpSet[0]);
 
+        std::sort(tmpSet.begin(), tmpSet.end());
         perFaceVerticesSet[faceTmp] = tmpSet;
     }
 }
