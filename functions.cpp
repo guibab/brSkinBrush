@@ -663,6 +663,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
     //
+    // verbose = true;
     if (verbose)
         MGlobal::displayInfo(MString("-> editArray | command ") + command +
                              MString(" | influence ") + influence);
@@ -683,17 +684,45 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
             int theVert = elem.first;
             double theVal = mutliplier * elem.second + 1.0;
             double substract = theVal / nbJoints;
-            double sum = 0.0;
+            MDoubleArray producedWeigths(nbJoints, 0.0);
+            double totalBaseVtxUnlock = 0.0, totalBaseVtxLock = 0.0;
+            ;
+            double totalVtxUnlock = 0.0, totalVtxLock = 0.0;
             for (int j = 0; j < nbJoints; ++j) {
                 // check the zero val ----------
-                double jntVal = (fullWeightArray[theVert * nbJoints + j] * theVal) - substract;
-                jntVal = std::max(0.0, std::min(jntVal, 1.0));  // clamp
-                theWeights[i * nbJoints + j] = jntVal;
-                if (normalize) sum += jntVal;
+                double currentW = fullWeightArray[theVert * nbJoints + j];
+                double targetW = (currentW * theVal) - substract;
+                targetW = std::max(0.0, std::min(targetW, 1.0));  // clamp
+                producedWeigths.set(targetW, j);
+
+                if (lockJoints[j] == 0) {  // unlock
+                    totalBaseVtxUnlock += currentW;
+                    totalVtxUnlock += targetW;
+                } else {
+                    totalBaseVtxLock += currentW;
+                    totalVtxLock += targetW;
+                }
             }
-            // now normalize
-            if ((normalize) && (sum != 1.0))
-                for (int j = 0; j < nbJoints; ++j) theWeights[i * nbJoints + j] /= sum;
+            // now normalize for lockJoints
+            double normalizedValueAvailable = 1.0 - totalBaseVtxLock;
+            if (normalizedValueAvailable > 0.0 &&
+                totalVtxUnlock > 0.0) {  // we have room to set weights
+                double mult = normalizedValueAvailable / totalVtxUnlock;
+                for (unsigned int j = 0; j < nbJoints; ++j) {
+                    double currentW = fullWeightArray[theVert * nbJoints + j];
+                    double targetW = producedWeigths[j];
+                    if (lockJoints[j] == 0) {  // unlock
+                        targetW *= mult;       // normalement divide par 1, sauf cas lock joints
+                        theWeights[i * nbJoints + j] = targetW;
+                    } else {
+                        theWeights[i * nbJoints + j] = currentW;
+                    }
+                }
+            } else {
+                for (unsigned int j = 0; j < nbJoints; ++j) {
+                    theWeights[i * nbJoints + j] = fullWeightArray[theVert * nbJoints + j];
+                }
+            }
             i++;
         }
     } else {
@@ -848,17 +877,44 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
 
             double theVal = mutliplier * (double)biggestValue + 1.0;
             double substract = theVal / nbJoints;
-            double sum = 0.0;
+
+            MDoubleArray producedWeigths(nbJoints, 0.0);
+            double totalBaseVtxUnlock = 0.0, totalBaseVtxLock = 0.0;
+            ;
+            double totalVtxUnlock = 0.0, totalVtxLock = 0.0;
             for (int j = 0; j < nbJoints; ++j) {
-                // check the zero val ----------
-                double jntVal = (fullWeightArray[theVert * nbJoints + j] * theVal) - substract;
-                jntVal = std::max(0.0, std::min(jntVal, 1.0));  // clamp
-                theWeights[i * nbJoints + j] = jntVal;
-                if (normalize) sum += jntVal;
+                double currentW = fullWeightArray[theVert * nbJoints + j];
+                double targetW = (currentW * theVal) - substract;
+                targetW = std::max(0.0, std::min(targetW, 1.0));  // clamp
+                producedWeigths.set(targetW, j);
+                if (lockJoints[j] == 0) {  // unlock
+                    totalBaseVtxUnlock += currentW;
+                    totalVtxUnlock += targetW;
+                } else {
+                    totalBaseVtxLock += currentW;
+                    totalVtxLock += targetW;
+                }
             }
             // now normalize
-            if ((normalize) && (sum != 1.0))
-                for (int j = 0; j < nbJoints; ++j) theWeights[i * nbJoints + j] /= sum;
+            double normalizedValueAvailable = 1.0 - totalBaseVtxLock;
+            if (normalizedValueAvailable > 0.0 &&
+                totalVtxUnlock > 0.0) {  // we have room to set weights
+                double mult = normalizedValueAvailable / totalVtxUnlock;
+                for (unsigned int j = 0; j < nbJoints; ++j) {
+                    double currentW = fullWeightArray[theVert * nbJoints + j];
+                    double targetW = producedWeigths[j];
+                    if (lockJoints[j] == 0) {  // unlock
+                        targetW *= mult;       // normalement divide par 1, sauf cas lock joints
+                        theWeights[i * nbJoints + j] = targetW;
+                    } else {
+                        theWeights[i * nbJoints + j] = currentW;
+                    }
+                }
+            } else {
+                for (unsigned int j = 0; j < nbJoints; ++j) {
+                    theWeights[i * nbJoints + j] = fullWeightArray[theVert * nbJoints + j];
+                }
+            }
             i++;
         }
     } else {
