@@ -1465,9 +1465,19 @@ void SkinBrushContext::doTheAction() {
         if (this->paintMirror != 0) {
             int mirrorInfluenceIndex = this->mirrorInfluences[this->influenceIndex];
             mergeMirrorArray(this->skinValuesToSet, this->skinValuesMirrorToSet);
-            // status = applyCommand(mirrorInfluenceIndex, this->skinValuesMirrorToSet);//
-            status = applyCommandMirror();
-            // JUST for DISPLAY
+
+            if (mirrorInfluenceIndex != this->influenceIndex)
+                status = applyCommandMirror();
+            else {  // we merge in one array, it's easier
+                for (const auto &element : this->skinValuesMirrorToSet) {
+                    int index = element.first;
+                    float value = element.second;
+
+                    auto ret = this->skinValuesToSet.insert(std::make_pair(index, value));
+                    if (!ret.second) ret.first->second = std::max(value, ret.first->second);
+                }
+                status = applyCommand(this->influenceIndex, this->skinValuesToSet);  //
+            }
         } else if (this->skinValuesToSet.size() > 0) {
             if (verbose)
                 MGlobal::displayInfo(MString("before applyCommand this->skinValuesToSet.size is ") +

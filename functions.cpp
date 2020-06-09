@@ -930,6 +930,11 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
             double valueBase = mutliplier * (double)elem.second.first;
             double valueMirror = mutliplier * (double)elem.second.second;
 
+            if (influenceMirror == influence) {
+                valueBase = std::max(valueBase, valueMirror);
+                valueMirror = 0.0;
+            }
+
             double sumUnlockWeights = 0.0;
             for (int jnt = 0; jnt < nbJoints; ++jnt) {
                 int indexArray_theWeight = i * nbJoints + jnt;
@@ -961,6 +966,7 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
                 newW = std::min(1.0, newW + valueBase);
                 newWMirror = std::min(1.0, newWMirror + valueMirror);
                 sumNewWs = newW + newWMirror;
+
                 if (sumNewWs > 1.0) {
                     newW /= sumNewWs;
                     newWMirror /= sumNewWs;
