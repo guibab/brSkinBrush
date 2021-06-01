@@ -328,12 +328,9 @@ void SkinBrushContext::refresh() {
         getListColorsJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->jointsColors,
                             this->verbose);  // get the joints colors
         status = getListLockVertices(skinObj, this->lockVertices, editVertsIndices);  // problem ?
-        if (MS::kSuccess != status) {
-            MGlobal::displayError(MString("error getListLockVertices"));
-        }
         status = fillArrayValuesDEP(skinObj, true);  // get the skin data and all the colors
     } else {
-        MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
+        MGlobal::displayError(MString("FAILED : skinObj.isNull"));
         return;
     }
 
@@ -419,13 +416,26 @@ int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint hitPoint) {
 
     int biggestInfluence = -1;
     double biggestVal = 0;
-
+    std::vector<double> allWeights;
     for (int indexInfluence = 0; indexInfluence < this->nbJoints; ++indexInfluence) {
         double theWeight = this->skinWeightList[indexVertex * this->nbJoints + indexInfluence];
+        allWeights.push_back(theWeight);
         if (theWeight > biggestVal) {
             biggestVal = theWeight;
             biggestInfluence = indexInfluence;
         }
+    }
+    // now sort the allWights array (I found that online hoepfully it works)
+    std::vector<int> indices;
+    indices.resize(this->nbJoints);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(),
+              [&](int i, int j) { return allWeights[i] > allWeights[j]; });
+
+    // now we transfer that to our UI
+    this->orderedIndicesByWeights = MString("");
+    for (int ind : indices) {
+        this->orderedIndicesByWeights += MString("") + ind + MString(" ");
     }
     /*
     auto weights = this->skin_weights_[indexVertex];
@@ -949,9 +959,19 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
         // this->pickInfluenceVal = false;into release
         this->BBoxOfDeformers.clear();
 
+        if (this->pickMaxInfluenceVal && biggestInfluence != -1) {
+            // MGlobal::displayInfo(this->orderedIndicesByWeights);
+
+            MString pickInfluenceCommand = moduleImportString + MString("orderedInfluence\n");
+            pickInfluenceCommand +=
+                MString("orderedInfluence ('") + this->orderedIndicesByWeights + MString("')");
+            MGlobal::executePythonCommand(pickInfluenceCommand);
+        }
+
         if (biggestInfluence != this->influenceIndex && biggestInfluence != -1) {
             setInfluenceIndex(biggestInfluence, true);  // true for select in UI
         }
+
         return MStatus::kNotFound;
     }
 

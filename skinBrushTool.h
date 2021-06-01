@@ -60,6 +60,7 @@
 
 #include <algorithm>
 #include <map>
+#include <numeric>  //std::iota
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -486,6 +487,7 @@ class SkinBrushContext : public MPxContext {
     bool coverageVal;
     // if we're asking to pick max influence
     bool pickMaxInfluenceVal = false, pickInfluenceVal = false;
+    MString orderedIndicesByWeights;
     // for me yep ----
     int influenceIndex = 0, commandIndex = 0, smoothRepeat = 4;
     // int smoothDepth = 3;// smooth depth is the same as repeat

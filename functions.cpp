@@ -448,7 +448,7 @@ MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArr
     MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
     MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", &stat);
     if (MS::kSuccess != stat) {
-        MGlobal::displayError(MString("cant find lockerdVertices plug"));
+        MGlobal::displayInfo(MString("cant find lockerdVertices plug"));
         return stat;
     }
 
