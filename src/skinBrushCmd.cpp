@@ -157,8 +157,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     }
 
     if (argData.isFlagSet(kFloodFlag)) {
-        // double value;
-        // status = argData.getFlagArgument(kFloodFlag, 0, value);
         smoothContext->setFlood();
     }
     if (argData.isFlagSet(kVerboseFlag)) {

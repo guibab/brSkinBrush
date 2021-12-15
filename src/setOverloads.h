@@ -33,7 +33,6 @@ template <class T>
 std::unordered_set<T> operator+(const std::unordered_set<T> &base,
                                 const std::unordered_set<T> &other) {
     std::unordered_set<T> result;
-    // result.insert(base.begin(), base.end());
     result = base;
     result.insert(other.begin(), other.end());
     return result;

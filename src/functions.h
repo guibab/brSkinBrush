@@ -50,8 +50,6 @@ MStatus findNurbsTesselateOrig(MDagPath meshPath, MObject& origMeshObj, bool ver
 
 MStatus findMesh(MObject& theSkinCluster, MDagPath& theMeshPath, bool verbose);
 MStatus findOrigMesh(MObject& theSkinCluster, MObject& origMesh, bool verbose);
-// MStatus getListColors( MObject& skinCluster, int nbVertices, MColorArray & currColors, bool
-// verbose,  bool useMPlug = false);
 MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
                             MIntArray indicesForInfluenceObjects, MColorArray& jointsColors,
                             bool verbose);
@@ -87,7 +85,6 @@ bool bboxIntersection(const MPoint& minPoint, const MPoint& maxPoint, const MMat
                       const MPoint& rayPoint, const MVector& rayVector, MPoint& intersection);
 
 void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>>& posi);
-// void Line(float x1, float y1, float x2, float y2, MIntArray &posiX, MIntArray &posiY);
 void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>>& posi);
 
 float dist2D(short x0, short y0, short x1, short y1);

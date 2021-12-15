@@ -214,17 +214,14 @@ void SkinBrushContext::setSmoothRepeat(int value) {
 
 void SkinBrushContext::setSoloColor(int value) {
     // MGlobal::displayInfo(MString("setSoloColor CALLED ") + value);
-    // if (soloColorVal != value) {
     soloColorVal = value;
     MString currentColorSet = meshFn.currentColorSetName();  // set multiColor as current Color
 
     if (soloColorVal == 1) {  // solo
-        // if (currentColorSet != this->soloColorSet)
         meshFn.setCurrentColorSetName(this->soloColorSet);
         editSoloColorSet(true);
     } else {
-        // if (currentColorSet != this->fullColorSet)
-        meshFn.setCurrentColorSetName(this->fullColorSet);  // , &this->colorSetMod);
+        meshFn.setCurrentColorSetName(this->fullColorSet);
     }
     maya2019RefreshColors();
     MToolsInfo::setDirtyFlag(*this);
@@ -244,7 +241,6 @@ void SkinBrushContext::maya2019RefreshColors(bool toggle) {
             meshFn.setCurrentColorSetName(this->fullColorSet2);
         }
         view.refresh(false, true);
-        // view.scheduleRefresh();
     }
     if (!toggle || !toggleColorState) {
         if (soloColorVal == 1) {
@@ -253,7 +249,6 @@ void SkinBrushContext::maya2019RefreshColors(bool toggle) {
             meshFn.setCurrentColorSetName(this->fullColorSet);
         }
         view.refresh(false, true);
-        // view.scheduleRefresh ();
     }
 }
 
@@ -326,8 +321,6 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
         meshFn.updateSurface();  // for proper redraw hopefully
         maya2019RefreshColors();
     }
-    // MToolsInfo::setDirtyFlag(*this);
-    // if (selectInUI) MToolsInfo::setDirtyFlag(*this);
 }
 
 void SkinBrushContext::setInfluenceByName(MString value) {

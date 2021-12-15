@@ -96,7 +96,6 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kMinColorFlag, kMinColorFlagLong, MSyntax::kDouble);
     syntax.addFlag(kMaxColorFlag, kMaxColorFlagLong, MSyntax::kDouble);
 
-    // syntax.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kSmoothRepeatFlag, kSmoothRepeatFlagLong, MSyntax::kLong);
 
     syntax.addFlag(kInfluenceIndexFlag, kInfluenceIndexFlagLong, MSyntax::kLong);
@@ -257,7 +256,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
 // ---------------------------------------------------------------------
 MStatus skinBrushTool::doIt(const MArgList& args) {
     // MGlobal::displayInfo(MString("---------------- [skinBrushTool::doIt]------------------"));
-
     MStatus status = MStatus::kSuccess;
 
     status = parseArgs(args);
@@ -369,13 +367,6 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
         MGlobal::executePythonCommand("cleanTheNurbs()\n");
     }
     return status;
-    /*
-    MGlobal::getActiveSelectionList(redoSelection);
-    MGlobal::getHiliteList(redoHilite);
-
-    MGlobal::setActiveSelectionList(undoSelection);
-    MGlobal::setHiliteList(undoHilite);
-    */
 }
 
 MStatus skinBrushTool::undoIt() {
@@ -395,11 +386,7 @@ MStatus skinBrushTool::callBrushRefresh() {
     */
 
     MString cmd;
-    // cmd = "brSkinBrushContext -edit -refresh 1 brSkinBrushContext1;";
-    // cmd = "evalDeferred  ( \"brSkinBrushContext -edit -refresh 1 brSkinBrushContext1\");";
-    // cmd = "brSkinBrushContext -edit -refreshPointsNormals 1 brSkinBrushContext1;";
-    // cmd = "evalDeferred  ( \"brSkinBrushContext -edit -refreshPointsNormals 1
-    // brSkinBrushContext1\");"; MGlobal::executeCommandOnIdle(cmd);
+
     MString lst = "";
     int i, nbElements;
     nbElements = this->undoVertices.length();
@@ -412,11 +399,6 @@ MStatus skinBrushTool::callBrushRefresh() {
         cmd = MString("cmds.brSkinBrushContext('brSkinBrushContext1', e=True,");
         cmd += MString("listVerticesIndices = [") + lst + MString("])");
 
-        /*
-        MString melCmd = MString ("evalDeferred(\"python (\\\"")+ cmd +MString("\\\")\");" ) ;
-        MGlobal::displayInfo(melCmd);
-        MGlobal::executeCommandOnIdle(melCmd);
-        */
         MGlobal::executePythonCommandOnIdle(cmd);
         MGlobal::executePythonCommand("afterPaint()");
     }
@@ -621,15 +603,6 @@ MStatus skinBrushTool::getSkinClusterObj() {
 
     status = findMesh(skinObj, meshDag, true);
     return status;
-    /*
-    MFnDependencyNode nodeFn(skinCluster_);
-    if (verbose) MGlobal::displayInfo(MString("    input skin name: ") + nodeFn.name());
-
-
-    foundSkinCluster = true;
-    // now get the mesh .... seems to CRASH
-    useSelection = false;
-    */
 }
 
 void skinBrushTool::setMesh(MDagPath dagPath) { meshDag = dagPath; }
@@ -637,14 +610,6 @@ void skinBrushTool::setMesh(MDagPath dagPath) { meshDag = dagPath; }
 void skinBrushTool::setNurbs(MDagPath dagPath) { nurbsDag = dagPath; }
 
 void skinBrushTool::setNormalize(bool value) { normalize = value; }
-
-/*
-void skinBrushTool::setSelection(MSelectionList selection, MSelectionList hilite)
-{
-        undoSelection = selection;
-        undoHilite = hilite;
-}
-*/
 
 void skinBrushTool::setSkinCluster(MObject skinCluster) { skinObj = skinCluster; }
 void skinBrushTool::setIsNurbs(bool value) { isNurbs = value; }

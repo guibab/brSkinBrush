@@ -76,11 +76,6 @@ MStatus SkinBrushContext::doDrag(MEvent &event) {
 
 void SkinBrushContext::drawCircle(MPoint point, MMatrix mat, double radius) {
     unsigned int i;
-    /*
-    MEulerRotation eulerRot(0, 30, 30);
-    MMatrix matPreRotate = eulerRot.asMatrix();
-    mat = matPreRotate * mat ;
-    */
     glBegin(GL_LINE_LOOP);
     for (i = 0; i < 360; i += 2) {
         double degInRad = i * DEGTORAD;

@@ -24,13 +24,13 @@ int unpack_float(float f, float* x, float* y) {
     return 0;
 }
 
-coord_t distance_sq(const point_t& a, const point_t& b) {  // or boost::geometry::distance
+coord_t distance_sq(const point_t& a, const point_t& b) {
     coord_t x = std::get<0>(a) - std::get<0>(b);
     coord_t y = std::get<1>(a) - std::get<1>(b);
     coord_t z = std::get<2>(a) - std::get<2>(b);
     return x * x + y * y + z * z;
 }
-coord_t distance(const point_t& a, const point_t& b) {  // or boost::geometry::distance
+coord_t distance(const point_t& a, const point_t& b) {
     coord_t x = std::get<0>(a) - std::get<0>(b);
     coord_t y = std::get<1>(a) - std::get<1>(b);
     coord_t z = std::get<2>(a) - std::get<2>(b);
@@ -93,16 +93,11 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
         resCV = numCVsInV * storedU + VPrev;
         if (getMIntArrayIndex(vertices, resCV) == -1) vertices.append(resCV);
     }
-    // vertInd = numCVsInV * indexU + indexV;
 }
 
 MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
     MStatus stat = MS::kSuccess;
     MPlug mshPnts = msh.findPlug("pnts", &stat);
-    /*
-    MPointArray allVtx;
-    msh.getPoints(allVtx);
-    */
     MPointArray allpts;
 
     bool VIsPeriodic_ = nurbsFn.formInV() == MFnNurbsSurface::kPeriodic;
@@ -112,7 +107,6 @@ MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
         int numCVsInU_ = nurbsFn.numCVsInU();
         int UDeg_ = nurbsFn.degreeU();
         int VDeg_ = nurbsFn.degreeV();
-        // int vertInd;
         if (VIsPeriodic_) numCVsInV_ -= VDeg_;
         if (UIsPeriodic_) numCVsInU_ -= UDeg_;
         for (int uIndex = 0; uIndex < numCVsInU_; uIndex++) {
@@ -120,31 +114,12 @@ MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
                 MPoint pt;
                 nurbsFn.getCV(uIndex, vIndex, pt);
                 allpts.append(pt);
-                // msh.setPoint(vIndex, pt);
-                // msh.updateSurface();
-                /*
-                MPoint currentVtx = allVtx[vIndex];
-
-                double dst = pt.distanceTo(currentVtx);
-                if (dst > 0.001) {
-                        MPlug ptnPlug = mshPnts.elementByPhysicalIndex(vIndex);
-                        MPoint currentPntValues(ptnPlug.child(0).asDouble(),
-                ptnPlug.child(1).asDouble(), ptnPlug.child(2).asDouble()); MPoint basePoint =
-                currentVtx - currentPntValues; MPoint newPntValues = pt - basePoint;
-                        ptnPlug.child(0).setDouble(newPntValues.x);
-                        ptnPlug.child(1).setDouble(newPntValues.y);
-                        ptnPlug.child(2).setDouble(newPntValues.z);
-                }
-                */
             }
         }
     } else {
         stat = nurbsFn.getCVs(allpts);
     }
     msh.setPoints(allpts);
-    // msh.updateSurface();
-    // msh.setDisplayColors(true);
-
     return stat;
 }
 
@@ -238,7 +213,6 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
                 // go until we find a skinCluster
                 if (thisNode.apiType() == MFn::kSkinClusterFilter) {
                     listSkinClusters.append(thisNode);
-                    // return MS::kSuccess;
                 }
             }
         }
@@ -330,29 +304,12 @@ MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
         return stat;
     }
     int nbElements = influenceColor_plug.numElements();
-    // MIntArray plugIndices;
-    // influenceColor_plug.getExistingArrayAttributeIndices(plugIndices, &stat);
-    // CHECK_MSTATUS_AND_RETURN_IT(stat);
 
-    // int plugIndicesLength = plugIndices.length();
-    // int indexPlug = plugIndicesLength - 1;
-    // if indexPlug>0
-    // if (indexPlug < 0) {
-    //	MGlobal::displayError(MString("influenceColor plug size is ZERO "));
-    //	return MS::kFailure;
-    //}
-    // int maxIndex = plugIndices[indexPlug] + 1;
     if (verbose)
         MGlobal::displayInfo(influenceColor_plug.name() + " nbJoints [" + nbJoints +
                              "] nbElements [" + nbElements + "]");
     for (int i = 0; i < nbElements; ++i) {  // for each joint
-        // MGlobal::displayInfo(i);
-        // weightList[i]
 
-        // if (i >= nbJoints) {
-        //	MGlobal::displayError(MString("influenceColor nb elements : ") + i + MString(" nb
-        //joints: ") + nbJoints); 	break;
-        //}
         MPlug colorPlug = influenceColor_plug.elementByPhysicalIndex(i);
         int logicalInd = colorPlug.logicalIndex();
         if (verbose) {
@@ -361,7 +318,6 @@ MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
                                  MString(" | indicesForInfluenceObjects ") + indexInfluence);
         }
         logicalInd = indicesForInfluenceObjects[logicalInd];
-        // logicalInd = i; // fix colors bug on joints
         if (logicalInd < 0 || logicalInd >= nbJoints) {
             MGlobal::displayError(MString("CRASH i : ") + i + MString("logical Index: ") +
                                   colorPlug.logicalIndex() +
@@ -412,7 +368,6 @@ MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray indicesF
     for (int i = 0; i < nbJoints; ++i) jointsLocks.set(0, i);
 
     for (int i = 0; i < nbPlugs; ++i) {
-        // weightList[i]
         MPlug lockPlug = influenceLock_plug.elementByPhysicalIndex(i);
         int isLocked = 0;
         if (lockPlug.isConnected()) {
@@ -457,7 +412,6 @@ MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArr
 
     int nbVertices = weight_list_plug.numElements();
 
-    // vertsLocks.clear();
     MObject Data;
     stat = lockedVerticesPlug.getValue(Data);  // to get the attribute
 
@@ -576,86 +530,7 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     stat = lockedVerticesPlug.setValue(tmpIntArray.create(theArrayValues));  // to set the attribute
     return stat;
 }
-/*
-MStatus	getListColors( MObject& skinCluster, int nbVertices, MColorArray & currColors, bool verbose,
-bool useMPlug) { MStatus stat; MFnDagNode skinClusterDag(skinCluster); MFnDependencyNode
-skinClusterDep(skinCluster); MColorArray jointsColors; getListColorsJoints(skinCluster,
-jointsColors, verbose);
 
-        if (!useMPlug) {
-                MFnSkinCluster theSkinCluster(skinCluster);
-                int nbJoints = jointsColors.length();
-
-                // now get the weights ----------------------------------------
-                MObject allVerticesObj;
-
-                MFnSingleIndexedComponent allVertices;
-                MDoubleArray fullOrigWeights;
-
-                allVertices.setCompleteData(nbVertices);
-                allVerticesObj = allVertices.create(MFn::kMeshVertComponent);
-                unsigned int infCount;
-
-                MDagPath path;
-                theSkinCluster.getPathAtIndex(0, path);
-                theSkinCluster.getWeights(path, allVerticesObj, fullOrigWeights, infCount);
-
-                // now get the colors per vertices ----------------------------------------
-                int currentWeightsLength = fullOrigWeights.length();
-                int indexInfluence, i, indexWeight;
-                double theWeight, maxWeight;
-
-                currColors.clear();
-                currColors.setLength(nbVertices);
-
-                for (i = 0; i < nbVertices; ++i) {
-                        MColor theColor;
-                        maxWeight = 0.;
-                        for (indexInfluence = 0; indexInfluence < nbJoints; indexInfluence++) {
-                                indexWeight = i * nbJoints + indexInfluence;
-                                theWeight = fullOrigWeights[indexWeight];
-                                if (theWeight > 0.) {
-                                        theColor += jointsColors[indexInfluence] * theWeight;
-                                }
-                                currColors[i] = theColor;
-                        }
-                }
-        }
-        else {
-                MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
-                //MGlobal::displayInfo(weight_list_plug.name());
-                int nbElements = weight_list_plug.numElements();
-                currColors.clear();
-                currColors.setLength(nbVertices);
-
-                for (int i = 0; i < nbVertices; ++i) {
-                        // weightList[i]
-                        //if (i > 50) break;
-                        MPlug ith_weights_plug = weight_list_plug.elementByPhysicalIndex(i);
-                        int vertexIndex = ith_weights_plug.logicalIndex();
-                        //MGlobal::displayInfo(ith_weights_plug.name());
-
-                        // weightList[i].weight
-                        MPlug plug_weights = ith_weights_plug.child(0); // access first compound
-child int  nb_weights = plug_weights.numElements();
-                        //MGlobal::displayInfo(plug_weights.name() + nb_weights);
-                        MColor theColor;
-                        for (int j = 0; j < nb_weights; j++) { // for each joint
-                                MPlug weight_plug = plug_weights.elementByPhysicalIndex(j);
-                                // weightList[i].weight[j]
-                                int indexInfluence = weight_plug.logicalIndex();
-                                double theWeight = weight_plug.asDouble();
-                                //MGlobal::displayInfo(weight_plug.name() + " " + indexInfluence + "
-" + theWeight); if (theWeight > 0.01) { theColor += jointsColors[indexInfluence] * theWeight;
-                                }
-                        }
-                        currColors[vertexIndex] = theColor;
-                }
-        }
-
-        return MS::kSuccess;
-}
-*/
 MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoints,
                   MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
                   MDoubleArray& theWeights, bool normalize, double mutliplier, bool verbose) {
@@ -663,7 +538,6 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
     //
-    // verbose = true;
     if (verbose)
         MGlobal::displayInfo(MString("-> editArray | command ") + command +
                              MString(" | influence ") + influence);
@@ -775,8 +649,6 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
             }
             if (verbose) MGlobal::displayInfo(MString("-> editArray | AFTER joints  loop"));
             double currentW = fullWeightArray[theVert * nbJoints + influence];
-            // if (((command == 1) || (command == 3)) && (currentW > 0.99999)) { // value is 1 we
-            // cant do anything
 
             if (((command == 1) || (command == 3)) &&
                 (currentW > (sumUnlockWeights - .0001))) {  // value is 1(max) we cant do anything
@@ -794,11 +666,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
                 newW = theVal;  // Absolute
 
             newW = std::max(0.0, std::min(newW, sumUnlockWeights));  // clamp
-            /*
-            double newRest = 1.0 - newW;
-            double oldRest = 1.0 - currentW;
-            double div = 1.0;
-            */
+
             double newRest = sumUnlockWeights - newW;
             double oldRest = sumUnlockWeights - currentW;
             double div = sumUnlockWeights;
@@ -822,8 +690,6 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
                         weightValue /= div;
                     }
                 }
-                // if (normalize) theWeights[i*nbJoints + j] = std::max(0.0,
-                // std::min(theWeights[i*nbJoints + j], 1.0));// clamp
                 if (normalize) {
                     weightValue = std::max(0.0, std::min(weightValue, sumUnlockWeights));  // clamp
                 }
@@ -950,14 +816,6 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
             double currentW = fullWeightArray[theVert * nbJoints + influence];
             double currentWMirror = fullWeightArray[theVert * nbJoints + influenceMirror];
             // 1 Remove 3 Absolute
-            /*
-            if (
-                    (command == 1 || command == 3) &&
-                    currentW > (sumUnlockWeights - .0001)
-                    ) { // value is 1(max) we cant do anything
-                    continue; // we pass to next vertex
-            }
-            */
             double newW = currentW;
             double newWMirror = currentWMirror;
             double sumNewWs = newW + newWMirror;
@@ -1123,7 +981,6 @@ MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWei
     int nbVertices = nbElements / nbJoints;
     double total = 0.0, val;
 
-    // MDoubleArray WeightsCopy (theWeights);
     for (vertIndex = 0; vertIndex < nbVertices; ++vertIndex) {
         total = 0.0;
         for (jnt = 0; jnt < nbJoints; jnt++) {
@@ -1146,7 +1003,6 @@ MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWei
     return MS::kSuccess;
 };
 
-// void Line(float x1, float y1, float x2, float y2, MIntArray &posiX, MIntArray &posiY)
 void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>>& posi) {
     // Bresenham's line algorithm
     bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
@@ -1171,15 +1027,9 @@ void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float
 
     for (int x = (int)x1; x < maxX; x++) {
         if (steep) {
-            // SetPixel(y, x);
             posi.push_back(std::make_pair(y, x));
-            // posiX.append(y);
-            // posiY.append(x);
         } else {
-            // SetPixel(x, y);
             posi.push_back(std::make_pair(x, y));
-            // posiX.append(x);
-            // posiY.append(y);
         }
         error -= dy;
         if (error < 0) {

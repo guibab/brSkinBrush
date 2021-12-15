@@ -13,10 +13,6 @@
 #ifndef __skinBrushTool__skinBrushTool__
 #define __skinBrushTool__skinBrushTool__
 
-#include <iostream>
-
-//#include <tbb/tbb.h>
-// using namespace std;
 #include <math.h>
 #include <maya/M3dView.h>
 #include <maya/MArgDatabase.h>
@@ -59,12 +55,12 @@
 #include <maya/MUintArray.h>
 
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <numeric>  //std::iota
 #include <set>
 #include <unordered_map>
 #include <vector>
-//#include <maya/MRenderItem.h>
 
 // Macro for the press/drag/release methods in case there is nothing
 // selected or the tool gets applied outside any geometry. If the actual
@@ -76,7 +72,6 @@
 
 // struct to store the deformers when pick using D key
 struct drawingDeformers {
-    // MBoundingBox bbox;
     MMatrix mat;
     MPoint center;
     MPoint minPt;
@@ -140,7 +135,6 @@ class skinBrushTool : public MPxToolCommand {
     void setMesh(MDagPath dagPath);
     void setNurbs(MDagPath dagPath);
     void setNormalize(bool value);
-    // void setSelection(MSelectionList selection, MSelectionList hilite);
 
     void setSkinCluster(MObject skinCluster);
     void setIsNurbs(bool value);
@@ -149,7 +143,6 @@ class skinBrushTool : public MPxToolCommand {
     void setSkinClusterName(MString skinClusterName);
     MStatus getSkinClusterObj();
 
-    // void setVertexComponents(MObject components);
     void setWeights(MDoubleArray weights);
     void setUnoVertices(MIntArray editVertsIndices);
     void setUnoLocks(MIntArray locks);
@@ -190,7 +183,6 @@ class skinBrushTool : public MPxToolCommand {
     bool coverageVal;
     int influenceIndex = 0, commandIndex = 0;
     int smoothRepeat = 3;
-    // int smoothDepth = 1;// smooth depth is the same as repeat
     int soloColorTypeVal = 1;  // 1 lava
     int soloColorVal = 0;
     bool postSetting = true;
@@ -215,11 +207,7 @@ class skinBrushTool : public MPxToolCommand {
 
     bool normalize;
     MString influenceName;
-    // MSelectionList redoHilite;
-    // MSelectionList redoSelection;
     MDoubleArray redoWeights;
-    // MSelectionList undoHilite;
-    // MSelectionList undoSelection;
     MDoubleArray undoWeights;
     MIntArray undoVertices;
     MObject vertexComponents;
@@ -251,15 +239,12 @@ class SkinBrushContext : public MPxContext {
                    const MHWRender::MFrameContext &context);
     MStatus doRelease(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                       const MHWRender::MFrameContext &context);
-    // MStatus drawFeedback(MHWRender::MUIDrawManager& drawMgr,const MHWRender::MFrameContext&
-    // context);
     MStatus drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector worldVector);
     MStatus drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager);
 
     MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                        const MHWRender::MFrameContext &context);
     int getHighestInfluence(int faceHit, MFloatPoint hitPoint);
-    // bool tmpTestPrintClosestInfluence = false;
     int getClosestInfluenceToCursor(int screenX, int screenY);
     // common methods
     MStatus doPressCommon(MEvent event);
@@ -279,11 +264,9 @@ class SkinBrushContext : public MPxContext {
     std::vector<int> getSurroundingVerticesPerVert(int vertexIndex);
     std::vector<int> getSurroundingVerticesPerFace(int vertexIndex);
 
-    // void getConnectedVertices();
     void getFromMeshNormals();
     MStatus getSelection(MDagPath &dagPath);
     MStatus getSkinCluster(MDagPath meshDag, MObject &skinClusterObj);
-    // MStatus getAllWeights();
     void refreshJointsLocks();
     void refresh();
     void refreshDeformerColor(int influenceInd);
@@ -315,13 +298,11 @@ class SkinBrushContext : public MPxContext {
     void getSkinClusterAttributes(MObject skinCluster, unsigned int &maxInfluences,
                                   bool &maintainMaxInfluences, unsigned int &normalize);
     MIntArray getInfluenceIndices();
-    // bool getClosestIndex(MEvent event);
     bool getMirrorHit(bool getNormal, int &faceHit, MFloatPoint &hitPoint);
     bool computeHit(short screenPixelX, short screenPixelY, bool getNormal, int &faceHit,
                     MFloatPoint &hitPoint);
     bool expandHit(int faceHit, MFloatPoint hitPoint, std::unordered_map<int, float> &dicVertsDist);
 
-    // MVector SkinBrushContext::getNormal(int vertexInd, int faceIndex);
     void growArrayOfHitsFromCenters(std::unordered_map<int, float> &dicVertsDist,
                                     MFloatPointArray &AllHitPoints);
 
@@ -490,7 +471,6 @@ class SkinBrushContext : public MPxContext {
     MString orderedIndicesByWeights;
     // for me yep ----
     int influenceIndex = 0, commandIndex = 0, smoothRepeat = 4;
-    // int smoothDepth = 3;// smooth depth is the same as repeat
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
     bool postSetting = true;                     // we apply paint as ssons as attr is changed
     bool doNormalize = true;
@@ -584,8 +564,6 @@ class SkinBrushContext : public MPxContext {
     // guillaume values ----------
     MMeshIsectAccelParams accelParams;
     MMeshIsectAccelParams accelParamsOrigMesh;
-    // MIntArray closestIndices;
-    // MFloatArray closestDistances;
     bool foundBlurSkinAttribute = false;
 
     // skinCluster values --------------------------
@@ -615,7 +593,6 @@ class SkinBrushContext : public MPxContext {
 
     bool toggleColorState = false;  // use to swap from colorSet and colorSet2
 
-    // MString noColorSet = MString("noColorsSet");
     double minSoloColor = 0.0;
     double maxSoloColor = 1.0;
 
@@ -649,7 +626,6 @@ class SkinBrushContext : public MPxContext {
     MFloatPoint origHitPoint;
 
     MPointArray meshPoints;
-    // MFloatPointArray vertexArray; // the position of all the vertices
     int fullVertexListLength = 0;
 
     // HITs vairables ------------------------
@@ -673,7 +649,6 @@ class SkinBrushContext : public MPxContext {
 
     int modifierNoneShiftControl = 0;  // store the modifier type
 
-    // std::vector <std::pair<int, float>> faceVertsDistSTART;
     int previousfaceHit;   // the faceIndex that was hit during the press common
     int biggestInfluence;  // for while we search for biggest influence
 };
