@@ -4,19 +4,7 @@ project(brSkinBrush)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(MAYA_VERSION 2020 CACHE STRING "Maya version number")
 
-file(GLOB SOURCE_FILES
-    "src/functions.h"
-    "src/setOverloads.h"
-    "src/skinBrushFlags.h"
-    "src/skinBrushTool.h"
-    "src/functions.cpp"
-    "src/pluginMain.cpp"
-    "src/skinBrushCmd.cpp"
-    "src/skinBrushContext.cpp"
-    "src/skinBrushContextSetFlags.cpp"
-    "src/skinBrushLegacy.cpp"
-    "src/skinBrushTool.cpp"
-)
+file(GLOB SOURCE_FILES "src/*.*")
 
 FIND_PACKAGE(OpenGL REQUIRED)
 FIND_PACKAGE(Maya REQUIRED)
