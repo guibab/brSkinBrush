@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
 project(brSkinBrush)
+
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(MAYA_VERSION 2020 CACHE STRING "Maya version number")
 
 file(GLOB SOURCE_FILES
