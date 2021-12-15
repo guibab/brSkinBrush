@@ -641,8 +641,8 @@ void skinBrushTool::setNormalize(bool value) { normalize = value; }
 /*
 void skinBrushTool::setSelection(MSelectionList selection, MSelectionList hilite)
 {
-    undoSelection = selection;
-    undoHilite = hilite;
+        undoSelection = selection;
+        undoHilite = hilite;
 }
 */
 
