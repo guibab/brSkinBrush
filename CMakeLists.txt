@@ -1,76 +1,34 @@
 cmake_minimum_required(VERSION 2.6)
-project(brSkinBrush)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+project(brSkinBrush)
 SET(MAYA_VERSION 2019 CACHE STRING "Maya version number")
-SET(SOURCE_FILES 
-    "functions.h" 
-	"setOverloads.h"
-	"skinBrushFlags.h"
-    "skinBrushTool.h"
-    "functions.cpp" 
-    "pluginMain.cpp" 
-	"skinBrushCmd.cpp" 
-	"skinBrushContext.cpp" 
-	"skinBrushContextSetFlags.cpp" 
-	"skinBrushLegacy.cpp" 
-    "skinBrushTool.cpp"    
+
+file(GLOB SOURCE_FILES
+    "src/functions.h"
+    "src/setOverloads.h"
+    "src/skinBrushFlags.h"
+    "src/skinBrushTool.h"
+    "src/functions.cpp"
+    "src/pluginMain.cpp"
+    "src/skinBrushCmd.cpp"
+    "src/skinBrushContext.cpp"
+    "src/skinBrushContextSetFlags.cpp"
+    "src/skinBrushLegacy.cpp"
+    "src/skinBrushTool.cpp"
 )
 
-
-SET(BOOST_ROOT "C:/Boost/boost_1_73_0")
-find_package( Boost )
-
-
 FIND_PACKAGE(OpenGL REQUIRED)
+FIND_PACKAGE(Maya REQUIRED)
 
-# OS Specific environment setup
-SET(CUSTOM_DEFINITIONS "REQUIRE_IOSTREAM;_BOOL")
-SET(MAYA_INSTALL_BASE_SUFFIX "")
-SET(MAYA_INC_SUFFIX "include")
-SET(MAYA_LIB_SUFFIX "lib")
-IF(WIN32)
-    # Windows
-    SET(MAYA_INSTALL_BASE_DEFAULT "C:/Program Files/Autodesk")
-    SET(CUSTOM_DEFINITIONS "${CUSTOM_DEFINITIONS};NT_PLUGIN")
-ELSEIF(APPLE)
-    # Apple
-    SET(MAYA_INSTALL_BASE_DEFAULT "/Applications/Autodesk")
-    SET(MAYA_INC_SUFFIX "devkit/include")
-    SET(MAYA_LIB_SUFFIX "Maya.app/Contents/MacOS")
-    SET(CUSTOM_DEFINITIONS "${CUSTOM_DEFINITIONS};OSMac_")
-ELSE(WIN32)
-    # Linux
-    SET(MAYA_INSTALL_BASE_DEFAULT "/usr/autodesk")
-    SET(MAYA_INSTALL_BASE_SUFFIX "-x64")
-ENDIF(WIN32)
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/../output/${MAYA_VERSION})
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
-SET(MAYA_INSTALL_BASE_PATH ${MAYA_INSTALL_BASE_DEFAULT} CACHE STRING
-    "Path containing all your maya installations, like /usr/autodesk or /Applications/Autodesk/")
+include_directories(${MAYA_INCLUDE_DIR} maya lib ${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
+link_directories(${MAYA_LIBRARY_DIR})
+add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
+target_link_libraries(${PROJECT_NAME} ${MAYA_LIBRARIES} ${OPENGL_LIBRARIES})
 
-SET(LIBRARIES ${LIBRARIES} "Foundation" "OpenMaya" "OpenMayaAnim" "OpenMayaUI" "OpenMayaRender" "clew" ${OPENGL_LIBRARIES})
-
-SET(_MAYA_LOCATION ${MAYA_INSTALL_BASE_PATH}/maya${MAYA_VERSION}${MAYA_INSTALL_BASE_SUFFIX})
-SET(_PROJECT ${PROJECT_NAME})
-
-INCLUDE_DIRECTORIES(${_MAYA_LOCATION}/${MAYA_INC_SUFFIX} ${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
-
-LINK_DIRECTORIES(${_MAYA_LOCATION}/${MAYA_LIB_SUFFIX})
-
-ADD_LIBRARY(${_PROJECT} SHARED ${SOURCE_FILES})
-TARGET_LINK_LIBRARIES(${_PROJECT} ${LIBRARIES})
-
-SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES COMPILE_DEFINITIONS "${CUSTOM_DEFINITIONS}")
-SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-
-IF (WIN32)
-    SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES SUFFIX ".mll" )
-    SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES LINK_FLAGS "/export:initializePlugin /export:uninitializePlugin" )
-ELSEIF(APPLE)
-    SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES PREFIX "" )
-    SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES SUFFIX ".bundle" )
-ELSE(WIN32)
-    SET_TARGET_PROPERTIES(${_PROJECT} PROPERTIES PREFIX "" )
-ENDIF(WIN32)
-
+MAYA_PLUGIN(${PROJECT_NAME})
+#install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION blur/plug-ins)
 
