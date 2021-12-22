@@ -1,14 +1,8 @@
 from __future__ import print_function
 
-try:
-    from Qt import QtGui, QtCore, QtWidgets
-    from Qt import QtCompat
-    from Qt.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
-except ImportError:
-    from PySide2 import QtGui, QtCore, QtWidgets
-    import shiboken2 as QtCompat
-    from PySide2.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
-
+from .Qt import QtGui, QtCore, QtWidgets
+from .Qt import QtCompat
+from .Qt.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
 from maya import OpenMayaUI, cmds, mel
 
 
