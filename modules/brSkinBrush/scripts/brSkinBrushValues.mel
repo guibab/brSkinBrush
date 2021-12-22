@@ -19,21 +19,6 @@ global proc brSkinBrushOptionValues( string $toolName )
     float $floatVal;
     int $intVal;
 
-    //$intVal = eval("brSkinBrushContext -query -affectSelected " + $toolName);
-    //checkBoxGrp -edit -value1 $intVal brSkinBrushAffectSelectedCheck;
-    
-    //$intVal = eval("brSkinBrushContext -query -fractionOversampling " + $toolName);
-    //checkBoxGrp -edit -value1 $intVal brSkinBrushFractionOversamplingCheck;
-
-    //$intVal = eval("brSkinBrushContext -query -oversampling " + $toolName);
-    //intSliderGrp -edit -value $intVal brSkinBrushOversampling;
-
-    //$floatVal = eval("brSkinBrushContext -query -range " + $toolName);
-    //floatSliderGrp -edit -value $floatVal brSkinBrushRange;
-
-    //$intVal = eval("brSkinBrushContext -query -volume " + $toolName);
-    //checkBoxGrp -edit -value1 $intVal brSkinBrushVolumeCheck;
-
     $floatVals[0] = eval("brSkinBrushContext -query -colorR " + $toolName);
     $floatVals[1] = eval("brSkinBrushContext -query -colorG " + $toolName);
     $floatVals[2] = eval("brSkinBrushContext -query -colorB " + $toolName);
@@ -127,8 +112,6 @@ global proc brSkinBrushValues( string $toolName )
     }
 
     brSkinBrushGetSelection;
-
-    //print "CALLING THE TOOL\n";
 }
 
 // ---------------------------------------------------------------------

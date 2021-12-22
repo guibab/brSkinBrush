@@ -53,7 +53,6 @@ global proc brSkinBrushReset()
     optionVar -remove "brSkinBrushContext1";
 
     optionVar -remove "brSkinBrushSurfaceFrameState";
-    //optionVar -remove "brSkinBrushVolumeFrameState";
     optionVar -remove "brSkinBrushDisplayFrameState";
     optionVar -remove "brSkinBrushAdvancedFrameState";
     optionVar -remove "brSkinBrushHotkeyFrameState";
@@ -66,11 +65,6 @@ global proc brSkinBrushReset()
 
 proc addAnnotations()
 {
-    /*
-    checkBoxGrp -edit
-                -annotation (uiRes("m_brSkinBrushProperties.kAffectSelected"))
-                brSkinBrushAffectSelectedCheck;
-    */
     colorSliderGrp -edit
                    -annotation (uiRes("m_brSkinBrushProperties.kColor"))
                    brSkinBrushBrushColorSlider;
@@ -126,17 +120,6 @@ proc addAnnotations()
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kMessage"))
                 brSkinBrushMessageType;
-    /*            
-    checkBoxGrp -edit
-                -annotation (uiRes("m_brSkinBrushProperties.kFractionOversampling"))
-                brSkinBrushFractionOversamplingCheck;
-    intSliderGrp -edit
-                 -annotation (uiRes("m_brSkinBrushProperties.kOversampling"))
-                 brSkinBrushOversampling;
-    floatSliderGrp -edit
-                   -annotation (uiRes("m_brSkinBrushProperties.kRange"))
-                   brSkinBrushRange;
-    */
     floatSliderGrp -edit
                    -annotation (uiRes("m_brSkinBrushProperties.kSize"))
                    brSkinBrushSize;
@@ -149,16 +132,9 @@ proc addAnnotations()
     intFieldGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kUndersampling"))
                 brSkinBrushBrushUndersamplingField;
-    /*
-    checkBoxGrp -edit
-                -annotation (uiRes("m_brSkinBrushProperties.kVolume"))
-                brSkinBrushVolumeCheck;
-    */
     intSliderGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kStepLine"))
                 brSkinBrushStepLineField;
-
-
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kCoverage"))
                 brSkinBrushCoverageCheck;
@@ -170,13 +146,11 @@ proc addAnnotations()
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kPostSetting"))
                 brSkinBrushPostSettingCheck;
-
 }
 
 
 proc deleteAnnotations()
 {
-    //checkBoxGrp -edit -annotation "" brSkinBrushAffectSelectedCheck;
     colorSliderGrp -edit -annotation "" brSkinBrushBrushColorSlider;
     symbolCheckBox -edit -annotation "" brSkinBrushNoneButton;
     symbolCheckBox -edit -annotation "" brSkinBrushLinearButton;
@@ -188,18 +162,14 @@ proc deleteAnnotations()
     checkBoxGrp -edit -annotation "" brSkinBrushDrawRangeCheck;
     button -edit -annotation "" brSkinBrushFloodButton;
     button -edit -annotation "" brSkinBrushRefreshButton;
-    //checkBoxGrp -edit -annotation "" brSkinBrushFractionOversamplingCheck;
     checkBoxGrp -edit -annotation "" brSkinBrushIgnoreLockCheck;
     checkBoxGrp -edit -annotation "" brSkinBrushKeepShellsTogetherCheck;
     intFieldGrp -edit -annotation "" brSkinBrushLineWidthField;
     checkBoxGrp -edit -annotation "" brSkinBrushMessageType;
-    //intSliderGrp -edit -annotation "" brSkinBrushOversampling;
-    //floatSliderGrp -edit -annotation "" brSkinBrushRange;
     floatSliderGrp -edit -annotation "" brSkinBrushSize;
     floatSliderGrp -edit -annotation "" brSkinBrushStrength;
     floatSliderGrp -edit -annotation "" brSkinBrushTolerance;
     intFieldGrp -edit -annotation "" brSkinBrushBrushUndersamplingField;
-    //checkBoxGrp -edit -annotation "" brSkinBrushVolumeCheck;
 
     intSliderGrp -edit -annotation "" brSkinBrushStepLineField;
     checkBoxGrp -edit -annotation "" brSkinBrushCoverageCheck;
@@ -229,7 +199,6 @@ global proc brSkinBrushToggleAnnotations()
 
 global proc brSkinBrushSetRefresh (){
     print "brSkinBrushSetRefresh \n";
-    //string $joints[] = `treeView -query -children "" brSkinBrushJointTree`;
     global string $gSkinBrushMesh;
     if ($gSkinBrushMesh !="NOPEofNOPE")
         $gSkinBrushMesh ="NOPEofNOPE";
@@ -301,32 +270,6 @@ global proc brSkinBrushSetCallbacks( string $parent )
     checkBoxGrp -edit
                 -changeCommand "brSkinBrushContext -edit -message #1 `currentCtx`;"
                 brSkinBrushMessageType;
-    /*
-    checkBoxGrp -edit
-                -changeCommand "brSkinBrushContext -edit -affectSelected #1 `currentCtx`;"
-                brSkinBrushAffectSelectedCheck;
-
-    checkBoxGrp -edit
-                -changeCommand "brSkinBrushContext -edit -fractionOversampling #1 `currentCtx`;"
-                brSkinBrushFractionOversamplingCheck;
-
-    intSliderGrp -edit
-                 -changeCommand "brSkinBrushContext -edit -oversampling `intSliderGrp -query -value brSkinBrushOversampling` `currentCtx`;"
-                 brSkinBrushOversampling;
-    
-    floatSliderGrp -edit
-                   -changeCommand "brSkinBrushContext -edit -range `floatSliderGrp -query -value brSkinBrushRange` `currentCtx`;"
-                   brSkinBrushRange;
-
-    checkBoxGrp -edit
-                -changeCommand "brSkinBrushVolumeToggle #1; brSkinBrushContext -edit -volume #1 `currentCtx`;"
-                brSkinBrushVolumeCheck;
-
-    frameLayout -edit
-                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushVolumeFrame\", 1)")
-                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushVolumeFrame\", 0)")            
-                brSkinBrushVolumeFrame;
-    */
     floatSliderGrp -edit
                    -changeCommand "brSkinBrushContext -edit -size `floatSliderGrp -query -value brSkinBrushSize` `currentCtx`;"
                    brSkinBrushSize;
@@ -453,18 +396,7 @@ global proc brSkinBrushProperties()
                            -precision 3
                            -columnWidth 1 55
                            brSkinBrushStrength;
-            //checkBoxGrp -label "Affect Selected" brSkinBrushAffectSelectedCheck;
             checkBoxGrp -label "Ignore Lock" brSkinBrushIgnoreLockCheck;
-
-            /*
-            separator -style "none";
-
-            intSliderGrp -label "Oversampling"
-                         -minValue 1
-                         -maxValue 10
-                         brSkinBrushOversampling;
-            checkBoxGrp -label "Fraction Oversampling" brSkinBrushFractionOversamplingCheck;
-            */
 
             separator -style "none" -w 350;
 
@@ -493,7 +425,6 @@ global proc brSkinBrushProperties()
                         brSkinBrushDisplayFrame;
 
 
-                //frameLayout -label "Command";
                 rowColumnLayout -numberOfColumns 5
                                 -columnWidth 1 2
                                 -columnWidth 2 100
@@ -521,7 +452,7 @@ global proc brSkinBrushProperties()
                 button -label "clear locks" brSkinBrushClearLocksButton;
                 columnLayout; setParent .. ;
                 columnLayout; setParent .. ;
-                setParent ..; //setParent ..;
+                setParent ..;
 
                 separator -style "none";
 
@@ -576,23 +507,6 @@ global proc brSkinBrushProperties()
                                brSkinBrushTolerance;
 
             setParent .. ;
-            /*
-            frameLayout -label "Volume Smoothing"
-                        -labelIndent 3
-                        -collapsable 1
-                        -collapse (`optionVar -query "brSkinBrushVolumeFrameState"`)
-                        -marginWidth 5
-                        -marginHeight 5
-                        brSkinBrushVolumeFrame;
-
-                checkBoxGrp -label "Volume" brSkinBrushVolumeCheck;
-                floatSliderGrp -label "Range"
-                               -precision 3
-                               -maxValue 1
-                               brSkinBrushRange;
-
-            setParent ..;
-            */
 
         setParent ..;
 
@@ -665,10 +579,7 @@ global proc brSkinBrushProperties()
 
                 text -align "right" -font boldLabelFont -label "Ctrl + LMB:";
                 text -align "left" -label "Smooth Skin" -wordWrap true;
-                /*
-                text -align "right" -font boldLabelFont -label "Shift + Ctrl + LMB:";
-                text -align "left" -label "Click to clear vertex selection" -wordWrap true;
-                */
+
                 text -align "right" -font boldLabelFont -label "U:";
                 text -align "left" -label "marking menu of options" -wordWrap true;
 
