@@ -20,5 +20,5 @@ target_link_libraries(${PROJECT_NAME} ${MAYA_LIBRARIES} ${OPENGL_LIBRARIES})
 MAYA_PLUGIN(${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION plug-ins/win64/${MAYA_VERSION})
-install(CODE "execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/scripts/buildModFile.py)")
+#install(CODE "execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/scripts/buildModFile.py)")
 
