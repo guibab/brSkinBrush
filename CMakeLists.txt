@@ -3,6 +3,7 @@ project(brSkinBrush)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(MAYA_VERSION 2020 CACHE STRING "Maya version number")
+SET(MODULE_NAME ${PROJECT_NAME} CACHE STRING "Name of the module")
 
 file(GLOB SOURCE_FILES "src/*.*")
 
@@ -18,6 +19,5 @@ target_link_libraries(${PROJECT_NAME} ${MAYA_LIBRARIES} ${OPENGL_LIBRARIES})
 
 MAYA_PLUGIN(${PROJECT_NAME})
 
-install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION ${PROJECT_NAME}/plug-ins/win64/${MAYA_VERSION})
-install(DIRECTORY modules/brSkinBrush/icons DESTINATION ${PROJECT_NAME})
-install(DIRECTORY modules/brSkinBrush/scripts DESTINATION ${PROJECT_NAME})
+install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION ${MODULE_NAME}/plug-ins/win64/${MAYA_VERSION})
+install(DIRECTORY moduleData/icons moduleData/scripts DESTINATION ${MODULE_NAME})
