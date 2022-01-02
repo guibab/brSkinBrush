@@ -1,6 +1,6 @@
 setlocal
 
-SET MAYA_VERSION=2022
+SET MAYA_VERSION=2023
 SET BUILD=mayabuild_%MAYA_VERSION%
 SET COMPILER=Visual Studio 15 2017 Win64
 
@@ -12,6 +12,8 @@ cd %BUILD%
 
 cmake ^
     -DMAYA_VERSION=%MAYA_VERSION% ^
+    -DMAYA_INSTALL_BASE_PATH="D:/Program Files/Autodesk" ^
+    -DCMAKE_INSTALL_PREFIX=.. ^
     -G "%COMPILER%" ..\
 
 cmake --build . --config Release --target Install
