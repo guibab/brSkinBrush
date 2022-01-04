@@ -31,7 +31,7 @@ def generate_new_color(existing_colors, pastel_factor=0.5):
 
 def setColorsOnJoints():
     _colors = []
-    for i in xrange(1, 9):
+    for i in range(1, 9):
         col = cmds.displayRGBColor("userDefined{0}".format(i), q=True)
         _colors.append(col)
 

@@ -7,7 +7,6 @@
 
 global proc brSkinBrushToolCtxDelete()
 {
-	//print " IS IT REAL CLOSING \n";
     string $context = "brSkinBrushContext1";
     if (!`contextInfo -ex $context`)
         deleteUI $context;
@@ -15,8 +14,7 @@ global proc brSkinBrushToolCtxDelete()
 
 global proc brSkinBrushToolCtx()
 {
-	//print " MEL brSkinBrushToolCtx CALLING \n";
-    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.setColorsOnJoints ()");
+    python ("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.setColorsOnJoints()");
     string $context = "brSkinBrushContext1";
     if (!`contextInfo -ex $context`)
         $context = `eval("brSkinBrushContext")`;

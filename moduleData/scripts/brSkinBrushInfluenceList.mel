@@ -54,27 +54,8 @@ proc clearRecall()
 global proc brSkinBrushSearchJointString()
 {
     global string $gSkinBrushSearchString;
-
     string $query = `textFieldGrp -query -text brSkinBrushSearchField`;
-    /*
-    string $items[] = `treeView -query -children "" brSkinBrushJointTree`;
-
-    string $queryList[];
-    tokenize $query "+" $queryList;
-
-    for ($i in $items)
-    {
-        int $state = 0;
-        for ($q in $queryList)
-        {
-            if (`gmatch $i ("*" + $q + "*")`)
-                $state = 1;
-        }
-        treeView -edit -itemVisible $i $state brSkinBrushJointTree;
-    }
-    */
-    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.filterInfluences ()");
-
+    python("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.filterInfluences()");
     $gSkinBrushSearchString = $query;
 }
 
@@ -97,24 +78,13 @@ global proc brSkinBrushClearSearch()
 {
     global string $gSkinBrushSearchString;
     textFieldGrp -edit -text "" brSkinBrushSearchField;
-    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.filterInfluences ()");
-    /*
-    string $items[] = `treeView -query -children "" brSkinBrushJointTree`;
-
-
-    if (size($items) == 0)
-        return;
-
-    for ($i in $items)
-        treeView -edit -itemVisible $i 1 brSkinBrushJointTree;
-    */
+    python("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.filterInfluences()");
     $gSkinBrushSearchString = "";
 }
 
 global proc brSkinBrushAddJnt()
 {
-    print "brSkinBrushAddJnt";
-    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.addInfluences ()");    
+    python ("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.addInfluences()");
 }
 
 
@@ -594,24 +564,30 @@ global proc brSkinBrushToggleLockState( string $button, int $state )
 
 global proc brSkinBrushPickColorItem( string $button, int $state )
 {
-    //string $joints[] = `treeView -query -selectItem brSkinBrushJointTree`;
     print ("button is " + $button + "\n") ;
     string $item = $button;
     if (`attributeQuery -node $item -exists "wireColorRGB"`)
     {
         float  $theColor[] = `getAttr ($item+".wireColorRGB")` ;
 
-        python( "from PySide2 import QtGui, QtCore\ndef posiOfCursor () : \n\tthePos=QtGui.QCursor().pos()  - QtCore.QPoint (355,100)\n\treturn [thePos.x(), thePos.y()]\n");
-        int $posi[] =python( "posiOfCursor ()");
+        python(
+            "from PySide2 import QtGui, QtCore\n" +
+            "def posiOfCursor():\n" +
+            "    thePos = QtGui.QCursor().pos() - QtCore.QPoint(355, 100)\n" +
+            "    return [thePos.x(), thePos.y()]\n"
+        );
+
+        int $posi[] = python("posiOfCursor()");
 
         colorEditor -mini -position $posi[0] $posi[1] -rgbValue $theColor[0] $theColor[1] $theColor[2];
         if (`colorEditor -query -result`) {
             float $values[];
             $values = `colorEditor -query -rgb`;
-            print ("treeView -edit -buttonTransparencyColor \"" + $item + "\" 2 " + $values[0] + " " + $values[1] + " " + $values[2] + " brSkinBrushJointTree;\n");
-            //$values = `colorEditor -query -hsv`;
-            //print ("HSV = " + $values[0] + " " + $values[1] + " " + $values[2] + "\n");
-                        
+            print ("treeView -edit -buttonTransparencyColor \"" +
+                $item + "\" 2 " + $values[0] + " " + $values[1] + " " + $values[2] +
+                " brSkinBrushJointTree;\n"
+            );
+
             treeView -edit -buttonTransparencyColor 
                      $item 2 $values[0] $values[1] $values[2]
                      brSkinBrushJointTree;
@@ -750,7 +726,6 @@ global proc brSkinBrushInfluenceList()
                      -attachButtonRight 0
                      -allowDragAndDrop 1
                      -allowReparenting 0
-                     //-selectionChangedCommand brSkinBrushSelectionChangedCommand
                      -selectCommand brSkinBrushSelectionChanged
                      -itemDblClickCommand brSkinBrushSelectAffectedVertices
                      brSkinBrushJointTree;
@@ -793,7 +768,6 @@ global proc brSkinBrushInfluenceList()
                        -attachForm brSkinBrushHideLockCheck "left" 0
                        -attachForm brSkinBrushHideLockCheck "bottom" 0
 
-                       //-attachForm brSkinBrushAddJntButton "right" 0
                        -attachControl brSkinBrushAddJntButton "left" 2 brSkinBrushHideLockCheck
                        -attachForm brSkinBrushAddJntButton "bottom" 0
 
