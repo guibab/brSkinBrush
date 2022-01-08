@@ -12,12 +12,19 @@ global proc brSkinBrushToolCtxDelete()
         deleteUI $context;
 }
 
+global proc test(){
+    print "TEST ENTER TOOL\n";
+}
+
 global proc brSkinBrushToolCtx()
 {
-    python ("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.setColorsOnJoints()");
+    python ("from brSkinBrush_pythonFunctions import setColorsOnJoints, fixOptionVarContext")
+    python ("setColorsOnJoints ();fixOptionVarContext ()");
     string $context = "brSkinBrushContext1";
-    if (!`contextInfo -ex $context`)
-        $context = `eval("brSkinBrushContext")`;
+    if (!`contextInfo -ex $context`){
+        string $pytonCmd =  "from brSkinBrush_pythonFunctions import ";
+        $context = `eval("brSkinBrushContext -importPython \""+$pytonCmd+"\"")`;
+    }
     setToolTo $context;
     rememberCtxSettings $context;
 }

@@ -3,10 +3,6 @@
 // ---------------------------------------------------------------------
 
 displayString -replace
-              -value "Smoothes only the selected vertices. When off only unselected vertices are affected."
-              m_brSkinBrushProperties.kAffectSelected;
-
-displayString -replace
               -value "The color of the brush circle."
               m_brSkinBrushProperties.kColor;
 
@@ -25,14 +21,6 @@ displayString -replace
 displayString -replace
               -value "Narrow falloff"
               m_brSkinBrushProperties.kCurveNarrow;
-
-displayString -replace
-              -value "The number of overlapping surfaces considered for smoothing in surface mode."
-              m_brSkinBrushProperties.kDepth;
-
-displayString -replace
-              -value "The index of the first overlapping surface considered for smoothing in surface mode."
-              m_brSkinBrushProperties.kDepthStart;
 
 displayString -replace
               -value "Displays the brush circle while smoothing."
@@ -71,11 +59,6 @@ displayString -replace
               m_brSkinBrushProperties.kIgnoreLock;
 
 displayString -replace
-              -value ("Extends the smoothing or selection across a shell boundary by trying to " +
-                      "find an equivalent vertex on a neighbouring shell boundary in surface mode.")
-              m_brSkinBrushProperties.kKeepShellsTogether;
-
-displayString -replace
               -value "The line width of the brush display."
               m_brSkinBrushProperties.kLineWidth;
 
@@ -99,11 +82,6 @@ displayString -replace
 displayString -replace
               -value "The overall strength of the brush."
               m_brSkinBrushProperties.kStrength;
-
-displayString -replace
-              -value ("The maximum distance to find an equivalent vertex on a neighbouring " +
-                      "shell boundary in surface mode.")
-              m_brSkinBrushProperties.kTolerance;
 
 displayString -replace
               -value "Evaluates only every nth drag iteration. Higher values lead to a staggered evaluation."

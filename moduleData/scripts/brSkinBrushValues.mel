@@ -19,6 +19,25 @@ global proc brSkinBrushOptionValues( string $toolName )
     float $floatVal;
     int $intVal;
 
+    $floatVal = eval("brSkinBrushContext -query -toleranceMirror " + $toolName);
+    floatSliderGrp -edit -value $floatVal brSkinBrushReflectionOptionsTol_FS;
+
+    $intVal = eval("brSkinBrushContext -query -mirrorPaint " + $toolName);
+    string $optionList[] = {"none", "origx", "origy", "origz", "objectx", "objecty", "objectz", "worldx", "worldy", "worldz", "topo"};
+    string $mode = $optionList[$intVal] ;
+    brSkinBrushReflectionSetMode ($mode);
+
+    $intVal = eval("brSkinBrushContext -query -useColorSetsWhilePainting " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushUseColorSetsWhilePainting;
+    $intVal = eval("brSkinBrushContext -query -meshdrawTriangles " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushDrawTriangles;
+    $intVal = eval("brSkinBrushContext -query -meshdrawEdges " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushDrawEdges;
+    $intVal = eval("brSkinBrushContext -query -meshdrawPoints " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushDrawPoints;
+    $intVal = eval("brSkinBrushContext -query -meshdrawTransparency " + $toolName);
+    checkBoxGrp -edit -value1 $intVal brSkinBrushDrawTrans;
+
     $floatVals[0] = eval("brSkinBrushContext -query -colorR " + $toolName);
     $floatVals[1] = eval("brSkinBrushContext -query -colorG " + $toolName);
     $floatVals[2] = eval("brSkinBrushContext -query -colorB " + $toolName);
@@ -26,12 +45,6 @@ global proc brSkinBrushOptionValues( string $toolName )
 
     $intVal = eval("brSkinBrushContext -query -curve " + $toolName);
     brSkinBrushSetSymbolCheckBox $intVal;
-
-    $intVal = eval("brSkinBrushContext -query -depth " + $toolName);
-    intSliderGrp -edit -value $intVal brSkinBrushDepth;
-
-    $intVal = eval("brSkinBrushContext -query -depthStart " + $toolName);
-    intSliderGrp -edit -value $intVal brSkinBrushDepthStart;
 
     $intVal = eval("brSkinBrushContext -query -drawBrush " + $toolName);
     checkBoxGrp -edit -value1 $intVal brSkinBrushDrawBrushCheck;
@@ -41,9 +54,6 @@ global proc brSkinBrushOptionValues( string $toolName )
 
     $intVal = eval("brSkinBrushContext -query -ignoreLock " + $toolName);
     checkBoxGrp -edit -value1 $intVal brSkinBrushIgnoreLockCheck;
-
-    $intVal = eval("brSkinBrushContext -query -keepShellsTogether " + $toolName);
-    checkBoxGrp -edit -value1 $intVal brSkinBrushKeepShellsTogetherCheck;
 
     $intVal = eval("brSkinBrushContext -query -lineWidth " + $toolName);
     intFieldGrp -edit -value1 $intVal brSkinBrushLineWidthField;
@@ -66,18 +76,12 @@ global proc brSkinBrushOptionValues( string $toolName )
         floatSliderGrp -edit -value $floatVal brSkinBrushStrength;
     }
 
-    $floatVal = eval("brSkinBrushContext -query -tolerance " + $toolName);
-    floatSliderGrp -edit -value $floatVal brSkinBrushTolerance;
-
     $intVal = eval("brSkinBrushContext -query -undersampling " + $toolName);
     intFieldGrp -edit -value1 $intVal brSkinBrushBrushUndersamplingField;
 
     $intVal = eval("brSkinBrushContext -query -postSetting " + $toolName);
     checkBoxGrp -edit -value1 $intVal brSkinBrushPostSettingCheck;
     
-    $intVal = eval("brSkinBrushContext -query -stepLine " + $toolName);
-    intSliderGrp -edit -value $intVal brSkinBrushStepLineField;
-
     $intVal = eval("brSkinBrushContext -query -coverage " + $toolName);
     checkBoxGrp -edit -value1 $intVal brSkinBrushCoverageCheck;
 
