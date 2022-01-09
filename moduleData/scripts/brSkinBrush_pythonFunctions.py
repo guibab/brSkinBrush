@@ -514,7 +514,7 @@ def callEventCatcher():
     import catchEventsUI
 
     if catchEventsUI.ROOTWINDOW is None:
-        catchEventsUI.ROOTWINDOW = rootWindow()
+        catchEventsUI.ROOTWINDOW = catchEventsUI.rootWindow()
     catchEventsUI.EVENTCATCHER = catchEventsUI.CatchEventsWidget()
     catchEventsUI.EVENTCATCHER.open()
 

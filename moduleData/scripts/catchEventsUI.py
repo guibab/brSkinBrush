@@ -10,6 +10,8 @@ import six
 
 
 PTR_TYPE = six.integer_types[-1]  # Long/int in python 2/3
+EVENTCATCHER = None
+ROOTWINDOW = None
 
 
 def callMarkingMenu():
