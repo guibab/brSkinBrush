@@ -1,8 +1,13 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from maya import cmds, mel
 import re
 import time, datetime
 from collections import OrderedDict
 import random
+import six
+from six.moves import range
+from six.moves import zip
 
 
 class disableUndoContext(object):
@@ -84,7 +89,7 @@ def generate_new_color(
 def setColorsOnJoints():
     with UndoContext("setColorsOnJoints"):
         _colors = []
-        for i in xrange(1, 9):
+        for i in range(1, 9):
             col = cmds.displayRGBColor("userDefined{0}".format(i), q=True)
             _colors.append(col)
 
@@ -146,7 +151,7 @@ def addInfluences():
             sel.remove(prt)
 
         allInfluences = cmds.skinCluster(skn, query=True, influence=True)
-        toAdd = filter(lambda x: x not in allInfluences, sel)
+        toAdd = [x for x in sel if x not in allInfluences]
         if toAdd:
             toAddStr = "add Influences :\n - "
             toAddStr += "\n - ".join(toAdd[:10])
@@ -552,9 +557,9 @@ def toolOnSetupEndDeferred():
         timeRes = str(datetime.timedelta(seconds=int(completionTime))).split(":")
 
         callPaintEditorFunction("paintStart")
-        print "----- load BRUSH for {} in  [{:.2f} secs] ------".format(
+        print("----- load BRUSH for {} in  [{:.2f} secs] ------".format(
             mshShape, completionTime
-        )
+        ))
 
 
 def toolOnSetupEnd():
@@ -605,7 +610,7 @@ def escapePressed():
 def addWireFrameToMesh():
     wireframeCB = callPaintEditorFunction("wireframe_cb")
     if wireframeCB and not wireframeCB.isChecked():
-        print "no wireframe"
+        print("no wireframe")
         return
 
     theMesh = cmds.ls(sl=True, tr=True)[0]
@@ -697,7 +702,7 @@ def fixOptionVarContext(**inputKargsToChange):
             # now rebuild command ---------------------------------
             kwargs.update(inputKargsToChange)
             cmdNew = "brSkinBrushContext "
-            for key, value in kwargs.iteritems():
+            for key, value in six.iteritems(kwargs):
                 if isinstance(value, bool):
                     cmdNew += "-{} ".format(key)
                 else:
@@ -737,11 +742,11 @@ def deleteExistingColorSets():
 
 ######################### --------------CALL FROM BRUSH------------------------- ###############################################
 def cleanOpenUndo():
-    print "CALL cleanOpenUndo - pass"
+    print("CALL cleanOpenUndo - pass")
 
 
 def cleanCloseUndo():
-    print "CALL cleanCloseUndo - pass"
+    print("CALL cleanCloseUndo - pass")
 
 
 def getPaintEditor():
