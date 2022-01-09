@@ -25,7 +25,7 @@ SkinBrushContext::SkinBrushContext() {
     curveVal = 2;
     drawBrushVal = true;
     drawRangeVal = true;
-    moduleImportString = MString("from mPaintEditor.brushTools.brushPythonFunctions import ");
+    moduleImportString = MString("from brSkinBrush_pythonFunctions import ");
     enterToolCommandVal = "";
     exitToolCommandVal = "";
     fractionOversamplingVal = false;
