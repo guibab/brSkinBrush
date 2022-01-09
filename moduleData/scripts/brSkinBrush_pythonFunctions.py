@@ -512,9 +512,6 @@ def deferredDisconnect(mshTesselate, msh):
 
 def callEventCatcher():
     import catchEventsUI
-
-    if catchEventsUI.ROOTWINDOW is None:
-        catchEventsUI.ROOTWINDOW = catchEventsUI.rootWindow()
     catchEventsUI.EVENTCATCHER = catchEventsUI.CatchEventsWidget()
     catchEventsUI.EVENTCATCHER.open()
 
