@@ -1,46 +1,40 @@
-from __future__ import absolute_import
 from __future__ import print_function
+from __future__ import absolute_import
 from maya import cmds, mel
 import re
-import time, datetime
-from collections import OrderedDict
+import time
 import random
+from collections import OrderedDict
+from contextlib import contextmanager
+
 import six
 from six.moves import range
 from six.moves import zip
 
 
-class disableUndoContext(object):
+@contextmanager
+def disableUndoContext(raise_error=True, disableUndo=True):
     """
     **CONTEXT** class(*use* ``with`` *statement*)
     """
-
-    def __init__(self, raise_error=True, disableUndo=True):
-        self.raise_error = raise_error
-        self.disableUndo = disableUndo
-
-    def __enter__(self):
-        if self.disableUndo:
-            cmds.undoInfo(stateWithoutFlush=False)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Turn refresh on again and raise errors if asked"""
-        if self.disableUndo:
+    if disableUndo:
+        cmds.undoInfo(stateWithoutFlush=False)
+    try:
+        yield
+    finally:
+        if disableUndo:
             cmds.undoInfo(stateWithoutFlush=True)
 
 
-class UndoContext(object):
+@contextmanager
+def UndoContext(chunkName="myProcessTrue"):
     """
     **CONTEXT** class(*use* ``with`` *statement*)
     """
-
-    def __init__(self, chunkName="myProcessTrue"):
-        self.chunkName = chunkName
-
-    def __enter__(self):
-        cmds.undoInfo(openChunk=True, chunkName=self.chunkName)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    cmds.undoInfo(openChunk=True, chunkName=chunkName)
+    try:
+        yield
+    finally:
         cmds.undoInfo(closeChunk=True)
 
 
@@ -92,7 +86,6 @@ def setColorsOnJoints():
         for i in range(1, 9):
             col = cmds.displayRGBColor("userDefined{0}".format(i), q=True)
             _colors.append(col)
-
         for jnt in cmds.ls(type="joint"):
             theInd = cmds.getAttr(jnt + ".objectColor")
             currentCol = cmds.getAttr(jnt + ".wireColorRGB")[0]
@@ -118,7 +111,6 @@ def filterInfluences():
             newTexts = newText.split(" ")
             while "" in newTexts:
                 newTexts.remove("")
-
         for i, nm in enumerate(items):
             isLocked = cmds.getAttr(nm + ".lockInfluenceWeights")
 
@@ -127,7 +119,7 @@ def filterInfluences():
                 showItem = False
                 for txt in newTexts:
                     txt = txt.replace("*", ".*")
-                    showItem = re.search(txt, nm, re.IGNORECASE) != None
+                    showItem = re.search(txt, nm, re.IGNORECASE) is not None
                     if showItem:
                         break
             itemsState[i] = showItem
@@ -234,18 +226,15 @@ def createWireframe(meshNode, hideOther=True, valAlpha=0.25):
             )
             if wireDisplay:
                 cmds.hide(wireDisplay)
-
         meshes = cmds.listRelatives(meshNode, s=True, path=True, type="mesh")
         if not meshes:
             return None
-
         meshes = [
             shp for shp in meshes if not cmds.getAttr(shp + ".intermediateObject")
         ]
 
         if cmds.objExists("SkinningWireframe"):
             cmds.delete("SkinningWireframe")
-
         prt = cmds.createNode("transform", n="SkinningWireframe", p=meshNode)
         for msh in meshes:
             loc = cmds.createNode("wireframeDisplay", p=prt, n="SkinningWireframeShape")
@@ -345,21 +334,17 @@ def toolOnSetupStart():
                 cmds.optionVar(intValue=["autoSaveEnable", 1])
             cmds.autoSave(enable=False)
 
-        cmds.optionVar(
-            clearArray="colorShadedDisplay"
-        )  # found that if not Shannon paint doesn't swap deformers
-        cmds.optionVar(
-            intValueAppend=["colorShadedDisplay", 1]
-        )  # found that if not Shannon paint doesn't swap deformers
+        # found that if not Shannon paint doesn't swap deformers
+        cmds.optionVar(clearArray="colorShadedDisplay")
+        cmds.optionVar(intValueAppend=["colorShadedDisplay", 1])
         cmds.optionVar(
             intValueAppend=["colorShadedDisplay", 1], intValue=["colorizeSkeleton", 1]
-        )  # found that if not Shannon paint doesn't swap deformers
+        )
 
         sel = cmds.ls(sl=True)
         cmds.optionVar(clearArray="brushPreviousSelection")
         for obj in sel:
             cmds.optionVar(stringValueAppend=["brushPreviousSelection", obj])
-
         shapeSelected = getShapesSelected(returnTransform=True)
         if not shapeSelected:  # if nothing selected
             mshShape = mel.eval(
@@ -370,16 +355,14 @@ def toolOnSetupStart():
                 cmds.select(theMesh)
         else:
             cmds.select(shapeSelected)
-
         mshShapeSelected = getShapesSelected(returnTransform=False)
-        ## add nurbs Tesselate ################################################
+        # add nurbs Tesselate
         selectedNurbs = cmds.ls(mshShapeSelected, type="nurbsSurface")
 
         if selectedNurbs:
             mshShapeSelected = addNurbsTessellate(selectedNurbs)
             for nrbs in selectedNurbs:
                 cmds.hide(nrbs)
-
         # for colors
         for mshShape in cmds.ls(mshShapeSelected, type="mesh"):
             cmds.polyOptions(mshShape, colorShadedDisplay=True)
@@ -395,7 +378,6 @@ def toolOnSetupStart():
             cmds.setAttr(mshShape + ".vertexColorSource", 2)
             cmds.setAttr(mshShape + ".displayColors", 1)
             cmds.setAttr(mshShape + ".displaySmoothMesh", 0)
-
         callEventCatcher()
 
 
@@ -531,6 +513,8 @@ def deferredDisconnect(mshTesselate, msh):
 def callEventCatcher():
     import catchEventsUI
 
+    if catchEventsUI.ROOTWINDOW is None:
+        catchEventsUI.ROOTWINDOW = rootWindow()
     catchEventsUI.EVENTCATCHER = catchEventsUI.CatchEventsWidget()
     catchEventsUI.EVENTCATCHER.open()
 
@@ -554,7 +538,6 @@ def toolOnSetupEndDeferred():
         # ------ compute time ----------------------------------
         startTime = cmds.optionVar(q="startTime")
         completionTime = time.time() - startTime
-        timeRes = str(datetime.timedelta(seconds=int(completionTime))).split(":")
 
         callPaintEditorFunction("paintStart")
         print(
@@ -679,7 +662,6 @@ def fixOptionVarContext(**inputKargsToChange):
                     if "(multi-use)" in res:
                         lsMulti.add(nmFlag)
                         res.remove("(multi-use)")
-                    finishVal = res[2:]
                     dicExpectedArgs[nmFlag] = res[2:]
 
             newSpl = []
@@ -695,7 +677,10 @@ def fixOptionVarContext(**inputKargsToChange):
                         value = value.strip()
                         if value.startswith('"') and value.endswith('"'):
                             value = value[1:-1]
-                        kwargs[dicOfName[lineSplit[0]]] = value
+                        if lineSplit[0] in dicOfName:
+                            keyToCheck = dicOfName[lineSplit[0]]
+                            if keyToCheck in kwargs:
+                                kwargs[keyToCheck] = value
                 else:
                     if lineSplit[0] in dicOfName:
                         kwargs[dicOfName[lineSplit[0]]] = True
@@ -742,7 +727,7 @@ def deleteExistingColorSets():
                     cmds.polyColorSet(obj, delete=True, colorSet=colSet)
 
 
-######################### --------------CALL FROM BRUSH------------------------- ###############################################
+# --------------CALL FROM BRUSH-------------------------
 def cleanOpenUndo():
     print("CALL cleanOpenUndo - pass")
 
@@ -789,6 +774,11 @@ def headsUpMessage(offsetX, offsetY, message, valueDisplay, precision):
         cmds.headsUpMessage(
             theMessage, horizontalOffset=offsetX, verticalOffset=offsetY, time=0.1
         )
+
+
+def orderedInfluence(strl):
+    orderOfJoints = list(map(int, strl[:-1].split(" ")))
+    callPaintEditorFunction("updateOrderOfInfluences", orderOfJoints)
 
 
 def pickedInfluence(jointName):
