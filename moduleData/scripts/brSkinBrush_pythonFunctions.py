@@ -45,7 +45,7 @@ class UndoContext(object):
 
 
 def get_random_color(pastel_factor=0.5, valueMult=0.5, saturationMult=0.5):
-    from PySide2.QtGui import QColor
+    from Qt.QtGui import QColor
 
     with UndoContext("get_random_color"):
         col = [
@@ -306,7 +306,7 @@ def addControllersToJoints():
 ######################################################
 # used by cpp tool to get the font size for display
 def fnFonts(txt):
-    from PySide2.QtGui import QFont, QFontMetrics
+    from Qt.QtGui import QFont, QFontMetrics
 
     sz = QFontMetrics(QFont("MS Shell Dlg 2", 14)).boundingRect(txt)
     return [sz.width() + 2, sz.height() + 2]
@@ -557,9 +557,11 @@ def toolOnSetupEndDeferred():
         timeRes = str(datetime.timedelta(seconds=int(completionTime))).split(":")
 
         callPaintEditorFunction("paintStart")
-        print("----- load BRUSH for {} in  [{:.2f} secs] ------".format(
-            mshShape, completionTime
-        ))
+        print(
+            "----- load BRUSH for {} in  [{:.2f} secs] ------".format(
+                mshShape, completionTime
+            )
+        )
 
 
 def toolOnSetupEnd():
@@ -751,23 +753,22 @@ def cleanCloseUndo():
 
 def getPaintEditor():
     with UndoContext("getPaintEditor"):
-        import __main__
+        import mPaintEditor
 
-        if hasattr(__main__, "paintEditor") and __main__.paintEditor.isVisible():
-            return __main__.paintEditor
+        editor = mPaintEditor.PAINT_EDITOR
+        if editor is not None and editor.isVisible():
+            return editor
         return None
 
 
 def afterPaint():
     with UndoContext("afterPaint"):
-        import __main__
+        import mWeightEditor
         from Qt.QtWidgets import QApplication
 
-        if (
-            hasattr(__main__, "weightEditor")
-            and __main__.weightEditor in QApplication.instance().topLevelWidgets()
-        ):
-            __main__.weightEditor.refreshSkinDisplay()
+        editor = mWeightEditor.WEIGHT_EDITOR
+        if editor is not None and editor in QApplication.instance().topLevelWidgets():
+            editor.refreshSkinDisplay()
 
 
 def callPaintEditorFunction(function, *args, **kwargs):
