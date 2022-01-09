@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 try:
     from Qt import QtGui, QtCore, QtWidgets
     from Qt import QtCompat
@@ -9,6 +11,10 @@ except:
 
 from maya import OpenMayaUI, cmds, mel
 import brSkinBrush_pythonFunctions
+import six
+
+
+PTR_TYPE = six.integer_types[-1]  # Long/int in python 2/3
 
 
 def callMarkingMenu():
@@ -144,7 +150,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
 
         self.rootWin = rootWindow()
         ptr = OpenMayaUI.MQtUtil.mainWindow()
-        self.mainMaya = QtCompat.wrapInstance(long(ptr), QtWidgets.QWidget)
+        self.mainMaya = QtCompat.wrapInstance(PTR_TYPE(ptr), QtWidgets.QWidget)
         self.prevButton = self.lstButtons[0]
 
     # ---------- GAMMA --------------------------------------
@@ -190,7 +196,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
             el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"
         ]
         ptr = OpenMayaUI.MQtUtil.findControl(listModelPanels[0])
-        model_panel_4 = QtCompat.wrapInstance(long(ptr), QtWidgets.QWidget)
+        model_panel_4 = QtCompat.wrapInstance(PTR_TYPE(ptr), QtWidgets.QWidget)
         self.EventFilterWidgetReceiver = model_panel_4.parent().parent()
 
         self.filterInstalled = True
@@ -263,7 +269,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
             if event.key() == QtCore.Qt.Key_P:  # print info of the click press
                 active_view = OpenMayaUI.M3dView.active3dView()
                 sw = active_view.widget()
-                res = QtCompat.wrapInstance(long(sw), QtWidgets.QWidget)
+                res = QtCompat.wrapInstance(PTR_TYPE(sw), QtWidgets.QWidget)
 
                 listModelPanels = [
                     el
@@ -272,7 +278,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                 ]
                 listModelPanelsCompats = [
                     QtCompat.wrapInstance(
-                        long(OpenMayaUI.MQtUtil.findControl(el)), QtWidgets.QWidget
+                        PTR_TYPE(OpenMayaUI.MQtUtil.findControl(el)), QtWidgets.QWidget
                     )
                     for el in listModelPanels
                 ]
@@ -281,25 +287,25 @@ class CatchEventsWidget(QtWidgets.QWidget):
                 ]
 
                 if res is obj:
-                    print "ViewPort"
+                    print("ViewPort")
                 elif res is self.mainMaya:
-                    print
+                    print()
                 elif obj is self.mainMaya:
-                    print "self.mainMaya"
+                    print("self.mainMaya")
                 elif obj is self:
-                    print "self"
+                    print("self")
                 elif obj is self.parent():
-                    print "self Prt"
+                    print("self Prt")
                 elif obj is self.parent().parent():
-                    print "self Prt Prt"
+                    print("self Prt Prt")
                 elif obj is self.rootWin:
-                    print "self.rootWin"
+                    print("self.rootWin")
                 elif obj in listModelPanelsCompats:
-                    print "it is a model_panel"
+                    print("it is a model_panel")
                 elif obj in listModelPanelsCompatsPrts:
-                    print "it is a model_panel Parent"
+                    print("it is a model_panel Parent")
                 else:
-                    print obj
+                    print(obj)
                 return super(CatchEventsWidget, self).eventFilter(obj, event)
 
             if event.key() == QtCore.Qt.Key_U:
@@ -326,7 +332,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                 ]
                 listModelPanelsCompats = [
                     QtCompat.wrapInstance(
-                        long(OpenMayaUI.MQtUtil.findControl(el)), QtWidgets.QWidget
+                        PTR_TYPE(OpenMayaUI.MQtUtil.findControl(el)), QtWidgets.QWidget
                     )
                     for el in listModelPanels
                 ]
@@ -334,7 +340,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                     el.parent() for el in listModelPanelsCompats
                 ]
                 if obj in listModelPanelsCompats or obj in listModelPanelsCompatsPrts:
-                    print "it is a model_panel"
+                    print("it is a model_panel")
                     event.ignore()
 
                     if event.modifiers() == QtCore.Qt.AltModifier:
@@ -352,7 +358,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
             elif event.key() == QtCore.Qt.Key_Control:
                 if QApplication.mouseButtons() == QtCore.Qt.NoButton:
                     if self.verbose:
-                        print "custom CONTROL pressed"
+                        print("custom CONTROL pressed")
                     event.ignore()
                     self.prevButton = self.lstButtons[
                         cmds.brSkinBrushContext(
@@ -384,7 +390,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
             elif event.key() == QtCore.Qt.Key_Shift and not self.CtrlOrShiftPressed:
                 if QApplication.mouseButtons() == QtCore.Qt.NoButton:
                     if self.verbose:
-                        print "custom SHIFT pressed"
+                        print("custom SHIFT pressed")
                     event.ignore()
                     self.CtrlOrShiftPressed = True
                     self.prevButton = self.lstButtons[
@@ -440,7 +446,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                     return True
 
                 if event.key() == QtCore.Qt.Key_M:
-                    print "mirror active"
+                    print("mirror active")
                     event.ignore()
                     return True
 
