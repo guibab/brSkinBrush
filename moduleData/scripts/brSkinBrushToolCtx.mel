@@ -14,10 +14,14 @@ global proc brSkinBrushToolCtxDelete()
 
 global proc brSkinBrushToolCtx()
 {
-    python ("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.setColorsOnJoints()");
+    python("from brSkinBrush_pythonFunctions import setColorsOnJoints;setColorsOnJoints()");
+    python("from brSkinBrush_pythonFunctions import fixOptionVarContext;fixOptionVarContext()");
+
     string $context = "brSkinBrushContext1";
-    if (!`contextInfo -ex $context`)
+    if (!`contextInfo -ex $context`) {
         $context = `eval("brSkinBrushContext")`;
+    }
+
     setToolTo $context;
     rememberCtxSettings $context;
 }

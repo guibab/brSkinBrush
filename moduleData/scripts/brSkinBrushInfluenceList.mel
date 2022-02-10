@@ -54,8 +54,10 @@ proc clearRecall()
 global proc brSkinBrushSearchJointString()
 {
     global string $gSkinBrushSearchString;
+
     string $query = `textFieldGrp -query -text brSkinBrushSearchField`;
-    python("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.filterInfluences()");
+    python ("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.filterInfluences ()");
+
     $gSkinBrushSearchString = $query;
 }
 
@@ -78,13 +80,13 @@ global proc brSkinBrushClearSearch()
 {
     global string $gSkinBrushSearchString;
     textFieldGrp -edit -text "" brSkinBrushSearchField;
-    python("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.filterInfluences()");
+    python("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.filterInfluences()");
     $gSkinBrushSearchString = "";
 }
 
 global proc brSkinBrushAddJnt()
 {
-    python ("import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.addInfluences()");
+    python("import brSkinBrush_pythonFunctions\nbrSkinBrush_pythonFunctions.addInfluences()");    
 }
 
 
@@ -113,103 +115,11 @@ global proc brSkinBrushAddJnt()
 
 global proc int brSkinBrushSelectionChanged(string $item, int $state)
 {
-    print ($item+" " + $state+ " \n");
+    print($item+" " + $state+ " \n");
     if ($state == 1){
         brSkinBrushContext -edit -influenceName $item `currentCtx`;
     }
     return true;
-}
-
-/*
-global proc brSkinBrushSelectionChangedCommand()
-{
-    global string $gSkinBrushInfluenceSelection[];
-
-    $gSkinBrushInfluenceSelection = `treeView -query -selectItem brSkinBrushJointTree`;
-    
-    //treeView  -edit -clearSelection    brSkinBrushJointTree;
-    brSkinBrushContext -edit -influenceName $gSkinBrushInfluenceSelection[0] `currentCtx`;
-}
-*/
-//
-// Procedure Name:
-//      brSkinBrushSelectAffectedVertices
-//
-// Description:
-//      Select all vertices which are affected by the given influence.
-//
-// Input Arguments:
-//      string item         The name of the influence.
-//
-// Return Value:
-//      None
-//
-global proc brSkinBrushSelectAffectedVertices( string $item )
-{
-    global string $gSkinBrushMesh;
-    global string $gSkinBrushSkinCluster;
-
-    select -cl;
-    skinCluster -edit -selectInfluenceVerts $item $gSkinBrushSkinCluster;
-    doMenuComponentSelection($gSkinBrushMesh, "vertex");
-
-    if (!size(`ls -selection`))
-        select -replace $gSkinBrushMesh;
-}
-
-
-//
-// Procedure Name:
-//      brSkinBrushSelectAffectedVerticesFromMenu
-//
-// Description:
-//      Select vertices which are affected by the selected influence/s.
-//      This procedure is called when selecting the vertices based on
-//      the selected items in the influence list through the right-click
-//      menu. The procedure can be called in three different ways:
-//          1. add = 0; remove = 0 : Select affected vertices.
-//          2. add = 1; remove = 0 : Add affected vertices.
-//          3. add = 0; remove = 1 : Remove affected vertices.
-//
-// Input Arguments:
-//      int add             True, if the affected vertices should get
-//                          added to the current selection.
-//      int remove          True, if the affected vertices should get
-//                          removed from the current selection.
-//
-// Return Value:
-//      None
-//
-global proc brSkinBrushSelectAffectedVerticesFromMenu( int $add, int $remove )
-{
-    global string $gSkinBrushMesh;
-    global string $gSkinBrushSkinCluster;
-
-    string $joints[] = `treeView -query -selectItem brSkinBrushJointTree`;
-
-    if (!size($joints))
-        return;
-
-    string $cmd = "skinCluster -edit ";
-    for ($joint in $joints)
-    {
-        $cmd += "-selectInfluenceVerts ";
-        $cmd += $joint;
-        $cmd += " ";
-    }
-
-    if ($add)
-        $cmd += "-addToSelection ";
-    else if ($remove)
-        $cmd += "-removeFromSelection ";
-
-    $cmd += $gSkinBrushSkinCluster;
-    eval $cmd;
-
-    doMenuComponentSelection($gSkinBrushMesh, "vertex");
-
-    if (!size(`ls -selection`))
-        select -replace $gSkinBrushMesh;
 }
 
 // ---------------------------------------------------------------------
@@ -261,11 +171,18 @@ global proc brSkinBrushGetSelection()
 {
     global string $gSkinBrushMesh;
     global string $gSkinBrushSkinCluster;
+    int $newMesh = 1;
 
     string $sel[] = `ls -selection -long`;
     if (size($sel) == 0)
     {
-        brSkinBrushClear;
+        //here we should ask the tool, come on !
+        string $toolName = `currentCtx`;
+        $gSkinBrushMesh = eval("brSkinBrushContext -query -meshName " + $toolName);
+        $gSkinBrushSkinCluster = eval("brSkinBrushContext -query -skinClusterName " + $toolName);
+
+        brSkinBrushListInfluences($gSkinBrushSkinCluster, 0); // not newMesh
+        //brSkinBrushClear;
         return;
     }
 
@@ -291,7 +208,6 @@ global proc brSkinBrushGetSelection()
 
     if ($skin != "")
     {
-        int $newMesh = 1;
         if ($gSkinBrushMesh == $node[0])
             $newMesh = 0;
         $gSkinBrushMesh = $node[0];
@@ -353,10 +269,9 @@ global proc brSkinBrushClear()
 //
 global proc brSkinBrushListInfluences( string $skin, int $newMesh )
 {
-    print ("calling brSkinBrushListInfluences " + $skin + " newMesh ? " + $newMesh + "\n");
-
     global string $gSkinBrushSearchString;
     global string $gSkinBrushInfluenceSelection[];
+    string $currentDeformer = eval("brSkinBrushContext -q -influenceName `currentCtx`;");
     global string $gSkinBrushJoints[];
 
     int $refresh = 1;
@@ -402,47 +317,23 @@ global proc brSkinBrushListInfluences( string $skin, int $newMesh )
 
             brSkinBrushAddInfluenceToList $infl $inflParent;
         }
-
         // Clear the last selection and search.
         clearRecall;
-    }
-    // If the mesh hasn't changed since the last use of the tool try to
-    // recall the search and re-select the last selection.
-    else
-    {
+    }else {
+        // If the mesh hasn't changed since the last use of the tool try to
+        // recall the search and re-select the last selection.
         if ($gSkinBrushSearchString != "")
         {
             textFieldGrp -edit -text $gSkinBrushSearchString brSkinBrushSearchField;
             evalDeferred("brSkinBrushSearchJointString");
         }
 
-        if (size($gSkinBrushInfluenceSelection))
-        {
-            // Store the last selection. Because re-selecting the
-            // previous selection causes the selection command of the
-            // list to get triggered which overwrites the last
-            // selection. This way a previous multi-selection turns into
-            // a single selection because items are re-selected one
-            // after another. If then the new selection is re-selected
-            // the next time there is only one item in the list.
-            string $temp[] = $gSkinBrushInfluenceSelection;
-
-            // Scroll the list to the first item of the previous
-            // selection.
-            if (`treeView -query -itemExists $temp[0] brSkinBrushJointTree`)
-                treeView -edit -showItem $temp[0] brSkinBrushJointTree;
-
-            // Re-select all items.
-            for ($item in $temp)
-            {
-                if (`treeView -query -itemExists $item brSkinBrushJointTree`)
-                    treeView -edit -selectItem $item 1 brSkinBrushJointTree;
-            }
-
-            // Save the previous selection.
-            $gSkinBrushInfluenceSelection = $temp;
+        // selection.
+        if (`treeView -query -itemExists $currentDeformer brSkinBrushJointTree`){
+            treeView -edit -showItem $currentDeformer brSkinBrushJointTree;
+            treeView -edit -selectItem $currentDeformer 1 brSkinBrushJointTree;
         }
-    }
+    }    
 }
 
 
@@ -570,24 +461,14 @@ global proc brSkinBrushPickColorItem( string $button, int $state )
     {
         float  $theColor[] = `getAttr ($item+".wireColorRGB")` ;
 
-        python(
-            "from PySide2 import QtGui, QtCore\n" +
-            "def posiOfCursor():\n" +
-            "    thePos = QtGui.QCursor().pos() - QtCore.QPoint(355, 100)\n" +
-            "    return [thePos.x(), thePos.y()]\n"
-        );
-
-        int $posi[] = python("posiOfCursor()");
+        python( "from PySide2 import QtGui, QtCore\ndef posiOfCursor () : \n\tthePos=QtGui.QCursor().pos()  - QtCore.QPoint (355,100)\n\treturn [thePos.x(), thePos.y()]\n");
+        int $posi[] =python( "posiOfCursor ()");
 
         colorEditor -mini -position $posi[0] $posi[1] -rgbValue $theColor[0] $theColor[1] $theColor[2];
         if (`colorEditor -query -result`) {
             float $values[];
             $values = `colorEditor -query -rgb`;
-            print ("treeView -edit -buttonTransparencyColor \"" +
-                $item + "\" 2 " + $values[0] + " " + $values[1] + " " + $values[2] +
-                " brSkinBrushJointTree;\n"
-            );
-
+            print ("treeView -edit -buttonTransparencyColor \"" + $item + "\" 2 " + $values[0] + " " + $values[1] + " " + $values[2] + " brSkinBrushJointTree;\n");
             treeView -edit -buttonTransparencyColor 
                      $item 2 $values[0] $values[1] $values[2]
                      brSkinBrushJointTree;
@@ -717,7 +598,7 @@ global proc brSkinBrushInfluenceList()
                         -changeCommand brSkinBrushSearchJointString 
                         brSkinBrushHideLockCheck;
 
-            button -label "Add" -command brSkinBrushAddJnt -height 15  -width 50 brSkinBrushAddJntButton;                
+            button -label "Add joint" -command brSkinBrushAddJnt -height 15  -width 150 brSkinBrushAddJntButton;                
             // ---------------------------------------------------------
             // influence list
             // ---------------------------------------------------------

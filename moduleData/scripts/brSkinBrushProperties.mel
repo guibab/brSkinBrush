@@ -33,12 +33,7 @@ global proc brSkinBrushSetBrushColor()
 global proc brSkinBrushVolumeToggle( int $state )
 {
     $state = !$state;
-
-    intSliderGrp -edit -enable $state brSkinBrushDepthStart;
-    intSliderGrp -edit -enable $state brSkinBrushDepth;
     checkBoxGrp -edit -enable (1 - $state) brSkinBrushDrawRangeCheck;
-    checkBoxGrp -edit -enable $state brSkinBrushKeepShellsTogetherCheck;
-    floatSliderGrp -edit -enable $state brSkinBrushTolerance;
 }
 
 
@@ -80,12 +75,7 @@ proc addAnnotations()
     symbolCheckBox -edit
                    -annotation (uiRes("m_brSkinBrushProperties.kCurveNarrow"))
                    brSkinBrushNarrowButton;
-    intSliderGrp -edit
-                 -annotation (uiRes("m_brSkinBrushProperties.kDepth"))
-                 brSkinBrushDepth;
-    intSliderGrp -edit
-                 -annotation (uiRes("m_brSkinBrushProperties.kDepthStart"))
-                 brSkinBrushDepthStart;
+    
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kDrawBrush"))
                 brSkinBrushDrawBrushCheck;
@@ -111,30 +101,26 @@ proc addAnnotations()
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kIgnoreLock"))
                 brSkinBrushIgnoreLockCheck;
-    checkBoxGrp -edit
-                -annotation (uiRes("m_brSkinBrushProperties.kKeepShellsTogether"))
-                brSkinBrushKeepShellsTogetherCheck;
+
+
     intFieldGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kLineWidth"))
                 brSkinBrushLineWidthField;
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kMessage"))
                 brSkinBrushMessageType;
+
     floatSliderGrp -edit
                    -annotation (uiRes("m_brSkinBrushProperties.kSize"))
                    brSkinBrushSize;
     floatSliderGrp -edit
                    -annotation (uiRes("m_brSkinBrushProperties.kStrength"))
                    brSkinBrushStrength;
-    floatSliderGrp -edit
-                   -annotation (uiRes("m_brSkinBrushProperties.kTolerance"))
-                   brSkinBrushTolerance;
+
     intFieldGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kUndersampling"))
                 brSkinBrushBrushUndersamplingField;
-    intSliderGrp -edit
-                -annotation (uiRes("m_brSkinBrushProperties.kStepLine"))
-                brSkinBrushStepLineField;
+
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kCoverage"))
                 brSkinBrushCoverageCheck;
@@ -146,6 +132,7 @@ proc addAnnotations()
     checkBoxGrp -edit
                 -annotation (uiRes("m_brSkinBrushProperties.kPostSetting"))
                 brSkinBrushPostSettingCheck;
+
 }
 
 
@@ -156,22 +143,16 @@ proc deleteAnnotations()
     symbolCheckBox -edit -annotation "" brSkinBrushLinearButton;
     symbolCheckBox -edit -annotation "" brSkinBrushSmoothButton;
     symbolCheckBox -edit -annotation "" brSkinBrushNarrowButton;
-    intSliderGrp -edit -annotation "" brSkinBrushDepth;
-    intSliderGrp -edit -annotation "" brSkinBrushDepthStart;
     checkBoxGrp -edit -annotation "" brSkinBrushDrawBrushCheck;
     checkBoxGrp -edit -annotation "" brSkinBrushDrawRangeCheck;
     button -edit -annotation "" brSkinBrushFloodButton;
     button -edit -annotation "" brSkinBrushRefreshButton;
     checkBoxGrp -edit -annotation "" brSkinBrushIgnoreLockCheck;
-    checkBoxGrp -edit -annotation "" brSkinBrushKeepShellsTogetherCheck;
     intFieldGrp -edit -annotation "" brSkinBrushLineWidthField;
     checkBoxGrp -edit -annotation "" brSkinBrushMessageType;
     floatSliderGrp -edit -annotation "" brSkinBrushSize;
     floatSliderGrp -edit -annotation "" brSkinBrushStrength;
-    floatSliderGrp -edit -annotation "" brSkinBrushTolerance;
     intFieldGrp -edit -annotation "" brSkinBrushBrushUndersamplingField;
-
-    intSliderGrp -edit -annotation "" brSkinBrushStepLineField;
     checkBoxGrp -edit -annotation "" brSkinBrushCoverageCheck;
     button -edit -annotation "" brSkinBrushPickInfluenceButton;
     button -edit -annotation "" brSkinBrushPickMaxInfluenceButton;
@@ -204,9 +185,75 @@ global proc brSkinBrushSetRefresh (){
         $gSkinBrushMesh ="NOPEofNOPE";
     else 
         $gSkinBrushMesh ="NOPEofNOPE2";
-        
+            
     brSkinBrushGetSelection ();
     brSkinBrushContext -edit -refresh 1 `currentCtx`;
+    
+    // list of joints  refresh
+    global string $gSkinBrushSkinCluster;
+    brSkinBrushListInfluences($gSkinBrushSkinCluster, 1); // not newMesh
+}
+
+global string $brSkinBrushReflectionPrevMode = "objectx";
+
+global proc brSkinBrushReflectionSetMode(string $mode)
+{
+    global string $brSkinBrushReflectionPrevMode;
+    if ($mode != "none") $brSkinBrushReflectionPrevMode = $mode;
+
+    if ($mode == "none") {        
+        textField -e -text "Off" brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 0 `currentCtx`;
+    } else if ($mode == "origx") {
+        textField -e -text "OrigShape X" brSkinBrushReflectionOptionsText;        
+        brSkinBrushContext -edit -mirrorPaint 1 `currentCtx`;
+    } else if ($mode == "origy") {
+        textField -e -text "OrigShape Y" brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 2 `currentCtx`;
+    } else if ($mode == "origz") {
+        textField -e -text "OrigShape Z" brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 3 `currentCtx`;
+    } else if ($mode == "objectx") {
+        textField -e -text "Object X" brSkinBrushReflectionOptionsText;        
+        brSkinBrushContext -edit -mirrorPaint 4 `currentCtx`;
+    } else if ($mode == "objecty") {
+        textField -e -text "Object Y" brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 5 `currentCtx`;    
+    } else if ($mode == "objectz") {
+        textField -e -text "Object Z" brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 6 `currentCtx`;
+    } else if ($mode == "worldx") {
+        textField -e -text "World X"  brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 7 `currentCtx`;
+    } else if ($mode == "worldy") {
+        textField -e -text "World Y"  brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 8 `currentCtx`;
+    } else if ($mode == "worldz") {
+        textField -e -text "World Z"  brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 9 `currentCtx`;
+    } else if ($mode == "topo") {
+        textField -e -text "Topology" brSkinBrushReflectionOptionsText;
+        brSkinBrushContext -edit -mirrorPaint 10 `currentCtx`;
+    }
+    
+}
+
+global proc brSkinBrushReflectionToggle()
+{
+    global string $brSkinBrushReflectionPrevMode;
+    brSkinBrushReflectionSetMode(`symmetricModelling -q -symmetry` == 0 ? $brSkinBrushReflectionPrevMode : "none");
+}
+
+global proc brSkinBrushReflectionBuildMenu(string $menu)
+{
+    menu -e -dai $menu;
+    menuItem -label "Off"      -p $menu -c "brSkinBrushReflectionSetMode none";
+    menuItem -label "OrigShape X" -p $menu -c "brSkinBrushReflectionSetMode origx";
+    menuItem -label "OrigShape Y" -p $menu -c "brSkinBrushReflectionSetMode origy";
+    menuItem -label "OrigShape Z" -p $menu -c "brSkinBrushReflectionSetMode origz";
+    menuItem -label "Object X" -p $menu -c "brSkinBrushReflectionSetMode objectx";
+    menuItem -label "Object Y" -p $menu -c "brSkinBrushReflectionSetMode objecty";
+    menuItem -label "Object Z" -p $menu -c "brSkinBrushReflectionSetMode objectz";
 }
 
 global proc brSkinBrushSetCallbacks( string $parent )
@@ -226,12 +273,6 @@ global proc brSkinBrushSetCallbacks( string $parent )
     symbolCheckBox -edit
                    -changeCommand "brSkinBrushSetSymbolCheckBox 3"
                    brSkinBrushNarrowButton;
-    intSliderGrp -edit
-                 -changeCommand "brSkinBrushContext -edit -depth `intSliderGrp -query -value brSkinBrushDepth` `currentCtx`;"
-                 brSkinBrushDepth;
-    intSliderGrp -edit
-                 -changeCommand "brSkinBrushContext -edit -depthStart `intSliderGrp -query -value brSkinBrushDepthStart` `currentCtx`;"
-                 brSkinBrushDepthStart;
     checkBoxGrp -edit
                 -changeCommand "brSkinBrushContext -edit -drawBrush #1 `currentCtx`;"
                 brSkinBrushDrawBrushCheck;
@@ -243,7 +284,7 @@ global proc brSkinBrushSetCallbacks( string $parent )
            brSkinBrushFloodButton;
 
     button -edit
-           -command "setAttr -type \"Int32Array\"  \".lockedVertices\" 0; brSkinBrushContext -edit -refresh 1 `currentCtx`;"
+           -command "global string $gSkinBrushMesh;setAttr -type \"Int32Array\"  ($gSkinBrushMesh+\".lockedVertices\") 0; brSkinBrushContext -edit -refresh 1 `currentCtx`;"
            brSkinBrushClearLocksButton;           
 
     button -edit
@@ -261,31 +302,32 @@ global proc brSkinBrushSetCallbacks( string $parent )
     checkBoxGrp -edit
                 -changeCommand "brSkinBrushContext -edit -ignoreLock #1 `currentCtx`;"
                 brSkinBrushIgnoreLockCheck;
-    checkBoxGrp -edit
-                -changeCommand "brSkinBrushContext -edit -keepShellsTogether #1 `currentCtx`;"
-                brSkinBrushKeepShellsTogetherCheck;
     intFieldGrp -edit
                 -changeCommand "brSkinBrushContext -edit -lineWidth #1 `currentCtx`;"
                 brSkinBrushLineWidthField;
     checkBoxGrp -edit
                 -changeCommand "brSkinBrushContext -edit -message #1 `currentCtx`;"
                 brSkinBrushMessageType;
+
+
+    floatSliderGrp -edit -changeCommand "brSkinBrushContext -edit -toleranceMirror #1 `currentCtx`;" brSkinBrushReflectionOptionsTol_FS;
+
+    checkBoxGrp -edit -changeCommand "brSkinBrushContext -edit -useColorSetsWhilePainting #1 `currentCtx`;" brSkinBrushUseColorSetsWhilePainting;
+    checkBoxGrp -edit -changeCommand "brSkinBrushContext -edit -meshdrawTriangles #1 `currentCtx`;" brSkinBrushDrawTriangles;
+    checkBoxGrp -edit -changeCommand "brSkinBrushContext -edit -meshdrawEdges #1 `currentCtx`;" brSkinBrushDrawEdges;
+    checkBoxGrp -edit -changeCommand "brSkinBrushContext -edit -meshdrawPoints #1 `currentCtx`;" brSkinBrushDrawPoints;
+    checkBoxGrp -edit -changeCommand "brSkinBrushContext -edit -meshdrawTransparency #1 `currentCtx`;" brSkinBrushDrawTrans;
+
     floatSliderGrp -edit
                    -changeCommand "brSkinBrushContext -edit -size `floatSliderGrp -query -value brSkinBrushSize` `currentCtx`;"
                    brSkinBrushSize;
     floatSliderGrp -edit
                    -changeCommand "brSkinBrushContext -edit -strength `floatSliderGrp -query -value brSkinBrushStrength` `currentCtx`;"
                    brSkinBrushStrength;
-    floatSliderGrp -edit
-                   -changeCommand "brSkinBrushContext -edit -tolerance `floatSliderGrp -query -value brSkinBrushTolerance` `currentCtx`;"
-                   brSkinBrushTolerance;
     intFieldGrp -edit
                 -changeCommand "brSkinBrushContext -edit -undersampling #1 `currentCtx`;"
                 brSkinBrushBrushUndersamplingField;
 
-    intSliderGrp -edit
-                -changeCommand "brSkinBrushContext -edit -stepLine #1 `currentCtx`;"
-                brSkinBrushStepLineField;
     checkBoxGrp -edit
                 -changeCommand "brSkinBrushVolumeToggle #1; brSkinBrushContext -edit -coverage #1 `currentCtx`;"
                 brSkinBrushCoverageCheck;
@@ -298,11 +340,6 @@ global proc brSkinBrushSetCallbacks( string $parent )
                 -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushInfluenceFrame\", 1)")
                 -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushInfluenceFrame\", 0)")
                 brSkinBrushInfluenceFrame;
-    
-    frameLayout -edit
-                -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushSurfaceFrame\", 1)")
-                -expandCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushSurfaceFrame\", 0)")
-                brSkinBrushSurfaceFrame;
 
     frameLayout -edit
                 -collapseCommand ("brSkinBrushSetLayoutCollapseState(\"brSkinBrushDisplayFrame\", 1)")
@@ -333,8 +370,8 @@ global proc brSkinBrushSetCallbacks( string $parent )
     radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 6 `currentCtx`;" brSkinBrushLockVerticesRb;
     radioButton -edit -onCommand "brSkinBrushContext -edit -commandIndex 7 `currentCtx`;" brSkinBrushUnLockVerticesRb;
 
-    radioButtonGrp -edit -onCommand1 "brSkinBrushContext -edit -soloColor 0 `currentCtx`;" brSkinBrushColorModeRbg;
-    radioButtonGrp -edit -onCommand2 "brSkinBrushContext -edit -soloColor 1 `currentCtx`;" brSkinBrushColorModeRbg;
+    radioButtonGrp -edit -onCommand1 "python(\"import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.setSoloMode (0)\")"  brSkinBrushColorModeRbg;
+    radioButtonGrp -edit -onCommand2 "python(\"import brSkinBrush_pythonFunctions;brSkinBrush_pythonFunctions.setSoloMode (1)\")"  brSkinBrushColorModeRbg;
 
     radioButtonGrp -edit -onCommand1 "brSkinBrushContext -edit -soloColorType 0 `currentCtx`;" brSkinBrushSoloColorTypeRbg;
     radioButtonGrp -edit -onCommand2 "brSkinBrushContext -edit -soloColorType 1 `currentCtx`;" brSkinBrushSoloColorTypeRbg;
@@ -398,6 +435,7 @@ global proc brSkinBrushProperties()
                            brSkinBrushStrength;
             checkBoxGrp -label "Ignore Lock" brSkinBrushIgnoreLockCheck;
 
+
             separator -style "none" -w 350;
 
             rowColumnLayout -numberOfColumns 5
@@ -423,7 +461,6 @@ global proc brSkinBrushProperties()
                         -marginWidth 5
                         -marginHeight 5
                         brSkinBrushDisplayFrame;
-
 
                 rowColumnLayout -numberOfColumns 5
                                 -columnWidth 1 2
@@ -452,7 +489,42 @@ global proc brSkinBrushProperties()
                 button -label "clear locks" brSkinBrushClearLocksButton;
                 columnLayout; setParent .. ;
                 columnLayout; setParent .. ;
+                setParent ..; //setParent ..;
+
+                separator -style "none";
+
+                // Symmetry mode ---------------------------------------------
+                rowLayout -nc 4 -cw4 132 20 157 48;
+                    text -align right 
+                        -l "Symmetry:"
+                        -ann "Activate Symmetry"
+                        brSkinBrushReflectionOptionsLabel;
+    
+                    string $symButton = `iconTextButton
+                        -w 17 -h 26
+                        -image ("popupMenuIcon.png")
+                        brSkinBrushReflectionOptionsButton`;
+    
+                    string $symMenu = `popupMenu -b 1 -p $symButton`;
+                    menu -e -pmc ("brSkinBrushReflectionBuildMenu " + $symMenu) $symMenu;
+                    string $symToggle = `popupMenu -b 2 -p $symButton`;
+                    menu -e -pmc "brSkinBrushReflectionToggle" $symToggle;
+    
+                    textField 
+                        -ed false
+                        -width 157
+                        -height 25
+                        brSkinBrushReflectionOptionsText;
+    
+                    button -label "Reset" -command "brSkinBrushResetReflectionOptions" -width 48;
                 setParent ..;
+
+                floatSliderGrp -field true -label "Tolerance"
+                    -annotation "Tolerance for the mirror" 
+                    -precision 4
+                    -min 0.0001 -max 0.2 
+                    -fieldMaxValue 1.0 
+                    brSkinBrushReflectionOptionsTol_FS;
 
                 separator -style "none";
 
@@ -462,6 +534,12 @@ global proc brSkinBrushProperties()
                 radioButtonGrp -numberOfRadioButtons 3 
                     -columnWidth4 90 60 50 50 
                     -label "Solo Color :  " -labelArray3 "White" "Lava" "Influence" brSkinBrushSoloColorTypeRbg;
+
+                checkBoxGrp -label "Use Color Set While Painting" brSkinBrushUseColorSetsWhilePainting;
+                checkBoxGrp -label "draw triangles" brSkinBrushDrawTriangles;
+                checkBoxGrp -label "draw edges"     brSkinBrushDrawEdges;
+                checkBoxGrp -label "draw points"    brSkinBrushDrawPoints;
+                checkBoxGrp -label "draw transparency"  brSkinBrushDrawTrans;
 
                 separator -style "none";
 
@@ -478,35 +556,10 @@ global proc brSkinBrushProperties()
                     columnLayout; setParent ..;
                 setParent .. ;
 
-                intSliderGrp -label "TMP step Line" -minValue 1 -maxValue 30  brSkinBrushStepLineField;            
                 checkBoxGrp -label "180 Coverage" brSkinBrushCoverageCheck;
                 checkBoxGrp -label "post setting" brSkinBrushPostSettingCheck;                
 
             setParent ..;
-
-            frameLayout -label "Smoothing Options"
-                        -labelIndent 3
-                        -collapsable 1
-                        -collapse (`optionVar -query "brSkinBrushSurfaceFrameState"`)
-                        -marginWidth 5
-                        -marginHeight 5
-                        brSkinBrushSurfaceFrame;
-
-                intSliderGrp -label "Depth Start"
-                             -minValue 1
-                             -maxValue 5
-                             brSkinBrushDepthStart;
-                intSliderGrp -label "Depth"
-                             -minValue 1
-                             -maxValue 20
-                             brSkinBrushDepth;
-                checkBoxGrp -label "Keep Shells Together" brSkinBrushKeepShellsTogetherCheck;
-                floatSliderGrp -label "Tolerance"
-                               -precision 3
-                               -maxValue 1
-                               brSkinBrushTolerance;
-
-            setParent .. ;
 
         setParent ..;
 
@@ -579,7 +632,6 @@ global proc brSkinBrushProperties()
 
                 text -align "right" -font boldLabelFont -label "Ctrl + LMB:";
                 text -align "left" -label "Smooth Skin" -wordWrap true;
-
                 text -align "right" -font boldLabelFont -label "U:";
                 text -align "left" -label "marking menu of options" -wordWrap true;
 
