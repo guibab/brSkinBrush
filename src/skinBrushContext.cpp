@@ -269,8 +269,11 @@ void SkinBrushContext::refreshDeformerColor(int deformerInd) {
     // get the vertices indices to edit -------------------
     MIntArray editVertsIndices;
     for (unsigned int theVert = 0; theVert < this->numVertices; ++theVert) {
-        double val = this->skinWeightList[theVert * this->nbJoints + deformerInd];
-        if (val != 0) {
+        double theWeight = 0.0;
+        int ind_swl = theVert * this->nbJoints + deformerInd;
+        if (ind_swl < this->skinWeightList.length())
+            theWeight = this->skinWeightList[ind_swl];
+        if (theWeight != 0.0) {
             editVertsIndices.append(theVert);
         }
     }
@@ -390,7 +393,10 @@ int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint hitPoint) {
     double biggestVal = 0;
     std::vector<double> allWeights;
     for (int indexInfluence = 0; indexInfluence < this->nbJoints; ++indexInfluence) {
-        double theWeight = this->skinWeightList[indexVertex * this->nbJoints + indexInfluence];
+        double theWeight = 0.0;
+        int ind_swl = indexVertex * this->nbJoints + indexInfluence;
+        if (ind_swl < this->skinWeightList.length())
+            theWeight = this->skinWeightList[ind_swl];
         allWeights.push_back(theWeight);
         if (theWeight > biggestVal) {
             biggestVal = theWeight;
@@ -858,13 +864,20 @@ MStatus SkinBrushContext::refreshPointsNormals() {
         this->meshFn.freeCachedIntersectionAccelerator();  // yes ?
         this->mayaRawPoints = this->meshFn.getRawPoints(&status);
         this->rawNormals = this->meshFn.getRawNormals(&status);
+        int rawNormalsLength = sizeof(this->rawNormals);
 
 #pragma omp parallel for
         for (int vertexInd = 0; vertexInd < this->numVertices; vertexInd++) {
             int indNormal = this->verticesNormalsIndices[vertexInd];
-            MVector theNormal(this->rawNormals[indNormal * 3], this->rawNormals[indNormal * 3 + 1],
-                              this->rawNormals[indNormal * 3 + 2]);
-            this->verticesNormals.set(theNormal, vertexInd);
+            int rawIndNormal = indNormal * 3 + 2;
+            if (rawIndNormal < rawNormalsLength) {
+                MVector theNormal(
+                    this->rawNormals[indNormal * 3],
+                    this->rawNormals[indNormal * 3 + 1],
+                    this->rawNormals[indNormal * 3 + 2]
+                );
+                this->verticesNormals.set(theNormal, vertexInd);
+            }
         }
     }
     return status;
@@ -1628,9 +1641,16 @@ MStatus SkinBrushContext::applyCommandMirror() {
         for (const auto &elem : mirroredJoinedArrayOrdered) {
             int theVert = elem.first;
             if (repeat == 0) objVertices.append(theVert);
+
             for (int j = 0; j < this->nbJoints; ++j) {
-                this->skinWeightList[theVert * this->nbJoints + j] =
-                    theWeights[i * this->nbJoints + j];
+                int ind_swl = theVert * this->nbJoints + j;
+                if (ind_swl >= this->skinWeightList.length())
+                    this->skinWeightList.setLength(ind_swl + 1);
+                double val = 0.0;
+                int ind_tw = i * this->nbJoints + j;
+                if (ind_tw < theWeights.length())
+                    val = theWeights[ind_tw];
+                this->skinWeightList[ind_swl] = val;
             }
             i++;
         }
@@ -1731,8 +1751,14 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
             for (const auto &elem : valuesToSetOrdered) {
                 int theVert = elem.first;
                 for (int j = 0; j < this->nbJoints; ++j) {
-                    this->skinWeightList[theVert * this->nbJoints + j] =
-                        theWeights[i * this->nbJoints + j];
+                    int ind_swl = theVert * this->nbJoints + j;
+                    if (ind_swl >= this->skinWeightList.length())
+                        this->skinWeightList.setLength(ind_swl + 1);
+                    double val = 0.0;
+                    int ind_tw = i * this->nbJoints + j;
+                    if (ind_tw < theWeights.length())
+                        val = theWeights[ind_tw];
+                    this->skinWeightList[ind_swl] = val;
                 }
                 i++;
             }
@@ -1797,7 +1823,10 @@ MStatus SkinBrushContext::editSoloColorSet(bool doBlack) {
     MColorArray colToSet;
     MIntArray vtxToSet;
     for (unsigned int theVert = 0; theVert < this->numVertices; ++theVert) {
-        double val = this->skinWeightList[theVert * this->nbJoints + this->influenceIndex];
+        double val = 0.0;
+        int ind_swl = theVert * this->nbJoints + this->influenceIndex;
+        if (ind_swl < this->skinWeightList.length())
+            val = this->skinWeightList[ind_swl];
         bool isVtxLocked = this->lockVertices[theVert] == 1;
         bool update = doBlack | !(this->soloColorsValues[theVert] == 0 && val == 0);
         if (update) {  // dont update the black
@@ -1834,14 +1863,17 @@ MStatus SkinBrushContext::refreshColors(MIntArray &editVertsIndices, MColorArray
         bool isVtxLocked = this->lockVertices[theVert] == 1;
 
         for (int j = 0; j < this->nbJoints; ++j) {  // for each joint
-            double val = this->skinWeightList[theVert * this->nbJoints + j];
-            if (this->lockJoints[j] == 1)
-                multiColor += lockJntColor * val;
-            else
-                multiColor += jointsColors[j] * val;
-            if (j == this->influenceIndex) {
-                this->soloColorsValues[theVert] = val;
-                soloColor = getASoloColor(val);
+            int ind_swl = theVert * this->nbJoints + j;
+            if (ind_swl < this->skinWeightList.length()) {
+                double val = this->skinWeightList[ind_swl];
+                if (this->lockJoints[j] == 1)
+                    multiColor += lockJntColor * val;
+                else
+                    multiColor += jointsColors[j] * val;
+                if (j == this->influenceIndex) {
+                    this->soloColorsValues[theVert] = val;
+                    soloColor = getASoloColor(val);
+                }
             }
         }
         this->multiCurrentColors[theVert] = multiColor;
@@ -2126,8 +2158,10 @@ void SkinBrushContext::getConnectedVerticesThird() {
             connVetsSet2 = connVetsSetTMP;
         }
         auto it = std::find(connVetsSet2.begin(), connVetsSet2.end(), vtxTmp);
-        connVetsSet2.erase(it);
-        this->perVertexVerticesSet[vtxTmp] = connVetsSet2;
+        if (it != std::end(connVetsSet2)) {
+            connVetsSet2.erase(it);
+            this->perVertexVerticesSet[vtxTmp] = connVetsSet2;
+        }
     }
 }
 
@@ -2170,19 +2204,24 @@ void SkinBrushContext::getFromMeshNormals() {
     this->verticesNormalsIndices.setLength(numVertices);
 #pragma omp parallel for
     for (int vertexInd = 0; vertexInd < this->numVertices; vertexInd++) {
-        int indFace = this->perVertexFaces[vertexInd][0];  // get the first face
-        MIntArray surroundingVertices = this->perFaceVertices[indFace];
-        int indNormal = -1;
-        for (unsigned int j = 0; j < surroundingVertices.length(); ++j) {
-            if (surroundingVertices[j] == vertexInd) {
-                indNormal = this->normalsIds[indFace][0];  // get correct index of vertex in face
+        auto vertToFace = this->perVertexFaces[vertexInd];
+        if (vertToFace.length() > 0) {
+            int indFace = vertToFace[0];
+            MIntArray surroundingVertices = this->perFaceVertices[indFace];
+            int indNormal = -1;
+            for (unsigned int j = 0; j < surroundingVertices.length(); ++j) {
+                if (surroundingVertices[j] == vertexInd) {
+                    indNormal = this->normalsIds[indFace][0];
+                }
             }
+            if (indNormal == -1) {
+                MGlobal::displayInfo(
+                    MString("cant find vertex [") + vertexInd +
+                    MString("] in face [") + indFace + MString("] ;")
+                );
+            }
+            this->verticesNormalsIndices.set(indNormal, vertexInd);
         }
-        if (indNormal == -1) {
-            MGlobal::displayInfo(MString("cant find vertex [") + vertexInd +
-                                 MString("] in face [") + indFace + MString("] ;"));
-        }
-        this->verticesNormalsIndices.set(indNormal, vertexInd);
     }
 }
 void SkinBrushContext::getConnectedVerticesFlatten() {
@@ -2353,7 +2392,11 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
             MColor theColor(0.0, 0.0, 0.0);
             for (unsigned int indexInfluence = 0; indexInfluence < infCount;
                  indexInfluence++) {  // for each joint
-                double theWeight = this->skinWeightList[vertexIndex * infCount + indexInfluence];
+
+                int ind_swl = vertexIndex * infCount + indexInfluence;
+                double theWeight = 0.0;
+                if (ind_swl < this->skinWeightList.length())
+                    theWeight = this->skinWeightList[ind_swl];
 
                 if (doColors) {
                     if (lockJoints[indexInfluence] == 1)
@@ -2386,7 +2429,10 @@ MStatus SkinBrushContext::displayWeightValue(int vertexIndex, bool displayZero) 
     MString toDisplay = MString("weigth of vtx (") + vertexIndex + MString(") : ");
     for (unsigned int indexInfluence = 0; indexInfluence < this->nbJoints;
          indexInfluence++) {  // for each joint
-        double theWeight = this->skinWeightList[vertexIndex * this->nbJoints + indexInfluence];
+        double theWeight = 0.0;
+        int ind_swl = vertexIndex * this->nbJoints + indexInfluence;
+        if (ind_swl < this->skinWeightList.length())
+            theWeight = this->skinWeightList[ind_swl];
         if (theWeight == 0 && !displayZero) continue;
         toDisplay += MString("[") + indexInfluence + MString(": ") + theWeight + MString("] ");
     }
@@ -2451,7 +2497,10 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors)
             double theWeight = weight_plug.asDouble();
             // store in the correct Spot --
             indexInfluence = this->indicesForInfluenceObjects[indexInfluence];
-            this->skinWeightList[vertexIndex * this->nbJoints + indexInfluence] = theWeight;
+            int ind_swl = vertexIndex * this->nbJoints + indexInfluence;
+            if (ind_swl >= this->skinWeightList.length())
+                this->skinWeightList.setLength(ind_swl + 1);
+            this->skinWeightList[ind_swl] = theWeight;
             if (doColors) {  // and not locked
                 if (this->lockJoints[indexInfluence] == 1)
                     theColor += lockJntColor * theWeight;
@@ -2558,8 +2607,10 @@ MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray 
         MColor theColor;
         for (unsigned int j = 0; j < infCount; j++) {  // for each joint
             double theWeight = weightsVertices[i * infCount + j];
-            this->skinWeightList[vertexIndex * this->nbJoints + j] = theWeight;
-
+            int ind_swl = vertexIndex * this->nbJoints + j;
+            if (ind_swl >= this->skinWeightList.length())
+                this->skinWeightList.setLength(ind_swl + 1);
+            this->skinWeightList[ind_swl] = theWeight;
             if (doColors) {
                 if (lockJoints[j] == 1)
                     theColor += lockJntColor * theWeight;
@@ -2765,7 +2816,10 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
         // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
         // UnLockVertices
         if (theCommandIndex < 4) {
-            double newW = this->skinWeightList[vertexIndex * nbJoints + this->influenceIndex];
+            double newW = 0.0;
+            int ind_swl = vertexIndex * nbJoints + this->influenceIndex;
+            if (ind_swl < this->skinWeightList.length())
+                newW = this->skinWeightList[ind_swl];
             if (theCommandIndex == 0) {
                 newW += value;  // ADD
                 newW = std::min(1.0, newW);
@@ -2823,9 +2877,14 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
         // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
         // UnLockVertices
         if (theCommandIndex < 4) {
-            double newW = this->skinWeightList[vertexIndex * nbJoints + this->influenceIndex];
-            double newWMirror =
-                this->skinWeightList[vertexIndex * nbJoints + influenceMirrorColorIndex];
+            double newW = 0.0;
+            int ind_swl = vertexIndex * nbJoints + this->influenceIndex;
+            if (ind_swl < this->skinWeightList.length())
+                newW = this->skinWeightList[ind_swl];
+            double newWMirror = 0.0;
+            int ind_swlM = vertexIndex * nbJoints + influenceMirrorColorIndex;
+            if (ind_swlM < this->skinWeightList.length())
+                newWMirror = this->skinWeightList[ind_swlM];
             double sumNewWs = newW + newWMirror;
             if (theCommandIndex == 0) {
                 newW += double(valueBase);  // ADD
