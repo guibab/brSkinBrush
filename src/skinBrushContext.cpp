@@ -501,7 +501,7 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
                 } else {
                     MFnDagNode dag(path);
                     MStatus plugStat;
-                    MPlug radiusPlug = dag.findPlug("radius", &plugStat);
+                    MPlug radiusPlug = dag.findPlug("radius", false, &plugStat);
                     double multVal = jointDisplayVal;
                     if (plugStat == MStatus::kSuccess) {
                         multVal *= radiusPlug.asDouble();
@@ -1417,7 +1417,7 @@ void SkinBrushContext::doTheAction() {
             status = applyCommand(this->influenceIndex, this->skinValuesToSet);  //
             if (status == MStatus::kFailure) {
                 MGlobal::displayError(
-                    MString("something went wrong \ n EXIT the brush and RESTART it"));
+                    MString("Something went wrong. EXIT the brush and RESTART it"));
                 return;
             }
         }
@@ -2059,13 +2059,16 @@ MStatus SkinBrushContext::getTheOrigMeshForMirror() {
     this->accelParamsOrigMesh =
         meshOrigFn.uniformGridParams(33, 33, 33);  // I dont know why, but '33' seems to work well
 
-    status = intersectorOrigShape.create(origMeshDag.node());  // , matrix);
+    MObject origMeshNode = origMeshDag.node();
+
+    status = intersectorOrigShape.create(origMeshNode);  // , matrix);
 
     // Create the intersector for the closest point operation for
     // keeping the shells together.
     MObject meshObj = meshDag.node();
     status = intersector.create(meshObj, meshDag.inclusiveMatrix());
-    CHECK_MSTATUS_AND_RETURN_IT(status);
+    CHECK_MSTATUS_AND_RETURN_IT(status);  // only returns if bad
+    return status;
 }
 /*
 store vertices connections
@@ -2446,8 +2449,8 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors)
 
     MFnDependencyNode skinClusterDep(skinCluster);
 
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
-    MPlug matrix_plug = skinClusterDep.findPlug("matrix");
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
+    MPlug matrix_plug = skinClusterDep.findPlug("matrix", false);
     // MGlobal::displayInfo(weight_list_plug.name());
     int nbElements = weight_list_plug.numElements();
     unsigned int infCount = matrix_plug.numElements();

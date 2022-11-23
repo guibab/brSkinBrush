@@ -312,7 +312,7 @@ class SkinBrushContext : public MPxContext {
                          std::vector<float> &intensityValues,
                          std::unordered_map<int, float> &skinValToSet, bool mirror);
 
-    MStatus SkinBrushContext::doPerformPaint();
+    MStatus doPerformPaint();
 
     void addBrushShapeFallof(std::unordered_map<int, float> &dicVertsDist);
 

@@ -366,8 +366,9 @@ double SkinBrushContext::getPruneWeights() { return this->pruneWeight; }
 
 double SkinBrushContext::getInteractiveValue(int ind) {
     if (ind == 0) return this->interactiveValue;
-    if (ind == 1) return this->interactiveValue1;
-    if (ind == 2) return this->interactiveValue2;
+    else if (ind == 1) return this->interactiveValue1;
+    //if (ind == 2)
+    return this->interactiveValue2;
 }
 
 int SkinBrushContext::getUndersampling() { return undersamplingVal; }

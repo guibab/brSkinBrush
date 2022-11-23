@@ -97,7 +97,7 @@ void CVsAround(int storedU, int storedV, int numCVsInU, int numCVsInV, bool UIsP
 
 MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
     MStatus stat = MS::kSuccess;
-    MPlug mshPnts = msh.findPlug("pnts", &stat);
+    MPlug mshPnts = msh.findPlug("pnts", false, &stat);
     MPointArray allpts;
 
     bool VIsPeriodic_ = nurbsFn.formInV() == MFnNurbsSurface::kPeriodic;
@@ -129,7 +129,7 @@ MStatus findNurbsTesselateOrig(MDagPath meshPath, MObject& origMeshObj, bool ver
     // the deformed mesh comes into the visible mesh
     // through its "inmesh" plug
     MFnDependencyNode deformedNameMesh(meshPath.node());
-    MPlug outMeshPlug = deformedNameMesh.findPlug("origMeshNurbs", &stat);
+    MPlug outMeshPlug = deformedNameMesh.findPlug("origMeshNurbs", false, &stat);
     MGlobal::displayInfo(MString("---- searching from: ") + outMeshPlug.name());
     if (stat == MS::kSuccess) {
         MPlugArray connections;
@@ -159,7 +159,7 @@ MStatus findNurbsTesselate(MDagPath NurbsPath, MObject& MeshObj, bool verbose) {
     // the deformed mesh comes into the visible mesh
     // through its "inmesh" plug
     MFnDependencyNode deformedNameMesh(NurbsPath.node());
-    MPlug outMeshPlug = deformedNameMesh.findPlug("nurbsTessellate", &stat);
+    MPlug outMeshPlug = deformedNameMesh.findPlug("nurbsTessellate", false, &stat);
 
     if (stat == MS::kSuccess) {
         MPlugArray connections;
@@ -195,9 +195,9 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
     // through its "inmesh" plug
     MPlug inMeshPlug;
     if (MeshPath.apiType() == MFn::kMesh)
-        inMeshPlug = dagNode.findPlug("inMesh", &stat);
+        inMeshPlug = dagNode.findPlug("inMesh", false, &stat);
     else if (MeshPath.apiType() == MFn::kNurbsSurface)
-        inMeshPlug = dagNode.findPlug("create", &stat);
+        inMeshPlug = dagNode.findPlug("create", false, &stat);
 
     if (stat == MS::kSuccess && inMeshPlug.isConnected()) {
         // walk the tree of stuff upstream from this plug
@@ -209,7 +209,8 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
             int count = 0;
 
             for (; !dgIt.isDone(); dgIt.next()) {
-                MObject thisNode = dgIt.thisNode();
+                //MObject thisNode = dgIt.thisNode();
+                MObject thisNode = dgIt.currentItem();
                 // go until we find a skinCluster
                 if (thisNode.apiType() == MFn::kSkinClusterFilter) {
                     listSkinClusters.append(thisNode);
@@ -243,7 +244,8 @@ MStatus findMesh(MObject& skinCluster, MDagPath& theMeshPath, bool verbose) {
     if (objectsDeformedCount != 0) {
         int j = 0;
         // for (int j = 0; j < objectsDeformedCount; j++) {
-        theMeshPath.getAPathTo(objectsDeformed[j]);
+        // theMeshPath.getAPathTo(objectsDeformed[j]); // depreated
+        MDagPath::getAPathTo(objectsDeformed[j], theMeshPath);
         if (verbose) {
             MFnDependencyNode deformedNameMesh(objectsDeformed[j]);
             MString deformedNameMeshSTR = deformedNameMesh.name();
@@ -298,7 +300,7 @@ MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
 
     //----------------------------------------------------------------
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor", &stat);
+    MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor", false, &stat);
     if (stat != MS::kSuccess) {
         MGlobal::displayError(MString("fail finding influenceColor plug "));
         return stat;
@@ -360,7 +362,7 @@ MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray indicesF
     MStatus stat;
 
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug influenceLock_plug = skinClusterDep.findPlug("lockWeights");
+    MPlug influenceLock_plug = skinClusterDep.findPlug("lockWeights", false);
 
     int nbPlugs = influenceLock_plug.numElements();
     jointsLocks.clear();
@@ -401,14 +403,14 @@ MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArr
     MObjectArray objectsDeformed;
     theSkinCluster.getOutputGeometry(objectsDeformed);
     MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
-    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", &stat);
+    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", false, &stat);
     if (MS::kSuccess != stat) {
         MGlobal::displayInfo(MString("cant find lockerdVertices plug"));
         return stat;
     }
 
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
 
     int nbVertices = weight_list_plug.numElements();
 
@@ -439,7 +441,7 @@ MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
     MObject prt = deformedNameMesh.parent(0);
 
     MFnDependencyNode prtDep(prt);
-    MPlug symVerticesPlug = prtDep.findPlug("symmetricVertices", &stat);
+    MPlug symVerticesPlug = prtDep.findPlug("symmetricVertices", false, &stat);
     if (MS::kSuccess != stat) {
         MGlobal::displayError(MString("cant find symmetricVertices plug"));
         return stat;
@@ -450,6 +452,7 @@ MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
 
     MFnIntArrayData intData(Data);
     symetryList = intData.array(&stat);
+    return stat;
 }
 
 MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
@@ -508,7 +511,7 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     MObjectArray objectsDeformed;
     theSkinCluster.getOutputGeometry(objectsDeformed);
     MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
-    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", &stat);
+    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", false, &stat);
     if (MS::kSuccess != stat) {
         MGlobal::displayError(MString("cant find lockerdVertices plug"));
         return stat;
@@ -527,7 +530,8 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     }
     // now set the value ---------------------------
     MFnIntArrayData tmpIntArray;
-    stat = lockedVerticesPlug.setValue(tmpIntArray.create(theArrayValues));  // to set the attribute
+    auto tmpAttrSetter = tmpIntArray.create(theArrayValues);
+    stat = lockedVerticesPlug.setValue(tmpAttrSetter);  // to set the attribute
     return stat;
 }
 
