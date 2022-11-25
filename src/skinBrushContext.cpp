@@ -1541,11 +1541,11 @@ ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
     // unlockVertices
     ModifierCommands theCommandIndex = this->commandIndex;
 
-    if (this->commandIndex == ModifierCommands::Add && this->modifierNoneShiftControl == ModifierKeys::Shift)
+    if (this->commandIndex == ModifierCommands::Add && this->modifierNoneShiftControl == ModifierKeys::Control)
         theCommandIndex = ModifierCommands::Remove;
     if (this->commandIndex == ModifierCommands::LockVertices && this->modifierNoneShiftControl == ModifierKeys::Shift)
         theCommandIndex = ModifierCommands::UnlockVertices;
-    if (this->modifierNoneShiftControl == ModifierKeys::Control)
+    if (this->modifierNoneShiftControl == ModifierKeys::Shift)
         theCommandIndex = ModifierCommands::Smooth;
     if (this->modifierNoneShiftControl == ModifierKeys::ControlShift)
         theCommandIndex = ModifierCommands::Sharpen;
