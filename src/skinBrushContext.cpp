@@ -45,7 +45,7 @@ SkinBrushContext::SkinBrushContext() {
     coverageVal = true;
     postSetting = true;
 
-    commandIndex = 0;      // add
+    commandIndex = ModifierCommands::Add;
     soloColorTypeVal = 1;  // 1 lava
     soloColorVal = 0;
     // True, only if the smoothing is performed. False when adjusting
@@ -718,17 +718,23 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     // get baseColor ----------------------------------
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
-    int theCommandIndex = getCommandIndexModifiers();
+    ModifierCommands theCommandIndex = getCommandIndexModifiers();
 
     if (drawTransparency || drawPoints) {
-        if (theCommandIndex > 6)
-            baseColor = white;
-        else if (theCommandIndex == 6)
+        if (theCommandIndex == ModifierCommands::LockVertices)
             baseColor = this->lockVertColor;
-        else if (theCommandIndex > 3)
-            baseColor = white;
-        else if (commandIndex == 1)
+        else if (commandIndex == ModifierCommands::Remove)
             baseColor = black;
+        else if (theCommandIndex == ModifierCommands::UnlockVertices)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::Smooth)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::Sharpen)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::LockVertices)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::UnlockVertices)
+            baseColor = white;
         else {
             baseColor = this->jointsColors[this->influenceIndex];
             if (this->paintMirror != 0) {
@@ -739,7 +745,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
         }
         baseColor.get(MColor::kHSV, h, s, v);
         baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
-        if (commandIndex != 0 || commandIndex != 2) {
+        if (commandIndex != ModifierCommands::Add || commandIndex != ModifierCommands::AddPercent) {
             baseMirrorColor = baseColor;
         }
     }
@@ -749,7 +755,9 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
         float weightMirror = pt.second.second;
         float weight = weightBase + weightMirror;
 
-        if (theCommandIndex >= 6) weight = 1.0;  // no transparency on lock / unlocks verts
+        if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices))
+            weight = 1.0;  // no transparency on lock / unlocks verts
+
         MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
                              this->mayaRawPoints[ptIndex * 3 + 2]);
         posPoint = posPoint * this->inclusiveMatrix;
@@ -763,7 +771,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
                 transparency = 1.0;
             this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices, colors,
                                      colorsSolo);
-            if (theCommandIndex != 6) {  // not painting locks
+            if (theCommandIndex != ModifierCommands::LockVertices) {  // not painting locks
                 if (this->soloColorVal == 1) {
                     col = colorsSolo[i];
                 } else {
@@ -1170,23 +1178,23 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
             }
         }
         if (event.isModifierNone()) {
-            this->modifierNoneShiftControl = 0;
+            this->modifierNoneShiftControl = ModifierKeys::None;
         }
         if (event.isModifierShift() || event.isModifierControl()) {
             if (event.isModifierShift()) {
                 if (event.isModifierControl()) {
                     // both shift and control pressed, merge new selections
-                    this->modifierNoneShiftControl = 3;
+                    this->modifierNoneShiftControl = ModifierKeys::ControlShift;
                 } else {
                     // shift only, xor new selections with previous ones
-                    this->modifierNoneShiftControl = 1;
+                    this->modifierNoneShiftControl = ModifierKeys::Shift;
                 }
             } else if (event.isModifierControl()) {
                 // control only, remove new selections from the previous list
-                this->modifierNoneShiftControl = 2;
+                this->modifierNoneShiftControl = ModifierKeys::Control;
             }
         } else {
-            this->modifierNoneShiftControl = 0;
+            this->modifierNoneShiftControl = ModifierKeys::None;
         }
         // let's expand these arrays to the outer part of the brush----------------
         for (auto hitPoint : lineHitPoints) this->AllHitPoints.append(hitPoint);
@@ -1387,10 +1395,10 @@ void SkinBrushContext::doTheAction() {
         i++;
     }
 
-    int theCommandIndex = getCommandIndexModifiers();
-    if (theCommandIndex >= 6) {  // lock or unlock
+    ModifierCommands theCommandIndex = getCommandIndexModifiers();
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
         undoLocks.copy(this->lockVertices);
-        bool addLocks = theCommandIndex == 6;
+        bool addLocks = theCommandIndex == ModifierCommands::LockVertices;
         editLocks(this->skinObj, editVertsIndices, addLocks, this->lockVertices);
         redoLocks.copy(this->lockVertices);
     } else {
@@ -1440,7 +1448,7 @@ void SkinBrushContext::doTheAction() {
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
     if (verbose) MGlobal::displayInfo(MString("after refreshColors"));
-    if (theCommandIndex >= 6) {  // if locking or unlocking
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
         // without that it doesn't refresh because mesh is not invalidated, meaning the skinCluster
         // hasn't changed
         meshFn.updateSurface();
@@ -1528,17 +1536,20 @@ void SkinBrushContext::doTheAction() {
     MGlobal::executePythonCommand("afterPaint()");
 }
 
-int SkinBrushContext::getCommandIndexModifiers() {
+ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // unlockVertices
-    int theCommandIndex = this->commandIndex;
+    ModifierCommands theCommandIndex = this->commandIndex;
 
-    if (this->commandIndex == 0 && this->modifierNoneShiftControl == 1)
-        theCommandIndex = 1;  // remove
-    if (this->commandIndex == 6 && this->modifierNoneShiftControl == 1)
-        theCommandIndex = 7;                                       // unlockVertices
-    if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
-    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
+    if (this->commandIndex == ModifierCommands::Add && this->modifierNoneShiftControl == ModifierKeys::Shift)
+        theCommandIndex = ModifierCommands::Remove;
+    if (this->commandIndex == ModifierCommands::LockVertices && this->modifierNoneShiftControl == ModifierKeys::Shift)
+        theCommandIndex = ModifierCommands::UnlockVertices;
+    if (this->modifierNoneShiftControl == ModifierKeys::Control)
+        theCommandIndex = ModifierCommands::Smooth;
+    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift)
+        theCommandIndex = ModifierCommands::Sharpen;
+
     return theCommandIndex;
 }
 void SkinBrushContext::mergeMirrorArray(std::unordered_map<int, float> &valuesBase,
@@ -1583,25 +1594,25 @@ MStatus SkinBrushContext::applyCommandMirror() {
     std::map<int, std::pair<float, float>> mirroredJoinedArrayOrdered(mirroredJoinedArray.begin(),
                                                                       mirroredJoinedArray.end());
 
-    int theCommandIndex = getCommandIndexModifiers();
+    ModifierCommands theCommandIndex = getCommandIndexModifiers();
     double multiplier = 1.0;
 
     int influence = this->influenceIndex;
     int influenceMirror = this->mirrorInfluences[this->influenceIndex];
 
-    if (theCommandIndex >= 6)  // not lock or unlock verts
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices))
         return MStatus::kSuccess;
 
     MDoubleArray theWeights((int)this->nbJoints * mirroredJoinedArrayOrdered.size(), 0.0);
     int repeatLimit = 1;
-    if (theCommandIndex == 4 || theCommandIndex == 5) {
+    if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen) {
         repeatLimit = this->smoothRepeat;
     }
     if (verbose) MGlobal::displayInfo(MString("-> applyCommand | repeatLimit is ") + repeatLimit);
 
     MIntArray objVertices;
     for (int repeat = 0; repeat < repeatLimit; ++repeat) {
-        if (theCommandIndex == 4) {  // smooth
+        if (theCommandIndex == ModifierCommands::Smooth) {
             int indexCurrVert = 0;
             for (const auto &elem : mirroredJoinedArrayOrdered) {
                 int theVert = elem.first;
@@ -1624,7 +1635,7 @@ MStatus SkinBrushContext::applyCommandMirror() {
                                          this->skinWeightList, mirroredJoinedArrayOrdered,
                                          theWeights, this->doNormalize, multiplier, verbose);
             } else {
-                if (this->lockJoints[influence] == 1 && theCommandIndex != 5) {
+                if (this->lockJoints[influence] == 1 && theCommandIndex != ModifierCommands::Sharpen) {
                     return status;  //  if locked and it's not sharpen --> do nothing
                 }
                 status = editArrayMirror(theCommandIndex, influence, influenceMirror,
@@ -1694,20 +1705,21 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
     // we need to sort all of that one way or another ---------------- here it is ------
     std::map<int, double> valuesToSetOrdered(valuesToSet.begin(), valuesToSet.end());
 
-    int theCommandIndex = getCommandIndexModifiers();
+    ModifierCommands theCommandIndex = getCommandIndexModifiers();
     double multiplier = 1.0;
 
     if (verbose)
-        MGlobal::displayInfo(MString("-> applyCommand | theCommandIndex is ") + theCommandIndex);
-    if (theCommandIndex < 6) {  // not lock or unlock verts
+        MGlobal::displayInfo(MString("-> applyCommand | theCommandIndex is ") + static_cast<int>(theCommandIndex));
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
         MDoubleArray theWeights((int)this->nbJoints * valuesToSetOrdered.size(), 0.0);
         int repeatLimit = 1;
-        if (theCommandIndex == 4 || theCommandIndex == 5) repeatLimit = this->smoothRepeat;
+        if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen)
+            repeatLimit = this->smoothRepeat;
         if (verbose)
             MGlobal::displayInfo(MString("-> applyCommand | repeatLimit is ") + repeatLimit);
 
         for (int repeat = 0; repeat < repeatLimit; ++repeat) {
-            if (theCommandIndex == 4) {  // smooth
+            if (theCommandIndex == ModifierCommands::Smooth) {
                 int i = 0;
                 for (const auto &elem : valuesToSetOrdered) {
                     int theVert = elem.first;
@@ -1730,7 +1742,7 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
                                   this->ignoreLockJoints, this->skinWeightList, valuesToSetOrdered,
                                   theWeights, this->doNormalize, multiplier, verbose);
                 } else {
-                    if (this->lockJoints[influence] == 1 && theCommandIndex != 5)
+                    if (this->lockJoints[influence] == 1 && theCommandIndex != ModifierCommands::Sharpen)
                         return status;  //  if locked and it's not sharpen --> do nothing
                     status = editArray(theCommandIndex, influence, this->nbJoints, this->lockJoints,
                                        this->skinWeightList, valuesToSetOrdered, theWeights,
@@ -2776,7 +2788,7 @@ bool SkinBrushContext::expandHit(int faceHit, MFloatPoint hitPoint,
 
 void SkinBrushContext::addBrushShapeFallof(std::unordered_map<int, float> &dicVertsDist) {
     double valueStrength = strengthVal;
-    if (this->modifierNoneShiftControl >= 2 || this->commandIndex == 4) {
+    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift || this->commandIndex == ModifierCommands::Smooth) {
         valueStrength = smoothStrengthVal;  // smooth always we use the smooth value different of
                                             // the regular value
     }
@@ -2797,10 +2809,10 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
     MColor white(1, 1, 1, 1);
     MColor black(0, 0, 0, 1);
     MColor soloColor, multColor;
-    int theCommandIndex = getCommandIndexModifiers();
+    ModifierCommands theCommandIndex = getCommandIndexModifiers();
 
-    if (theCommandIndex >= 6) {      // painting locks
-        if (theCommandIndex == 6) {  // lock verts if not already locked
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
+        if (theCommandIndex == ModifierCommands::LockVertices) {  // lock verts if not already locked
             soloColor = this->lockVertColor;
             multColor = this->lockVertColor;
         } else {  // unlock verts
@@ -2818,31 +2830,32 @@ void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVer
 
         // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
         // UnLockVertices
-        if (theCommandIndex < 4) {
+        if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen) {
+            soloColor = value * white + (1.0 - value) * this->soloCurrentColors[vertexIndex];
+            multColor = value * white + (1.0 - value) * this->multiCurrentColors[vertexIndex];
+        }
+        else {
             double newW = 0.0;
             int ind_swl = vertexIndex * nbJoints + this->influenceIndex;
             if (ind_swl < this->skinWeightList.length())
                 newW = this->skinWeightList[ind_swl];
-            if (theCommandIndex == 0) {
-                newW += value;  // ADD
+            if (theCommandIndex == ModifierCommands::Add) {
+                newW += value;
                 newW = std::min(1.0, newW);
                 multColor = currentColor * (1.0 - newW) + jntColor * newW;  // white
-            } else if (theCommandIndex == 1) {
-                newW -= value;  // Remove
+            } else if (theCommandIndex == ModifierCommands::Remove) {
+                newW -= value;
                 newW = std::max(0.0, newW);
                 multColor = currentColor * (1.0 - value) + black * value;  // white
-            } else if (theCommandIndex == 2) {
-                newW += value * newW;  // AddPercent
+            } else if (theCommandIndex == ModifierCommands::AddPercent) {
+                newW += value * newW;
                 newW = std::min(1.0, newW);
                 multColor = currentColor * (1.0 - newW) + jntColor * newW;  // white
-            } else if (theCommandIndex == 3) {
+            } else if (theCommandIndex == ModifierCommands::Absolute) {
                 newW = value;                                              // Absolute
                 multColor = currentColor * (1.0 - value) + black * value;  // white
             }
             soloColor = getASoloColor(newW);
-        } else {  // smooth and sharpen
-            soloColor = value * white + (1.0 - value) * this->soloCurrentColors[vertexIndex];
-            multColor = value * white + (1.0 - value) * this->multiCurrentColors[vertexIndex];
         }
     }
     editVertsIndices.append(vertexIndex);
@@ -2856,14 +2869,14 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
     MColor white(1, 1, 1, 1);
     MColor black(0, 0, 0, 1);
     MColor soloColor, multColor;
-    int theCommandIndex = getCommandIndexModifiers();
+    ModifierCommands theCommandIndex = getCommandIndexModifiers();
 
     float sumValue = valueBase + valueMirror;
     sumValue = std::min(float(1.0), sumValue);
     float biggestValue = std::max(valueBase, valueMirror);
 
-    if (theCommandIndex >= 6) {      // painting locks
-        if (theCommandIndex == 6) {  // lock verts if not already locked
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
+        if (theCommandIndex == ModifierCommands::LockVertices) {  // lock verts if not already locked
             soloColor = this->lockVertColor;
             multColor = this->lockVertColor;
         } else {  // unlock verts
@@ -2879,7 +2892,11 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
         if (lockJoints[influenceMirrorColorIndex] == 1) jntMirrorColor = lockJntColor;
         // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
         // UnLockVertices
-        if (theCommandIndex < 4) {
+
+        if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen) {
+            soloColor = biggestValue * white + (1.0 - biggestValue) * this->soloCurrentColors[vertexIndex];
+            multColor = biggestValue * white + (1.0 - biggestValue) * this->multiCurrentColors[vertexIndex];
+        } else {
             double newW = 0.0;
             int ind_swl = vertexIndex * nbJoints + this->influenceIndex;
             if (ind_swl < this->skinWeightList.length())
@@ -2889,8 +2906,8 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
             if (ind_swlM < this->skinWeightList.length())
                 newWMirror = this->skinWeightList[ind_swlM];
             double sumNewWs = newW + newWMirror;
-            if (theCommandIndex == 0) {
-                newW += double(valueBase);  // ADD
+            if (theCommandIndex == ModifierCommands::Add) {
+                newW += double(valueBase);
                 newW = std::min(1.0, newW);
                 newWMirror += double(valueMirror);
                 newWMirror = std::min(1.0, newWMirror);
@@ -2904,12 +2921,12 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
                 }
                 multColor = currentColor * currentColorVal + jntColor * newW +
                             jntMirrorColor * newWMirror;  // white
-            } else if (theCommandIndex == 1) {
-                newW -= biggestValue;  // Remove
+            } else if (theCommandIndex == ModifierCommands::Remove) {
+                newW -= biggestValue;
                 newW = std::max(0.0, newW);
                 multColor = currentColor * (1.0 - biggestValue) + black * biggestValue;  // white
-            } else if (theCommandIndex == 2) {
-                newW += valueBase * newW;  // AddPercent
+            } else if (theCommandIndex == ModifierCommands::AddPercent) {
+                newW += valueBase * newW;
                 newW = std::min(1.0, newW);
                 newWMirror += valueMirror * newWMirror;
                 newWMirror = std::min(1.0, newWMirror);
@@ -2923,8 +2940,8 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
                 }
                 multColor = currentColor * currentColorVal + jntColor * newW +
                             jntMirrorColor * newWMirror;  // white
-            } else if (theCommandIndex == 3) {
-                newW = valueBase;  // Absolute
+            } else if (theCommandIndex == ModifierCommands::Absolute) {
+                newW = valueBase;
                 newW = std::min(1.0, newW);
                 newWMirror = valueMirror;
                 newWMirror = std::min(1.0, newWMirror);
@@ -2940,11 +2957,6 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
                             jntMirrorColor * newWMirror;  // white
             }
             soloColor = getASoloColor(newW);
-        } else {  // smooth and sharpen
-            soloColor =
-                biggestValue * white + (1.0 - biggestValue) * this->soloCurrentColors[vertexIndex];
-            multColor =
-                biggestValue * white + (1.0 - biggestValue) * this->multiCurrentColors[vertexIndex];
         }
     }
     editVertsIndices.append(vertexIndex);
@@ -2960,8 +2972,12 @@ MStatus SkinBrushContext::preparePaint(std::unordered_map<int, float> &dicVertsD
 
     // MGlobal::displayInfo("perform Paint");
     double multiplier = 1.0;
-    if (!postSetting && commandIndex != 4) multiplier = .1;  // less applying if dragging paint
-    bool isCommandLock = commandIndex >= 6 && this->modifierNoneShiftControl != 2;
+    if (!postSetting && commandIndex != ModifierCommands::Smooth)
+        multiplier = .1;  // less applying if dragging paint
+
+    bool isCommandLock =
+        ((commandIndex == ModifierCommands::LockVertices) || (commandIndex == ModifierCommands::UnlockVertices))
+        && (this->modifierNoneShiftControl != ModifierKeys::Control);
 
     auto endOfFind = dicVertsDistPrevPaint.end();
     for (const auto &element : dicVertsDist) {
@@ -3029,7 +3045,7 @@ MStatus SkinBrushContext::doPerformPaint() {
     }
 
     if (this->useColorSetsWhilePainting || !this->postSetting) {
-        if (this->commandIndex >= 6) {  // if locking or unlocking
+        if ((this->commandIndex == ModifierCommands::LockVertices) || (this->commandIndex == ModifierCommands::UnlockVertices)) {
             // without that it doesn't refresh because mesh is not invalidated, meaning the
             // skinCluster hasn't changed
             meshFn.updateSurface();

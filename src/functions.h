@@ -1,6 +1,7 @@
 #ifndef _functions_h
-
 #define _functions_h
+
+#include "enums.h"
 // MAYA HEADER FILES:
 
 #include <maya/MBoundingBox.h>
@@ -63,11 +64,11 @@ MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
                           MDoubleArray& editAndMirrorWeights, bool doMerge = true);
 MStatus editLocks(MObject& skinCluster, MIntArray& vertsToLock, bool addToLock,
                   MIntArray& vertsLocks);
-MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoints,
+MStatus editArray(ModifierCommands command, int influence, int nbJoints, MIntArray& lockJoints,
                   MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
                   MDoubleArray& theWeights, bool normalize = true, double mutliplier = 1.0,
                   bool verbose = false);
-MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJoints,
+MStatus editArrayMirror(ModifierCommands command, int influence, int influenceMirror, int nbJoints,
                         MIntArray& lockJoints, MDoubleArray& fullWeightArray,
                         std::map<int, std::pair<float, float>>& valuesToSetMirror,
                         MDoubleArray& theWeights, bool normalize = true, double mutliplier = 1.0,

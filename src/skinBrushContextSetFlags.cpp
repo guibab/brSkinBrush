@@ -55,18 +55,26 @@ void SkinBrushContext::setFlood() {
 
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
-    int theCommandIndex = this->commandIndex;
-    if (this->modifierNoneShiftControl == 2) theCommandIndex = 4;  // smooth always
-    if (this->modifierNoneShiftControl == 3) theCommandIndex = 5;  // sharpen always
+    ModifierCommands theCommandIndex = this->commandIndex;
+    if (this->modifierNoneShiftControl == ModifierKeys::Control)
+        theCommandIndex = ModifierCommands::Smooth;  // smooth always
+    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift)
+        theCommandIndex = ModifierCommands::Sharpen;  // sharpen always
 
-    if (theCommandIndex == 4 || this->modifierNoneShiftControl >= 2) value = smoothStrengthVal;
+    if (
+        theCommandIndex == ModifierCommands::Smooth
+        || this->modifierNoneShiftControl == ModifierKeys::Control
+        || this->modifierNoneShiftControl == ModifierKeys::ControlShift
+    )
+        value = smoothStrengthVal;
+
     for (int i = 0; i < this->numVertices; ++i) {
         this->verticesPainted.insert(i);
         this->skinValuesToSet.insert(std::make_pair(i, value));
     }
     doTheAction();
     if (verbose)
-        MGlobal::displayInfo(MString("SET FLOOD IS CALLED command ") + theCommandIndex +
+        MGlobal::displayInfo(MString("SET FLOOD IS CALLED command ") + static_cast<int>(theCommandIndex) +
                              MString(" value ") + value);
     MToolsInfo::setDirtyFlag(*this);
 }
@@ -113,7 +121,7 @@ void SkinBrushContext::setSize(double value) {
 void SkinBrushContext::setStrength(double value) {
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // unlockVertices
-    if (commandIndex == 4)  // smooth
+    if (commandIndex == ModifierCommands::Smooth)
         smoothStrengthVal = value;
     else  // others
         strengthVal = value;
@@ -200,7 +208,7 @@ void SkinBrushContext::setMaxColor(double value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setCommandIndex(int value) {
+void SkinBrushContext::setCommandIndex(ModifierCommands value) {
     // MGlobal::displayInfo(MString("setCommandIndex CALLED ") + value);
     commandIndex = value;
     MToolsInfo::setDirtyFlag(*this);
@@ -373,7 +381,7 @@ double SkinBrushContext::getInteractiveValue(int ind) {
 
 int SkinBrushContext::getUndersampling() { return undersamplingVal; }
 bool SkinBrushContext::getVolume() { return volumeVal; }
-int SkinBrushContext::getCommandIndex() { return commandIndex; }
+ModifierCommands SkinBrushContext::getCommandIndex() { return commandIndex; }
 int SkinBrushContext::getSmoothRepeat() { return smoothRepeat; }
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
 

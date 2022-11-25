@@ -331,7 +331,7 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     if (argData.isFlagSet(kCommandIndexFlag)) {
         int value;
         status = argData.getFlagArgument(kCommandIndexFlag, 0, value);
-        smoothContext->setCommandIndex(value);
+        smoothContext->setCommandIndex(static_cast<ModifierCommands>(value));
     }
 
     if (argData.isFlagSet(kSmoothRepeatFlag)) {
@@ -474,7 +474,7 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
 
     if (argData.isFlagSet(kMeshNameFlag)) setResult(smoothContext->getMeshName());
 
-    if (argData.isFlagSet(kCommandIndexFlag)) setResult(smoothContext->getCommandIndex());
+    if (argData.isFlagSet(kCommandIndexFlag)) setResult(static_cast<int>(smoothContext->getCommandIndex()));
 
     if (argData.isFlagSet(kSmoothRepeatFlag)) setResult(smoothContext->getSmoothRepeat());
 

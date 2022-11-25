@@ -1,4 +1,5 @@
 #include "functions.h"
+#include "enums.h"
 
 #include <math.h>
 
@@ -535,7 +536,7 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     return stat;
 }
 
-MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoints,
+MStatus editArray(ModifierCommands command, int influence, int nbJoints, MIntArray& lockJoints,
                   MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
                   MDoubleArray& theWeights, bool normalize, double mutliplier, bool verbose) {
     MStatus stat;
@@ -543,7 +544,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
     // UnLockVertices
     //
     if (verbose)
-        MGlobal::displayInfo(MString("-> editArray | command ") + command +
+        MGlobal::displayInfo(MString("-> editArray | command ") + static_cast<int>(command) +
                              MString(" | influence ") + influence);
     if (verbose)
         MGlobal::displayInfo(MString("-> editArray | nbJoints ") + nbJoints +
@@ -556,7 +557,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
     if (verbose)
         MGlobal::displayInfo(MString("-> editArray | theWeights ") + theWeights.length() +
                              MString(" | fullWeightArray ") + fullWeightArray.length());
-    if (command == 5) {  // sharpen  -----------------------
+    if (command == ModifierCommands::Sharpen) {
         int i = 0;
         for (const auto& elem : valuesToSet) {
             int theVert = elem.first;
@@ -654,20 +655,20 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
             if (verbose) MGlobal::displayInfo(MString("-> editArray | AFTER joints  loop"));
             double currentW = fullWeightArray[theVert * nbJoints + influence];
 
-            if (((command == 1) || (command == 3)) &&
+            if (((command == ModifierCommands::Remove) || (command == ModifierCommands::Absolute)) &&
                 (currentW > (sumUnlockWeights - .0001))) {  // value is 1(max) we cant do anything
                 continue;                                   // we pass to next vertex
             }
 
             double newW = currentW;
-            if (command == 0)
-                newW += theVal;  // ADD
-            else if (command == 1)
-                newW -= theVal;  // Remove
-            else if (command == 2)
-                newW += theVal * newW;  // AddPercent
-            else if (command == 3)
-                newW = theVal;  // Absolute
+            if (command == ModifierCommands::Add)
+                newW += theVal;
+            else if (command == ModifierCommands::Remove)
+                newW -= theVal;
+            else if (command == ModifierCommands::AddPercent)
+                newW += theVal * newW;
+            else if (command == ModifierCommands::Absolute)
+                newW = theVal;
 
             newW = std::max(0.0, std::min(newW, sumUnlockWeights));  // clamp
 
@@ -719,7 +720,7 @@ MStatus editArray(int command, int influence, int nbJoints, MIntArray& lockJoint
     return stat;
 }
 
-MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJoints,
+MStatus editArrayMirror(ModifierCommands command, int influence, int influenceMirror, int nbJoints,
                         MIntArray& lockJoints, MDoubleArray& fullWeightArray,
                         std::map<int, std::pair<float, float>>& valuesToSetMirror,
                         MDoubleArray& theWeights, bool normalize, double mutliplier, bool verbose) {
@@ -735,7 +736,7 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
     if (verbose)
         MGlobal::displayInfo(MString("-> editArrayMirror | theWeights ") + theWeights.length() +
                              MString(" | fullWeightArray ") + fullWeightArray.length());
-    if (command == 5) {  // sharpen  -----------------------
+    if (command == ModifierCommands::Sharpen) {
         int i = 0;
         for (const auto& elem : valuesToSetMirror) {
             int theVert = elem.first;
@@ -824,7 +825,7 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
             double newWMirror = currentWMirror;
             double sumNewWs = newW + newWMirror;
 
-            if (command == 0) {  // ADD
+            if (command == ModifierCommands::Add) {
                 newW = std::min(1.0, newW + valueBase);
                 newWMirror = std::min(1.0, newWMirror + valueMirror);
                 sumNewWs = newW + newWMirror;
@@ -833,10 +834,10 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
                     newW /= sumNewWs;
                     newWMirror /= sumNewWs;
                 }
-            } else if (command == 1) {  // Remove
+            } else if (command == ModifierCommands::Remove) {
                 newW = std::max(0.0, newW - valueBase);
                 newWMirror = std::max(0.0, newWMirror - valueMirror);
-            } else if (command == 2) {  // AddPercent
+            } else if (command == ModifierCommands::AddPercent) {
                 newW += valueBase * newW;
                 newW = std::min(1.0, newW);
                 newWMirror += valueMirror * newWMirror;
@@ -846,7 +847,7 @@ MStatus editArrayMirror(int command, int influence, int influenceMirror, int nbJ
                     newW /= sumNewWs;
                     newWMirror /= sumNewWs;
                 }
-            } else if (command == 3) {  // Absolute
+            } else if (command == ModifierCommands::Absolute) {
                 newW = valueBase;
                 newWMirror = valueMirror;
             }

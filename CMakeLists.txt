@@ -19,6 +19,7 @@ set(MAYA_VERSION 2020 CACHE STRING "Maya version")
 set(MAYA_FILES
     "src/functions.cpp"
     "src/functions.h"
+    "src/enums.h"
     "src/pluginMain.cpp"
     "src/setOverloads.h"
     "src/skinBrushCmd.cpp"

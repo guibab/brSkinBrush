@@ -7,11 +7,12 @@
 //  Copyright (c) 2018 Ingo Clemens. All rights reserved.
 //
 // ---------------------------------------------------------------------
-#include "functions.h"
-#include "setOverloads.h"
-
 #ifndef __skinBrushTool__skinBrushTool__
 #define __skinBrushTool__skinBrushTool__
+
+#include "enums.h"
+#include "functions.h"
+#include "setOverloads.h"
 
 #include <math.h>
 #include <maya/M3dView.h>
@@ -123,7 +124,7 @@ class skinBrushTool : public MPxToolCommand {
     void setPruneWeights(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
-    void setCommandIndex(int value);
+    void setCommandIndex(ModifierCommands value);
     void setSmoothRepeat(int value);
     void setSoloColor(int value);
     void setSoloColorType(int value);
@@ -181,7 +182,8 @@ class skinBrushTool : public MPxToolCommand {
     bool volumeVal;
 
     bool coverageVal;
-    int influenceIndex = 0, commandIndex = 0;
+    int influenceIndex = 0;
+    ModifierCommands commandIndex = ModifierCommands::Add;
     int smoothRepeat = 3;
     int soloColorTypeVal = 1;  // 1 lava
     int soloColorVal = 0;
@@ -252,7 +254,7 @@ class SkinBrushContext : public MPxContext {
     MStatus doDragCommon(MEvent event);
     MStatus doReleaseCommon(MEvent event);
     void doTheAction();
-    int getCommandIndexModifiers();
+    ModifierCommands getCommandIndexModifiers();
     MStatus getMesh();
     MStatus getTheOrigMeshForMirror();
 
@@ -360,7 +362,7 @@ class SkinBrushContext : public MPxContext {
     void setDrawTransparency(bool value);
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
-    void setCommandIndex(int value);
+    void setCommandIndex(ModifierCommands value);
     void setSmoothRepeat(int value);
     void setSoloColor(int value);
     void maya2019RefreshColors(bool toggle = true);
@@ -403,7 +405,7 @@ class SkinBrushContext : public MPxContext {
     MString getInfluenceName();
     MString getSkinClusterName();
     MString getMeshName();
-    int getCommandIndex();
+    ModifierCommands getCommandIndex();
     int getSmoothRepeat();
     int getSoloColor();
 
@@ -470,7 +472,9 @@ class SkinBrushContext : public MPxContext {
     bool pickMaxInfluenceVal = false, pickInfluenceVal = false;
     MString orderedIndicesByWeights;
     // for me yep ----
-    int influenceIndex = 0, commandIndex = 0, smoothRepeat = 4;
+    int influenceIndex = 0, smoothRepeat = 4;
+    ModifierCommands commandIndex = ModifierCommands::Add;
+
     int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
     bool postSetting = true;                     // we apply paint as ssons as attr is changed
     bool doNormalize = true;
@@ -647,7 +651,7 @@ class SkinBrushContext : public MPxContext {
     std::vector<float> intensityValuesOrig;    // (length, 0);
     std::vector<float> intensityValuesMirror;  // (length, 0);
 
-    int modifierNoneShiftControl = 0;  // store the modifier type
+    ModifierKeys modifierNoneShiftControl = ModifierKeys::None;  // store the modifier type
 
     int previousfaceHit;   // the faceIndex that was hit during the press common
     int biggestInfluence;  // for while we search for biggest influence

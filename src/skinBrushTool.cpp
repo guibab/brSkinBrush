@@ -42,7 +42,7 @@ skinBrushTool::skinBrushTool() {
     coverageVal = true;
 
     pruneWeights = 0.0001;
-    commandIndex = 0;      // add
+    commandIndex = ModifierCommands::Add;
     soloColorTypeVal = 1;  // 1 lava
     soloColorVal = 0;
     postSetting = true;
@@ -265,8 +265,7 @@ MStatus skinBrushTool::doIt(const MArgList& args) {
 }
 
 MStatus skinBrushTool::redoIt() {
-    MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") +
-                         this->commandIndex);
+    MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") + static_cast<int>(this->commandIndex));
     return setWeights(true);
 }
 
@@ -300,7 +299,11 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
         nrbsFn.setObject(nurbsDag);
     }
 
-    if (this->commandIndex < 6 && theWeightsLength > 0) {
+    if (
+        this->commandIndex != ModifierCommands::LockVertices &&
+        this->commandIndex != ModifierCommands::UnlockVertices &&
+        theWeightsLength > 0 
+    ) {
         MObject weightsObj;
         if (!isNurbs) {
             MFnSingleIndexedComponent compFn;
@@ -335,7 +338,7 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
             }
         }
     }
-    if (this->commandIndex >= 6) {
+    if (this->commandIndex == ModifierCommands::LockVertices || this->commandIndex == ModifierCommands::UnlockVertices) {
         MGlobal::displayInfo("undo it with refresh: lock / unlock vertices");
 
         MObjectArray objectsDeformed;
@@ -357,7 +360,10 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
             tmpIntArray.create(theArrayValues));  // to set the attribute
         // we need a hard refresh of invalidate for the undo / redo ---
     }
-    if (this->commandIndex >= 6 || (isNurbs && validMesh)) {
+    if (
+        (this->commandIndex == ModifierCommands::LockVertices || this->commandIndex == ModifierCommands::UnlockVertices)
+        || (isNurbs && validMesh)
+    ) {
         meshFn.updateSurface();
     }
 
@@ -371,7 +377,7 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
 
 MStatus skinBrushTool::undoIt() {
     MGlobal::displayInfo(MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
-                         this->commandIndex);
+                         static_cast<int>(this->commandIndex));
     return setWeights(true);
 }
 
@@ -422,7 +428,7 @@ MStatus skinBrushTool::finalize() {
     cmd += curveVal;
 
     cmd += " " + MString(kCommandIndexFlag) + " ";
-    cmd += commandIndex;
+    cmd += static_cast<int>(commandIndex);
     cmd += " " + MString(kSoloColorFlag) + " ";
     cmd += soloColorVal;
 
@@ -553,7 +559,7 @@ void skinBrushTool::setUndersampling(int value) { undersamplingVal = value; }
 
 void skinBrushTool::setVolume(bool value) { volumeVal = value; }
 
-void skinBrushTool::setCommandIndex(int value) { commandIndex = value; }
+void skinBrushTool::setCommandIndex(ModifierCommands value) { commandIndex = value; }
 
 void skinBrushTool::setSmoothRepeat(int value) { smoothRepeat = value; }
 
