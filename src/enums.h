@@ -2,7 +2,7 @@
 #define __skinBrushTool__enums__
 
 enum class ModifierKeys : int {
-    None,
+    NoModifier,
     Shift,
     Control,
     ControlShift

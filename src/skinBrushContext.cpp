@@ -1178,7 +1178,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
             }
         }
         if (event.isModifierNone()) {
-            this->modifierNoneShiftControl = ModifierKeys::None;
+            this->modifierNoneShiftControl = ModifierKeys::NoModifier;
         }
         if (event.isModifierShift() || event.isModifierControl()) {
             if (event.isModifierShift()) {
@@ -1194,7 +1194,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
                 this->modifierNoneShiftControl = ModifierKeys::Control;
             }
         } else {
-            this->modifierNoneShiftControl = ModifierKeys::None;
+            this->modifierNoneShiftControl = ModifierKeys::NoModifier;
         }
         // let's expand these arrays to the outer part of the brush----------------
         for (auto hitPoint : lineHitPoints) this->AllHitPoints.append(hitPoint);

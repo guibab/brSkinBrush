@@ -651,7 +651,7 @@ class SkinBrushContext : public MPxContext {
     std::vector<float> intensityValuesOrig;    // (length, 0);
     std::vector<float> intensityValuesMirror;  // (length, 0);
 
-    ModifierKeys modifierNoneShiftControl = ModifierKeys::None;  // store the modifier type
+    ModifierKeys modifierNoneShiftControl = ModifierKeys::NoModifier;  // store the modifier type
 
     int previousfaceHit;   // the faceIndex that was hit during the press common
     int biggestInfluence;  // for while we search for biggest influence
