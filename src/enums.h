@@ -9,14 +9,14 @@ enum class ModifierKeys : int {
 };
 
 enum class ModifierCommands : int {
-    Add = 1,
-    Remove = 2,
-    AddPercent = 3,
-    Absolute = 4,
-    Smooth = 5,
-    Sharpen = 6,
-    LockVertices = 7,
-    UnlockVertices = 8
+    Add = 0,
+    Remove = 1,
+    AddPercent = 2,
+    Absolute = 3,
+    Smooth = 4,
+    Sharpen = 5,
+    LockVertices = 6,
+    UnlockVertices = 7
 };
 
 #endif

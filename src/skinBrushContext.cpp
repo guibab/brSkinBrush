@@ -644,7 +644,7 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
     // -----------------------------------------------------------------
     // display when painting or setting the brush size
     // -----------------------------------------------------------------
-    if (this->drawBrushVal || event.mouseButton() == MEvent::kMiddleMouse) {
+    if (this->drawBrushVal || (event.mouseButton() == MEvent::kMiddleMouse)) {
         CHECK_MSTATUS_AND_RETURN_SILENT(pressStatus);
         drawManager.beginDrawable();
 
@@ -745,7 +745,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
         }
         baseColor.get(MColor::kHSV, h, s, v);
         baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
-        if (commandIndex != ModifierCommands::Add || commandIndex != ModifierCommands::AddPercent) {
+        if ((commandIndex != ModifierCommands::Add) && (commandIndex != ModifierCommands::AddPercent)) {
             baseMirrorColor = baseColor;
         }
     }
@@ -1177,25 +1177,19 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
                 expandHit(faceMirrorHit, this->inMatrixHitMirror, dicVertsDistToGrowMirror);
             }
         }
-        if (event.isModifierNone()) {
-            this->modifierNoneShiftControl = ModifierKeys::NoModifier;
-        }
-        if (event.isModifierShift() || event.isModifierControl()) {
-            if (event.isModifierShift()) {
-                if (event.isModifierControl()) {
-                    // both shift and control pressed, merge new selections
-                    this->modifierNoneShiftControl = ModifierKeys::ControlShift;
-                } else {
-                    // shift only, xor new selections with previous ones
-                    this->modifierNoneShiftControl = ModifierKeys::Shift;
-                }
-            } else if (event.isModifierControl()) {
-                // control only, remove new selections from the previous list
-                this->modifierNoneShiftControl = ModifierKeys::Control;
+
+        this->modifierNoneShiftControl = ModifierKeys::NoModifier;
+        if (event.isModifierShift()) {
+            if (event.isModifierControl()) {
+                this->modifierNoneShiftControl = ModifierKeys::ControlShift;
+            } else {
+                this->modifierNoneShiftControl = ModifierKeys::Shift;
             }
-        } else {
-            this->modifierNoneShiftControl = ModifierKeys::NoModifier;
         }
+        else if (event.isModifierControl()) {
+            this->modifierNoneShiftControl = ModifierKeys::Control;
+        }
+
         // let's expand these arrays to the outer part of the brush----------------
         for (auto hitPoint : lineHitPoints) this->AllHitPoints.append(hitPoint);
         for (auto hitPoint : lineHitPointsMirror) this->AllHitPointsMirror.append(hitPoint);
@@ -1541,14 +1535,19 @@ ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
     // unlockVertices
     ModifierCommands theCommandIndex = this->commandIndex;
 
-    if (this->commandIndex == ModifierCommands::Add && this->modifierNoneShiftControl == ModifierKeys::Control)
-        theCommandIndex = ModifierCommands::Remove;
-    if (this->commandIndex == ModifierCommands::LockVertices && this->modifierNoneShiftControl == ModifierKeys::Shift)
-        theCommandIndex = ModifierCommands::UnlockVertices;
-    if (this->modifierNoneShiftControl == ModifierKeys::Shift)
-        theCommandIndex = ModifierCommands::Smooth;
-    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift)
+    if (this->modifierNoneShiftControl == ModifierKeys::Control){
+        if (this->commandIndex == ModifierCommands::Add){
+            theCommandIndex = ModifierCommands::Remove;
+        }
+    } else if (this->modifierNoneShiftControl == ModifierKeys::Shift){
+        if (this->commandIndex == ModifierCommands::LockVertices){
+            theCommandIndex = ModifierCommands::UnlockVertices;
+        } else {
+            theCommandIndex = ModifierCommands::Smooth;
+        }
+    } else if (this->modifierNoneShiftControl == ModifierKeys::ControlShift){
         theCommandIndex = ModifierCommands::Sharpen;
+    }
 
     return theCommandIndex;
 }
@@ -1710,7 +1709,7 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
 
     if (verbose)
         MGlobal::displayInfo(MString("-> applyCommand | theCommandIndex is ") + static_cast<int>(theCommandIndex));
-    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
+    if ((theCommandIndex != ModifierCommands::LockVertices) && (theCommandIndex != ModifierCommands::UnlockVertices)) {
         MDoubleArray theWeights((int)this->nbJoints * valuesToSetOrdered.size(), 0.0);
         int repeatLimit = 1;
         if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen)
@@ -1840,7 +1839,7 @@ MStatus SkinBrushContext::editSoloColorSet(bool doBlack) {
         if (ind_swl < this->skinWeightList.length())
             val = this->skinWeightList[ind_swl];
         bool isVtxLocked = this->lockVertices[theVert] == 1;
-        bool update = doBlack | !(this->soloColorsValues[theVert] == 0 && val == 0);
+        bool update = doBlack || !(this->soloColorsValues[theVert] == 0 && val == 0);
         if (update) {  // dont update the black
             MColor soloColor = getASoloColor(val);
             this->soloCurrentColors[theVert] = soloColor;

@@ -886,13 +886,11 @@ MStatus editArrayMirror(ModifierCommands command, int influence, int influenceMi
                 sum += weightValue;
                 theWeights[i * nbJoints + jnt] = weightValue;
             }
-            if ((sum == 0) ||
-                (sum <
-                 0.5 * sumUnlockWeights)) {  // zero problem revert weights ----------------------
+            if ((sum == 0) || (sum < 0.5 * sumUnlockWeights)) {  // zero problem revert weights
                 for (int jnt = 0; jnt < nbJoints; ++jnt) {
                     theWeights[i * nbJoints + jnt] = fullWeightArray[theVert * nbJoints + jnt];
                 }
-            } else if (normalize && (sum != sumUnlockWeights)) {  // normalize ---------------
+            } else if (normalize && (sum != sumUnlockWeights)) {  // normalize
                 for (int jnt = 0; jnt < nbJoints; ++jnt)
                     if (lockJoints[jnt] == 0) {
                         theWeights[i * nbJoints + jnt] /= sum;               // to 1
@@ -933,8 +931,7 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
         double currentW = fullWeightArray[posi];
 
         sumWeigths[jnt] /= sizeVertices;
-        sumWeigths[jnt] =
-            strengthVal * sumWeigths[jnt] + (1.0 - strengthVal) * currentW;  // add with strength
+        sumWeigths[jnt] = strengthVal * sumWeigths[jnt] + (1.0 - strengthVal) * currentW;  // add with strength
         double targetW = sumWeigths[jnt];
 
         // sum it all
