@@ -22,6 +22,7 @@
 #include <maya/MObjectArray.h>
 #include <maya/MPlug.h>
 #include <maya/MPointArray.h>
+#include <maya/MSelectionList.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -88,6 +89,9 @@ MStatus setAverageWeight(
 );
 MStatus doPruneWeight(MDoubleArray &theWeights, int nbJoints, double pruneCutWeight);
 MStatus transferPointNurbsToMesh(MFnMesh &msh, MFnNurbsSurface &nrbs);
+
+MStatus getDagPath(MString nodeName, MDagPath &dagPath);
+MStatus getMObject(MString nodeName, MObject &nodeObj);
 
 bool RayIntersectsBBox(MPoint minPt, MPoint maxPt, MPoint Orig, MVector dest);
 

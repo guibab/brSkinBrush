@@ -229,6 +229,32 @@ MStatus findNurbsTesselate(MDagPath NurbsPath, MObject &MeshObj, bool verbose)
     }
     return MS::kFailure;
 }
+// find a dag from name
+MStatus getDagPath(MString nodeName, MDagPath &dagPath)
+{
+    MStatus status = MS::kSuccess;
+
+    MSelectionList selList;
+    status = MGlobal::getSelectionListByName(nodeName, selList);
+    if (status != MStatus::kSuccess) {
+        return status;
+    }
+    status = selList.getDagPath(0, dagPath);
+    return status;
+}
+
+MStatus getMObject(MString nodeName, MObject &nodeObj)
+{
+    MStatus status = MS::kSuccess;
+
+    MSelectionList selList;
+    status = MGlobal::getSelectionListByName(nodeName, selList);
+    if (status != MStatus::kSuccess) {
+        return status;
+    }
+    status = selList.getDependNode(0, nodeObj);
+    return status;
+}
 
 // from the mesh retrieves the skinCluster
 MStatus
@@ -266,7 +292,6 @@ findSkinCluster(MDagPath MeshPath, MObject &theSkinCluster, int indSkinCluster, 
             int count = 0;
 
             for (; !dgIt.isDone(); dgIt.next()) {
-                // MObject thisNode = dgIt.thisNode();
                 MObject thisNode = dgIt.currentItem();
                 // go until we find a skinCluster
                 if (thisNode.apiType() == MFn::kSkinClusterFilter) {
@@ -306,7 +331,6 @@ MStatus findMesh(MObject &skinCluster, MDagPath &theMeshPath, bool verbose)
     if (objectsDeformedCount != 0) {
         int j = 0;
         // for (int j = 0; j < objectsDeformedCount; j++) {
-        // theMeshPath.getAPathTo(objectsDeformed[j]); // depreated
         MDagPath::getAPathTo(objectsDeformed[j], theMeshPath);
         if (verbose) {
             MFnDependencyNode deformedNameMesh(objectsDeformed[j]);

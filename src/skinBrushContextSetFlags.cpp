@@ -66,7 +66,7 @@ void SkinBrushContext::setFlood()
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
     ModifierCommands theCommandIndex = this->commandIndex;
-    if (this->modifierNoneShiftControl == ModifierKeys::Shift) {
+    if (this->modifierNoneShiftControl == ModifierKeys::Control) {
         theCommandIndex = ModifierCommands::Smooth; // smooth always
     }
     if (this->modifierNoneShiftControl == ModifierKeys::ControlShift) {
@@ -74,7 +74,7 @@ void SkinBrushContext::setFlood()
     }
 
     if (theCommandIndex == ModifierCommands::Smooth ||
-        this->modifierNoneShiftControl == ModifierKeys::Shift ||
+        this->modifierNoneShiftControl == ModifierKeys::Control ||
         this->modifierNoneShiftControl == ModifierKeys::ControlShift) {
         value = smoothStrengthVal;
     }
@@ -416,6 +416,22 @@ void SkinBrushContext::setInfluenceByName(MString value)
     else {
         setInfluenceIndex(indexInfluence, false);
     }
+}
+void SkinBrushContext::setSkinClusterByName(MString &value)
+{
+    if (verbose) {
+        MGlobal::displayInfo("setSkinClusterByName CALLED \"" + value + "\"\n");
+    }
+    getSkinFromName = true;
+    passedSkinName = value;
+}
+void SkinBrushContext::setMeshByName(MString &value)
+{
+    if (verbose) {
+        MGlobal::displayInfo("setMeshByName CALLED \"" + value + "\"\n");
+    }
+    getMeshFromName = true;
+    passedMeshName = value;
 }
 
 // ---------------------------------------------------------------------
