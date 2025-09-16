@@ -22,23 +22,30 @@ static const std::string kVERSION = "1.1.3";
 // initialization
 // ---------------------------------------------------------------------
 
-MStatus initializePlugin(MObject obj) {
+MStatus initializePlugin(MObject obj)
+{
     MStatus status;
     MFnPlugin plugin(obj, "Ingo Clemens", kVERSION.c_str(), "Any");
 
-    status = plugin.registerContextCommand("brSkinBrushContext", SkinBrushContextCmd::creator,
-                                           "brSkinBrushCmd", skinBrushTool::creator);
-    if (status != MStatus::kSuccess) status.perror("Register brSkinBrushContext failed.");
+    status = plugin.registerContextCommand(
+        "brSkinBrushContext", SkinBrushContextCmd::creator, "brSkinBrushCmd", skinBrushTool::creator
+    );
+    if (status != MStatus::kSuccess) {
+        status.perror("Register brSkinBrushContext failed.");
+    }
 
     return status;
 }
 
-MStatus uninitializePlugin(MObject obj) {
+MStatus uninitializePlugin(MObject obj)
+{
     MStatus status;
     MFnPlugin plugin(obj, "Ingo Clemens", kVERSION.c_str(), "Any");
 
     status = plugin.deregisterContextCommand("brSkinBrushContext", "brSkinBrushCmd");
-    if (status != MStatus::kSuccess) status.perror("Deregister brSkinBrushContext failed.");
+    if (status != MStatus::kSuccess) {
+        status.perror("Deregister brSkinBrushContext failed.");
+    }
 
     return status;
 }

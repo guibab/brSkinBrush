@@ -4,17 +4,20 @@
 // ---------------------------------------------------------------------
 // command to create the context
 // ---------------------------------------------------------------------
-SkinBrushContextCmd::SkinBrushContextCmd() {
+SkinBrushContextCmd::SkinBrushContextCmd()
+{
     // MGlobal::displayInfo(MString("---------------- [SkinBrushContextCmd()]------------------"));
 }
 
-MPxContext* SkinBrushContextCmd::makeObj() {
+MPxContext *SkinBrushContextCmd::makeObj()
+{
     // MGlobal::displayInfo(MString("---------------- [makeObj()]------------------"));
     smoothContext = new SkinBrushContext();
     return smoothContext;
 }
 
-void* SkinBrushContextCmd::creator() {
+void *SkinBrushContextCmd::creator()
+{
     // MGlobal::displayInfo(MString("---------------- [creator()]------------------"));
     return new SkinBrushContextCmd();
 }
@@ -22,7 +25,8 @@ void* SkinBrushContextCmd::creator() {
 // pointers for the argument flags
 // ---------------------------------------------------------------------
 
-MStatus SkinBrushContextCmd::appendSyntax() {
+MStatus SkinBrushContextCmd::appendSyntax()
+{
     MSyntax syn = syntax();
 
     syn.addFlag(kColorRFlag, kColorRFlagLong, MSyntax::kDouble);
@@ -74,8 +78,9 @@ MStatus SkinBrushContextCmd::appendSyntax() {
 
     syn.addFlag(kPaintMirrorToleranceFlag, kPaintMirrorToleranceFlagLong, MSyntax::kDouble);
     syn.addFlag(kPaintMirrorFlag, kPaintMirrorFlagLong, MSyntax::kLong);
-    syn.addFlag(kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong,
-                MSyntax::kBoolean);
+    syn.addFlag(
+        kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong, MSyntax::kBoolean
+    );
     syn.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
     syn.addFlag(kMeshDragDrawEdgesFlag, kMeshDragDrawEdgesFlagLong, MSyntax::kBoolean);
     syn.addFlag(kMeshDragDrawPointsFlag, kMeshDragDrawPointsFlagLong, MSyntax::kBoolean);
@@ -97,7 +102,8 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     return MStatus::kSuccess;
 }
 
-MStatus SkinBrushContextCmd::doEditFlags() {
+MStatus SkinBrushContextCmd::doEditFlags()
+{
     MStatus status = MStatus::kSuccess;
 
     MArgParser argData = parser();
@@ -227,12 +233,12 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     if (argData.isFlagSet(kInfluenceIndexFlag)) {
         int value;
         status = argData.getFlagArgument(kInfluenceIndexFlag, 0, value);
-        smoothContext->setInfluenceIndex(value, false);  // not reselect in UI
+        smoothContext->setInfluenceIndex(value, false); // not reselect in UI
     }
     if (argData.isFlagSet(kInfluenceNameFlag)) {
         MString value;
         status = argData.getFlagArgument(kInfluenceNameFlag, 0, value);
-        smoothContext->setInfluenceByName(value);  // not reselect in UI
+        smoothContext->setInfluenceByName(value); // not reselect in UI
     }
     if (argData.isFlagSet(kPostSettingFlag)) {
         bool value;
@@ -414,95 +420,179 @@ MStatus SkinBrushContextCmd::doEditFlags() {
     return status;
 }
 
-MStatus SkinBrushContextCmd::doQueryFlags() {
+MStatus SkinBrushContextCmd::doQueryFlags()
+{
     MArgParser argData = parser();
 
-    if (argData.isFlagSet(kColorRFlag)) setResult(smoothContext->getColorR());
+    if (argData.isFlagSet(kColorRFlag)) {
+        setResult(smoothContext->getColorR());
+    }
 
-    if (argData.isFlagSet(kColorGFlag)) setResult(smoothContext->getColorG());
+    if (argData.isFlagSet(kColorGFlag)) {
+        setResult(smoothContext->getColorG());
+    }
 
-    if (argData.isFlagSet(kColorBFlag)) setResult(smoothContext->getColorB());
+    if (argData.isFlagSet(kColorBFlag)) {
+        setResult(smoothContext->getColorB());
+    }
 
-    if (argData.isFlagSet(kCurveFlag)) setResult(smoothContext->getCurve());
+    if (argData.isFlagSet(kCurveFlag)) {
+        setResult(smoothContext->getCurve());
+    }
 
-    if (argData.isFlagSet(kDrawBrushFlag)) setResult(smoothContext->getDrawBrush());
+    if (argData.isFlagSet(kDrawBrushFlag)) {
+        setResult(smoothContext->getDrawBrush());
+    }
 
-    if (argData.isFlagSet(kDrawRangeFlag)) setResult(smoothContext->getDrawRange());
+    if (argData.isFlagSet(kDrawRangeFlag)) {
+        setResult(smoothContext->getDrawRange());
+    }
 
-    if (argData.isFlagSet(kImportPythonFlag)) setResult(smoothContext->getPythonImportPath());
+    if (argData.isFlagSet(kImportPythonFlag)) {
+        setResult(smoothContext->getPythonImportPath());
+    }
 
-    if (argData.isFlagSet(kEnterToolCommandFlag)) setResult(smoothContext->getEnterToolCommand());
+    if (argData.isFlagSet(kEnterToolCommandFlag)) {
+        setResult(smoothContext->getEnterToolCommand());
+    }
 
-    if (argData.isFlagSet(kExitToolCommandFlag)) setResult(smoothContext->getExitToolCommand());
+    if (argData.isFlagSet(kExitToolCommandFlag)) {
+        setResult(smoothContext->getExitToolCommand());
+    }
 
-    if (argData.isFlagSet(kFractionOversamplingFlag))
+    if (argData.isFlagSet(kFractionOversamplingFlag)) {
         setResult(smoothContext->getFractionOversampling());
+    }
 
-    if (argData.isFlagSet(kIgnoreLockFlag)) setResult(smoothContext->getIgnoreLock());
+    if (argData.isFlagSet(kIgnoreLockFlag)) {
+        setResult(smoothContext->getIgnoreLock());
+    }
 
-    if (argData.isFlagSet(kLineWidthFlag)) setResult(smoothContext->getLineWidth());
+    if (argData.isFlagSet(kLineWidthFlag)) {
+        setResult(smoothContext->getLineWidth());
+    }
 
-    if (argData.isFlagSet(kMessageFlag)) setResult(smoothContext->getMessage());
+    if (argData.isFlagSet(kMessageFlag)) {
+        setResult(smoothContext->getMessage());
+    }
 
-    if (argData.isFlagSet(kOversamplingFlag)) setResult(smoothContext->getOversampling());
+    if (argData.isFlagSet(kOversamplingFlag)) {
+        setResult(smoothContext->getOversampling());
+    }
 
-    if (argData.isFlagSet(kRangeFlag)) setResult(smoothContext->getRange());
+    if (argData.isFlagSet(kRangeFlag)) {
+        setResult(smoothContext->getRange());
+    }
 
-    if (argData.isFlagSet(kSizeFlag)) setResult(smoothContext->getSize());
+    if (argData.isFlagSet(kSizeFlag)) {
+        setResult(smoothContext->getSize());
+    }
 
-    if (argData.isFlagSet(kStrengthFlag)) setResult(smoothContext->getStrength());
+    if (argData.isFlagSet(kStrengthFlag)) {
+        setResult(smoothContext->getStrength());
+    }
 
-    if (argData.isFlagSet(kSmoothStrengthFlag)) setResult(smoothContext->getSmoothStrength());
+    if (argData.isFlagSet(kSmoothStrengthFlag)) {
+        setResult(smoothContext->getSmoothStrength());
+    }
 
-    if (argData.isFlagSet(kPruneWeightsFlag)) setResult(smoothContext->getPruneWeights());
+    if (argData.isFlagSet(kPruneWeightsFlag)) {
+        setResult(smoothContext->getPruneWeights());
+    }
 
-    if (argData.isFlagSet(kInteractiveValueFlag)) setResult(smoothContext->getInteractiveValue(0));
-    if (argData.isFlagSet(kInteractiveValue1Flag)) setResult(smoothContext->getInteractiveValue(1));
-    if (argData.isFlagSet(kInteractiveValue2Flag)) setResult(smoothContext->getInteractiveValue(2));
+    if (argData.isFlagSet(kInteractiveValueFlag)) {
+        setResult(smoothContext->getInteractiveValue(0));
+    }
+    if (argData.isFlagSet(kInteractiveValue1Flag)) {
+        setResult(smoothContext->getInteractiveValue(1));
+    }
+    if (argData.isFlagSet(kInteractiveValue2Flag)) {
+        setResult(smoothContext->getInteractiveValue(2));
+    }
 
-    if (argData.isFlagSet(kUndersamplingFlag)) setResult(smoothContext->getUndersampling());
+    if (argData.isFlagSet(kUndersamplingFlag)) {
+        setResult(smoothContext->getUndersampling());
+    }
 
-    if (argData.isFlagSet(kVolumeFlag)) setResult(smoothContext->getVolume());
+    if (argData.isFlagSet(kVolumeFlag)) {
+        setResult(smoothContext->getVolume());
+    }
 
-    if (argData.isFlagSet(kCoverageFlag)) setResult(smoothContext->getCoverage());
+    if (argData.isFlagSet(kCoverageFlag)) {
+        setResult(smoothContext->getCoverage());
+    }
 
-    if (argData.isFlagSet(kInfluenceIndexFlag)) setResult(smoothContext->getInfluenceIndex());
+    if (argData.isFlagSet(kInfluenceIndexFlag)) {
+        setResult(smoothContext->getInfluenceIndex());
+    }
 
-    if (argData.isFlagSet(kInfluenceNameFlag)) setResult(smoothContext->getInfluenceName());
+    if (argData.isFlagSet(kInfluenceNameFlag)) {
+        setResult(smoothContext->getInfluenceName());
+    }
 
-    if (argData.isFlagSet(kSkinClusterNameFlag)) setResult(smoothContext->getSkinClusterName());
+    if (argData.isFlagSet(kSkinClusterNameFlag)) {
+        setResult(smoothContext->getSkinClusterName());
+    }
 
-    if (argData.isFlagSet(kMeshNameFlag)) setResult(smoothContext->getMeshName());
+    if (argData.isFlagSet(kMeshNameFlag)) {
+        setResult(smoothContext->getMeshName());
+    }
 
-    if (argData.isFlagSet(kCommandIndexFlag)) setResult(static_cast<int>(smoothContext->getCommandIndex()));
+    if (argData.isFlagSet(kCommandIndexFlag)) {
+        setResult(static_cast<int>(smoothContext->getCommandIndex()));
+    }
 
-    if (argData.isFlagSet(kSmoothRepeatFlag)) setResult(smoothContext->getSmoothRepeat());
+    if (argData.isFlagSet(kSmoothRepeatFlag)) {
+        setResult(smoothContext->getSmoothRepeat());
+    }
 
-    if (argData.isFlagSet(kSoloColorFlag)) setResult(smoothContext->getSoloColor());
+    if (argData.isFlagSet(kSoloColorFlag)) {
+        setResult(smoothContext->getSoloColor());
+    }
 
-    if (argData.isFlagSet(kSoloColorTypeFlag)) setResult(smoothContext->getSoloColorType());
+    if (argData.isFlagSet(kSoloColorTypeFlag)) {
+        setResult(smoothContext->getSoloColorType());
+    }
 
-    if (argData.isFlagSet(kPaintMirrorToleranceFlag))
+    if (argData.isFlagSet(kPaintMirrorToleranceFlag)) {
         setResult(smoothContext->getMirrorTolerance());
+    }
 
-    if (argData.isFlagSet(kPaintMirrorFlag)) setResult(smoothContext->getPaintMirror());
+    if (argData.isFlagSet(kPaintMirrorFlag)) {
+        setResult(smoothContext->getPaintMirror());
+    }
 
-    if (argData.isFlagSet(kUseColorSetWhilePaintingFlag))
+    if (argData.isFlagSet(kUseColorSetWhilePaintingFlag)) {
         setResult(smoothContext->getUseColorSetsWhilePainting());
+    }
 
-    if (argData.isFlagSet(kMeshDragDrawTrianglesFlag)) setResult(smoothContext->getDrawTriangles());
+    if (argData.isFlagSet(kMeshDragDrawTrianglesFlag)) {
+        setResult(smoothContext->getDrawTriangles());
+    }
 
-    if (argData.isFlagSet(kMeshDragDrawEdgesFlag)) setResult(smoothContext->getDrawEdges());
+    if (argData.isFlagSet(kMeshDragDrawEdgesFlag)) {
+        setResult(smoothContext->getDrawEdges());
+    }
 
-    if (argData.isFlagSet(kMeshDragDrawPointsFlag)) setResult(smoothContext->getDrawPoints());
+    if (argData.isFlagSet(kMeshDragDrawPointsFlag)) {
+        setResult(smoothContext->getDrawPoints());
+    }
 
-    if (argData.isFlagSet(kMeshDragDrawTransFlag)) setResult(smoothContext->getDrawTransparency());
+    if (argData.isFlagSet(kMeshDragDrawTransFlag)) {
+        setResult(smoothContext->getDrawTransparency());
+    }
 
-    if (argData.isFlagSet(kPostSettingFlag)) setResult(smoothContext->getPostSetting());
+    if (argData.isFlagSet(kPostSettingFlag)) {
+        setResult(smoothContext->getPostSetting());
+    }
 
-    if (argData.isFlagSet(kMinColorFlag)) setResult(smoothContext->getMinColor());
+    if (argData.isFlagSet(kMinColorFlag)) {
+        setResult(smoothContext->getMinColor());
+    }
 
-    if (argData.isFlagSet(kMaxColorFlag)) setResult(smoothContext->getMaxColor());
+    if (argData.isFlagSet(kMaxColorFlag)) {
+        setResult(smoothContext->getMaxColor());
+    }
 
     return MStatus::kSuccess;
 }

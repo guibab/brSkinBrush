@@ -10,10 +10,6 @@
 #ifndef __skinBrushTool__skinBrushTool__
 #define __skinBrushTool__skinBrushTool__
 
-#include "enums.h"
-#include "functions.h"
-#include "setOverloads.h"
-
 #include <math.h>
 #include <maya/M3dView.h>
 #include <maya/MArgDatabase.h>
@@ -58,18 +54,23 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
-#include <numeric>  //std::iota
+#include <numeric> //std::iota
 #include <set>
 #include <unordered_map>
 #include <vector>
+
+#include "enums.h"
+#include "functions.h"
+#include "setOverloads.h"
 
 // Macro for the press/drag/release methods in case there is nothing
 // selected or the tool gets applied outside any geometry. If the actual
 // MStatus would get returned an error can get listed in terminal on
 // Linux. But it's unnecessary and needs to be avoided. Therefore a
 // kSuccess is returned just for the sake of being invisible.
-#define CHECK_MSTATUS_AND_RETURN_SILENT(status) \
-    if (status != MStatus::kSuccess) return MStatus::kSuccess;
+#define CHECK_MSTATUS_AND_RETURN_SILENT(status)                                                    \
+    if (status != MStatus::kSuccess)                                                               \
+        return MStatus::kSuccess;
 
 // struct to store the deformers when pick using D key
 struct drawingDeformers {
@@ -86,7 +87,7 @@ struct drawingDeformers {
 // ---------------------------------------------------------------------
 
 class skinBrushTool : public MPxToolCommand {
-   public:
+  public:
     skinBrushTool();
     ~skinBrushTool();
 
@@ -160,7 +161,7 @@ class skinBrushTool : public MPxToolCommand {
     void setMinColor(double value);
     void setMaxColor(double value);
 
-   private:
+  private:
     MColor colorVal;
     int curveVal;
     bool drawBrushVal;
@@ -185,11 +186,11 @@ class skinBrushTool : public MPxToolCommand {
     int influenceIndex = 0;
     ModifierCommands commandIndex = ModifierCommands::Add;
     int smoothRepeat = 3;
-    int soloColorTypeVal = 1;  // 1 lava
+    int soloColorTypeVal = 1; // 1 lava
     int soloColorVal = 0;
     bool postSetting = true;
 
-    int paintMirror = 0;  // intValue
+    int paintMirror = 0; // intValue
     double mirrorMinDist = 0.05;
     bool useColorSetsWhilePainting = false;
     bool drawTriangles = true;
@@ -221,7 +222,7 @@ class skinBrushTool : public MPxToolCommand {
 // the context
 // ---------------------------------------------------------------------
 class SkinBrushContext : public MPxContext {
-   public:
+  public:
     SkinBrushContext();
     void toolOnSetup(MEvent &event);
     void toolOffCleanup();
@@ -235,17 +236,25 @@ class SkinBrushContext : public MPxContext {
     void drawCircle(MPoint point, MMatrix mat, double radius);
 
     // VP2.0
-    MStatus doPress(MEvent &event, MHWRender::MUIDrawManager &drawManager,
-                    const MHWRender::MFrameContext &context);
-    MStatus doDrag(MEvent &event, MHWRender::MUIDrawManager &drawManager,
-                   const MHWRender::MFrameContext &context);
-    MStatus doRelease(MEvent &event, MHWRender::MUIDrawManager &drawManager,
-                      const MHWRender::MFrameContext &context);
+    MStatus doPress(
+        MEvent &event, MHWRender::MUIDrawManager &drawManager,
+        const MHWRender::MFrameContext &context
+    );
+    MStatus doDrag(
+        MEvent &event, MHWRender::MUIDrawManager &drawManager,
+        const MHWRender::MFrameContext &context
+    );
+    MStatus doRelease(
+        MEvent &event, MHWRender::MUIDrawManager &drawManager,
+        const MHWRender::MFrameContext &context
+    );
     MStatus drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector worldVector);
     MStatus drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager);
 
-    MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawManager,
-                       const MHWRender::MFrameContext &context);
+    MStatus doPtrMoved(
+        MEvent &event, MHWRender::MUIDrawManager &drawManager,
+        const MHWRender::MFrameContext &context
+    );
     int getHighestInfluence(int faceHit, MFloatPoint hitPoint);
     int getClosestInfluenceToCursor(int screenX, int screenY);
     // common methods
@@ -275,44 +284,53 @@ class SkinBrushContext : public MPxContext {
     void refreshTheseVertices(MIntArray verticesIndices);
     void refreshMirrorInfluences(MIntArray inputMirrorInfluences);
 
-    void mergeMirrorArray(std::unordered_map<int, float> &valuesBase,
-                          std::unordered_map<int, float> &valuesMirrored);
+    void mergeMirrorArray(
+        std::unordered_map<int, float> &valuesBase, std::unordered_map<int, float> &valuesMirrored
+    );
     MStatus applyCommand(int influence, std::unordered_map<int, float> &valuesToSet);
     MStatus applyCommandMirror();
-    MStatus refreshColors(MIntArray &editVertsIndices, MColorArray &multiEditColors,
-                          MColorArray &soloEditColors);
+    MStatus refreshColors(
+        MIntArray &editVertsIndices, MColorArray &multiEditColors, MColorArray &soloEditColors
+    );
     MStatus editSoloColorSet(bool doBlack);
     MColor getASoloColor(double val);
     MStatus refreshPointsNormals();
 
-    void setColor(int vertexIndex, float value, MIntArray &editVertsIndices,
-                  MColorArray &multiEditColors, MColorArray &soloEditColors,
-                  bool useMirror = false);
+    void setColor(
+        int vertexIndex, float value, MIntArray &editVertsIndices, MColorArray &multiEditColors,
+        MColorArray &soloEditColors, bool useMirror = false
+    );
 
-    void setColorWithMirror(int vertexIndex, float valueBase, float valueMirror,
-                            MIntArray &editVertsIndices, MColorArray &multiEditColors,
-                            MColorArray &soloEditColors);
+    void setColorWithMirror(
+        int vertexIndex, float valueBase, float valueMirror, MIntArray &editVertsIndices,
+        MColorArray &multiEditColors, MColorArray &soloEditColors
+    );
 
     MStatus querySkinClusterValues(MObject skinCluster, MIntArray &verticesIndices, bool doColors);
     MStatus fillArrayValues(MObject skinCluster, bool doColors);
     MStatus displayWeightValue(int vertexIndex, bool displayZero = false);
     MStatus fillArrayValuesDEP(MObject skinCluster, bool doColors);
-    void getSkinClusterAttributes(MObject skinCluster, unsigned int &maxInfluences,
-                                  bool &maintainMaxInfluences, unsigned int &normalize);
+    void getSkinClusterAttributes(
+        MObject skinCluster, unsigned int &maxInfluences, bool &maintainMaxInfluences,
+        unsigned int &normalize
+    );
     MIntArray getInfluenceIndices();
     bool getMirrorHit(bool getNormal, int &faceHit, MFloatPoint &hitPoint);
-    bool computeHit(short screenPixelX, short screenPixelY, bool getNormal, int &faceHit,
-                    MFloatPoint &hitPoint);
+    bool computeHit(
+        short screenPixelX, short screenPixelY, bool getNormal, int &faceHit, MFloatPoint &hitPoint
+    );
     bool expandHit(int faceHit, MFloatPoint hitPoint, std::unordered_map<int, float> &dicVertsDist);
 
-    void growArrayOfHitsFromCenters(std::unordered_map<int, float> &dicVertsDist,
-                                    MFloatPointArray &AllHitPoints);
+    void growArrayOfHitsFromCenters(
+        std::unordered_map<int, float> &dicVertsDist, MFloatPointArray &AllHitPoints
+    );
 
     // smooth computation
-    MStatus preparePaint(std::unordered_map<int, float> &dicVertsDist,
-                         std::unordered_map<int, float> &dicVertsDistPrevPaint,
-                         std::vector<float> &intensityValues,
-                         std::unordered_map<int, float> &skinValToSet, bool mirror);
+    MStatus preparePaint(
+        std::unordered_map<int, float> &dicVertsDist,
+        std::unordered_map<int, float> &dicVertsDistPrevPaint, std::vector<float> &intensityValues,
+        std::unordered_map<int, float> &skinValToSet, bool mirror
+    );
 
     MStatus doPerformPaint();
 
@@ -320,8 +338,9 @@ class SkinBrushContext : public MPxContext {
 
     MObject allVertexComponents();
     MIntArray getVerticesInVolume();
-    void getVerticesInVolumeRange(int index, MIntArray volumeIndices, MIntArray &rangeIndices,
-                                  MFloatArray &values);
+    void getVerticesInVolumeRange(
+        int index, MIntArray volumeIndices, MIntArray &rangeIndices, MFloatArray &values
+    );
 
     double getFalloffValue(double value, double strength);
     bool eventIsValid(MEvent event);
@@ -421,11 +440,11 @@ class SkinBrushContext : public MPxContext {
     double getMinColor();
     double getMaxColor();
 
-   private:
+  private:
     bool verbose = false;
-    double interactiveValue = 1.0;   // for whateverUse in the code
-    double interactiveValue1 = 1.0;  // for whateverUse in the code
-    double interactiveValue2 = 1.0;  // for whateverUse in the code
+    double interactiveValue = 1.0;  // for whateverUse in the code
+    double interactiveValue1 = 1.0; // for whateverUse in the code
+    double interactiveValue2 = 1.0; // for whateverUse in the code
 
     skinBrushTool *cmd;
 
@@ -462,8 +481,8 @@ class SkinBrushContext : public MPxContext {
     double rangeVal;
     double sizeVal;
     double strengthVal, smoothStrengthVal;
-    bool shiftMiddleDrag = false;  // for the mniddleClick drag
-    double storedDistance = 0.0;   // for the mniddleClick drag
+    bool shiftMiddleDrag = false; // for the mniddleClick drag
+    double storedDistance = 0.0;  // for the mniddleClick drag
 
     int undersamplingVal;
     bool volumeVal;
@@ -475,21 +494,21 @@ class SkinBrushContext : public MPxContext {
     int influenceIndex = 0, smoothRepeat = 4;
     ModifierCommands commandIndex = ModifierCommands::Add;
 
-    int soloColorTypeVal = 1, soloColorVal = 0;  // 1 lava
-    bool postSetting = true;                     // we apply paint as ssons as attr is changed
+    int soloColorTypeVal = 1, soloColorVal = 0; // 1 lava
+    bool postSetting = true;                    // we apply paint as ssons as attr is changed
     bool doNormalize = true;
 
     // brush settings for adjusting
-    bool initAdjust;                 // True after the first drag event.
-                                     // Controls the adjust direction for
-                                     // the size and the strength.
-    MFloatPoint surfacePointAdjust;  // Initital surface point of the press
-                                     // event.
-    MVector worldVectorAdjust;       // Initial view vector of the press
-                                     // event.
-    bool sizeAdjust;                 // True, if the size is set.
-    double adjustValue;              // The new value for the size or
-                                     // strength.
+    bool initAdjust;                // True after the first drag event.
+                                    // Controls the adjust direction for
+                                    // the size and the strength.
+    MFloatPoint surfacePointAdjust; // Initital surface point of the press
+                                    // event.
+    MVector worldVectorAdjust;      // Initial view vector of the press
+                                    // event.
+    bool sizeAdjust;                // True, if the size is set.
+    double adjustValue;             // The new value for the size or
+                                    // strength.
 
     M3dView view;
     unsigned int width;
@@ -503,23 +522,23 @@ class SkinBrushContext : public MPxContext {
     short startScreenX;
     short startScreenY;
 
-    MPointArray surfacePoints;  // The cursor positions on the mesh in
-                                // world space.
+    MPointArray surfacePoints; // The cursor positions on the mesh in
+                               // world space.
     // the worldPosition
     MPoint worldPoint;
     MPoint worldMirrorPoint;
-    MVector worldVector;           // The view vector from the camera to
-                                   // the surface point.
-    MVector normalVector;          // The normal vector to camera
-    MVector normalMirroredVector;  // The mirrored normal vector to camera
+    MVector worldVector;          // The view vector from the camera to
+                                  // the surface point.
+    MVector normalVector;         // The normal vector to camera
+    MVector normalMirroredVector; // The mirrored normal vector to camera
 
-    MFloatPoint centerOfBrush;        // store the center of the bursh to display
-    MFloatPoint centerOfMirrorBrush;  // store the center of the bursh to display
+    MFloatPoint centerOfBrush;       // store the center of the bursh to display
+    MFloatPoint centerOfMirrorBrush; // store the center of the bursh to display
 
-    MFloatPoint inMatrixHit;        // store the center of the bursh to display
-    MFloatPoint inMatrixHitMirror;  // store the center of the bursh to display
+    MFloatPoint inMatrixHit;       // store the center of the bursh to display
+    MFloatPoint inMatrixHitMirror; // store the center of the bursh to display
 
-    float pressDistance;  // The closest distance to the mesh on
+    float pressDistance; // The closest distance to the mesh on
     MStatus pressStatus;
 
     MFnMesh meshFn, meshOrigFn;
@@ -536,11 +555,11 @@ class SkinBrushContext : public MPxContext {
     bool UIsPeriodic_ = false, VIsPeriodic_ = false;
     unsigned int UDeg_ = 0, VDeg_ = 0;
 
-    MIntArray vtxSelection;  // The currently selected vertices. This
-                             // is used for flooding.
+    MIntArray vtxSelection; // The currently selected vertices. This
+                            // is used for flooding.
 
     MObject attrValue;
-    MDoubleArray valuesForAttribute, paintArrayValues;  // the array of values to paint
+    MDoubleArray valuesForAttribute, paintArrayValues; // the array of values to paint
 
     MMeshIntersector intersectorOrigShape;
     MMeshIntersector intersector;
@@ -574,13 +593,13 @@ class SkinBrushContext : public MPxContext {
     double pruneWeight;
     int nbJoints = 0, nbJointsBig = 0;
     MIntArray deformersIndices;
-    MIntArray cpIds;  // the ids of the vertices passed as to update skin for
+    MIntArray cpIds; // the ids of the vertices passed as to update skin for
     std::vector<std::vector<std::pair<int, float>>> skin_weights_;
     MDoubleArray skinWeightList, fullUndoSkinWeightList, skinWeightsForUndo;
-    MIntArray indicesForInfluenceObjects;  // on skinCluster for sparse array
+    MIntArray indicesForInfluenceObjects; // on skinCluster for sparse array
 
     // mirror things -----
-    MIntArray mirrorInfluences;  // indices of the mirror influences
+    MIntArray mirrorInfluences; // indices of the mirror influences
 
     std::vector<bool> influenceLocks;
     MIntArray lockJoints, ignoreLockJoints, lockVertices;
@@ -595,24 +614,24 @@ class SkinBrushContext : public MPxContext {
     MString fullColorSet2 = MString("multiColorsSet2");
     MString soloColorSet2 = MString("soloColorsSet2");
 
-    bool toggleColorState = false;  // use to swap from colorSet and colorSet2
+    bool toggleColorState = false; // use to swap from colorSet and colorSet2
 
     double minSoloColor = 0.0;
     double maxSoloColor = 1.0;
 
     MColorArray multiCurrentColors, jointsColors,
-        soloCurrentColors;  // lock vertices color are not stored inside these arrays
+        soloCurrentColors; // lock vertices color are not stored inside these arrays
 
     MIntArray VertexCountPerPolygon, fullVertexList;
-    std::vector<MIntArray> perVertexFaces;             // per vertex Faces
-    std::vector<MIntArray> perFaceVertices;            // per face vertices
-    std::vector<MIntArray> perVertexEdges;             // per face vertices
-    std::vector<std::pair<int, int>> perEdgeVertices;  // to draw the wireframe
+    std::vector<MIntArray> perVertexFaces;            // per vertex Faces
+    std::vector<MIntArray> perFaceVertices;           // per face vertices
+    std::vector<MIntArray> perVertexEdges;            // per face vertices
+    std::vector<std::pair<int, int>> perEdgeVertices; // to draw the wireframe
     std::vector<std::vector<MIntArray>> perFaceTriangleVertices;
 
-    std::vector<std::vector<int>> perVertexVerticesSet;  // per vertex vertices
-    std::vector<std::vector<int>> perFaceVerticesSet;    // per Face Vertices
-    std::vector<std::vector<int>> normalsIds;            // vector of faces Ids normals
+    std::vector<std::vector<int>> perVertexVerticesSet; // per vertex vertices
+    std::vector<std::vector<int>> perFaceVerticesSet;   // per Face Vertices
+    std::vector<std::vector<int>> normalsIds;           // vector of faces Ids normals
 
     // Try the Flat Version
     std::vector<int> perVertexVerticesSetFLAT;
@@ -634,7 +653,7 @@ class SkinBrushContext : public MPxContext {
 
     // HITs vairables ------------------------
     bool successFullHit = false;
-    bool successFullMirrorHit = false;  // need to transfer this info to doDragCommon I believe
+    bool successFullMirrorHit = false; // need to transfer this info to doDragCommon I believe
     bool successFullDragHit = false;
     bool successFullDragMirrorHit = false;
     bool refreshDone = false;
@@ -645,16 +664,16 @@ class SkinBrushContext : public MPxContext {
     std::unordered_map<int, float> dicVertsMirrorDistSTART, previousMirrorPaint;
     std::unordered_map<int, float> skinValuesToSet;
     std::unordered_map<int, float> skinValuesMirrorToSet;
-    std::set<int> verticesPainted;  // the vertices that have been painted for a redraw purpose
+    std::set<int> verticesPainted; // the vertices that have been painted for a redraw purpose
 
     std::unordered_map<int, std::pair<float, float>> mirroredJoinedArray;
-    std::vector<float> intensityValuesOrig;    // (length, 0);
-    std::vector<float> intensityValuesMirror;  // (length, 0);
+    std::vector<float> intensityValuesOrig;   // (length, 0);
+    std::vector<float> intensityValuesMirror; // (length, 0);
 
-    ModifierKeys modifierNoneShiftControl = ModifierKeys::NoModifier;  // store the modifier type
+    ModifierKeys modifierNoneShiftControl = ModifierKeys::NoModifier; // store the modifier type
 
-    int previousfaceHit;   // the faceIndex that was hit during the press common
-    int biggestInfluence;  // for while we search for biggest influence
+    int previousfaceHit;  // the faceIndex that was hit during the press common
+    int biggestInfluence; // for while we search for biggest influence
 };
 
 // ---------------------------------------------------------------------
@@ -662,7 +681,7 @@ class SkinBrushContext : public MPxContext {
 // ---------------------------------------------------------------------
 
 class SkinBrushContextCmd : public MPxContextCommand {
-   public:
+  public:
     SkinBrushContextCmd();
     MPxContext *makeObj();
     static void *creator();
@@ -670,7 +689,7 @@ class SkinBrushContextCmd : public MPxContextCommand {
     MStatus doEditFlags();
     MStatus doQueryFlags();
 
-   protected:
+  protected:
     SkinBrushContext *smoothContext;
 };
 

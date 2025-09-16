@@ -1,12 +1,7 @@
 #ifndef __skinBrushTool__enums__
 #define __skinBrushTool__enums__
 
-enum class ModifierKeys : int {
-    NoModifier,
-    Shift,
-    Control,
-    ControlShift
-};
+enum class ModifierKeys : int { NoModifier, Shift, Control, ControlShift };
 
 enum class ModifierCommands : int {
     Add = 0,
