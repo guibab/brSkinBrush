@@ -38,6 +38,7 @@
 #include <maya/MItSelectionList.h>
 #include <maya/MMatrix.h>
 #include <maya/MMeshIntersector.h>
+#include <maya/MPoint.h>
 #include <maya/MPointArray.h>
 #include <maya/MPxContext.h>
 #include <maya/MPxContextCommand.h>
