@@ -73,6 +73,7 @@ MStatus SkinBrushContextCmd::appendSyntax()
     syn.addFlag(kRefreshDfmColorFlag, kRefreshDfmColorFlagLong, MSyntax::kLong);
     syn.addFlag(kSmoothRepeatFlag, kSmoothRepeatFlagLong, MSyntax::kLong);
 
+    syn.addFlag(kSwapSkinClusterFlag, kSwapSkinClusterFlagLong, MSyntax::kString);
     syn.addFlag(kSkinClusterNameFlag, kSkinClusterNameFlagLong, MSyntax::kString);
     syn.addFlag(kMeshNameFlag, kMeshNameFlagLong, MSyntax::kString);
 
@@ -107,6 +108,14 @@ MStatus SkinBrushContextCmd::doEditFlags()
     MStatus status = MStatus::kSuccess;
 
     MArgParser argData = parser();
+    
+    if (argData.isFlagSet(kSwapSkinClusterFlag)) {
+        MString value;
+        status = argData.getFlagArgument(kSwapSkinClusterFlag, 0, value);
+        //MGlobal::displayInfo(MString("kSwapSkinClusterFlag passed ") + value);
+        smoothContext->setSkinClusterByName(value);
+        smoothContext->swapSkinCluster();
+    }
 
     if (argData.isFlagSet(kColorRFlag)) {
         double value;
@@ -173,6 +182,7 @@ MStatus SkinBrushContextCmd::doEditFlags()
 
     if (argData.isFlagSet(kRefreshFlag)) {
         smoothContext->refresh();
+        //smoothContext->maya2019RefreshColors();
     }
 
     if (argData.isFlagSet(kRefreshDfmColorFlag)) {

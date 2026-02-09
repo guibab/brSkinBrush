@@ -266,6 +266,7 @@ class SkinBrushContext : public MPxContext {
     void doTheAction();
     ModifierCommands getCommandIndexModifiers();
     MStatus getMesh();
+    MStatus swapSkinCluster();
     MStatus getTheOrigMeshForMirror();
 
     void getConnectedVertices();

@@ -348,7 +348,7 @@ void SkinBrushContext::refresh()
             this->verbose
         ); // get the joints colors
         status = getListLockVertices(skinObj, this->lockVertices, editVertsIndices); // problem ?
-        status = fillArrayValuesDEP(skinObj, true); // get the skin data and all the colors
+        status = fillArrayValues(skinObj, true); // get the skin data and all the colors
     }
     else {
         MGlobal::displayError(MString("FAILED : skinObj.isNull"));
@@ -364,6 +364,7 @@ void SkinBrushContext::refresh()
     meshFn.setColors(this->soloCurrentColors, &this->soloColorSet2);  // set the solo assignation
 
     // display the locks ----------------------
+    
     MColorArray multiEditColors, soloEditColors;
     refreshColors(editVertsIndices, multiEditColors, soloEditColors);
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet);
@@ -371,7 +372,7 @@ void SkinBrushContext::refresh()
 
     meshFn.setSomeColors(editVertsIndices, multiEditColors, &this->fullColorSet2);
     meshFn.setSomeColors(editVertsIndices, soloEditColors, &this->soloColorSet2);
-
+    
     if (soloColorVal == 1) {
         editSoloColorSet(true); // solo
     }
@@ -2182,8 +2183,8 @@ MStatus SkinBrushContext::refreshColors(
             soloEditColors[i] = soloColor;
         }
 
-        if (verbose && theVert == 4) {
-            MGlobal::displayInfo(MString("refreshColors| Vtx 4 | isLocked ") + isVtxLocked);
+        if (verbose && theVert == 0) {
+            MGlobal::displayInfo(MString("refreshColors| Vtx 0 | isLocked ") + isVtxLocked);
             MGlobal::displayInfo(
                 MString("r ") + multiEditColors[i].r + MString(" g ") + multiEditColors[i].g +
                 MString("b ") + multiEditColors[i].b
@@ -2369,6 +2370,75 @@ MStatus SkinBrushContext::getMesh()
     getTheOrigMeshForMirror();
     return status;
 }
+
+
+MStatus SkinBrushContext::swapSkinCluster(){
+    MStatus status = MStatus::kSuccess;
+
+    //this->firstPaintDone = false;
+
+    this->pickMaxInfluenceVal = false;
+    this->pickInfluenceVal = false;
+
+    // first clear a bit the air --------------
+    this->multiCurrentColors.clear();
+    this->jointsColors.clear();
+    this->soloCurrentColors.clear();
+
+    getMObject(passedSkinName, this->skinObj);
+    //MString skinName = getSkinClusterName();
+    if (verbose) {
+        MGlobal::displayInfo(MString("SWAP skinCluster: ") + passedSkinName);
+    }
+
+    unsigned int normalizeValue;
+    influenceIndices = getInfluenceIndices(); // that gets the number of joints
+    if (verbose) {
+        MGlobal::displayInfo(MString("nbJoints: ") + this->nbJoints);
+    }
+    getSkinClusterAttributes(skinObj, maxInfluences, maintainMaxInfluences, normalizeValue);
+    normalize = false;
+    if (normalizeValue > 0) normalize = true;
+
+    if (skinObj.isNull()) {
+        MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
+        abortAction();
+        return MStatus::kFailure;
+    }
+    /*
+    this->skinWeightList.clear();
+    this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
+    if (this->mirrorInfluences.length() == 0) {
+        this->mirrorInfluences = MIntArray(this->nbJoints, 0);
+        for (unsigned int i = 0; i < this->nbJoints; ++i) this->mirrorInfluences.set(i, i);
+    }
+    this->previousPaint.clear();
+    this->previousMirrorPaint.clear();
+    */
+
+    // first clear a bit the air --------------
+    this->skinWeightList.clear();
+    this->multiCurrentColors.clear();
+    this->jointsColors.clear();
+    this->soloCurrentColors.clear();
+    this->previousPaint.clear();
+    this->previousMirrorPaint.clear();
+
+    refresh();
+    if (verbose) {
+        MGlobal::displayInfo(MString("nbJoints after refresh: ") + this->nbJoints);
+    }
+
+    //maya2019RefreshColors(true);
+    /*
+    if (!this->firstPaintDone) {
+        this->firstPaintDone = true;
+    }
+    */
+
+    return status;
+}
+
 
 MStatus SkinBrushContext::getTheOrigMeshForMirror()
 {
@@ -2766,9 +2836,9 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors)
                     else {
                         theColor += this->jointsColors[indexInfluence] * theWeight;
                     }
-                    if ((verbose) && (vertexIndex == 144)) {
+                    if ((verbose) && (vertexIndex == 0)) {
                         MGlobal::displayInfo(
-                            MString(" jnt : [") + indexInfluence + MString("] VTX 144 R: ") +
+                            MString(" jnt : [") + indexInfluence + MString("] VTX 0 R: ") +
                             theColor.r + MString("  G: ") + theColor.g + MString("  B: ") +
                             theColor.b + MString("  ")
                         );
@@ -2777,16 +2847,15 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors)
             }
             if (doColors) { // not store lock vert color
                 this->multiCurrentColors[vertexIndex] = theColor;
-                if ((verbose) && (vertexIndex == 4)) {
+                if ((verbose) && (vertexIndex == 0)) {
                     MGlobal::displayInfo(
-                        MString(" VTX 4 R: ") + theColor.r + MString("  G: ") + theColor.g +
+                        MString(" VTX 0 R: ") + theColor.r + MString("  G: ") + theColor.g +
                         MString("  B: ") + theColor.b + MString("  ")
                     );
                 }
             }
         }
     }
-
     return status;
 }
 

@@ -707,7 +707,6 @@ MStatus editArray(
         for (const auto &elem : valuesToSet) {
             int theVert = elem.first;
             double theVal = mutliplier * elem.second + 1.0;
-            double substract = theVal / nbJoints;
             MDoubleArray producedWeigths(nbJoints, 0.0);
             double totalBaseVtxUnlock = 0.0, totalBaseVtxLock = 0.0;
             ;
@@ -715,8 +714,8 @@ MStatus editArray(
             for (int j = 0; j < nbJoints; ++j) {
                 // check the zero val ----------
                 double currentW = fullWeightArray[theVert * nbJoints + j];
-                double targetW = (currentW * theVal) - substract;
-                targetW = std::max(0.0, std::min(targetW, 1.0)); // clamp
+                double targetW = std::pow(currentW, theVal);
+                targetW = std::max(0.0, std::min(1.0, targetW)); // clamp
                 producedWeigths.set(targetW, j);
 
                 if (lockJoints[j] == 0) { // unlock
