@@ -107,6 +107,9 @@
 #define kSkinClusterNameFlag "-skn"
 #define kSkinClusterNameFlagLong "-skinClusterName"
 
+#define kSwapSkinClusterFlag "-swp"
+#define kSwapSkinClusterFlagLong "-swapSkinName"
+
 #define kMeshNameFlag "-msh"
 #define kMeshNameFlagLong "-meshName"
 

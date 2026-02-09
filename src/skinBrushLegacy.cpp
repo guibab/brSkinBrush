@@ -4,7 +4,8 @@
 // legacy viewport
 // ---------------------------------------------------------------------
 
-MStatus SkinBrushContext::doPress(MEvent &event) {
+MStatus SkinBrushContext::doPress(MEvent &event)
+{
     MStatus status = doPressCommon(event);
     CHECK_MSTATUS_AND_RETURN_SILENT(status);
 
@@ -12,7 +13,8 @@ MStatus SkinBrushContext::doPress(MEvent &event) {
     return MStatus::kSuccess;
 }
 
-MStatus SkinBrushContext::doDrag(MEvent &event) {
+MStatus SkinBrushContext::doDrag(MEvent &event)
+{
     MStatus status = MStatus::kSuccess;
 
     status = doDragCommon(event);
@@ -44,15 +46,17 @@ MStatus SkinBrushContext::doDrag(MEvent &event) {
             // a static position but the size needs to change.
             if (sizeAdjust) {
                 drawCircle(surfacePointAdjust, viewMat, adjustValue);
-                if (volumeVal && drawRangeVal)
+                if (volumeVal && drawRangeVal) {
                     drawCircle(surfacePointAdjust, viewMat, adjustValue * rangeVal);
+                }
             }
             // When adjusting the strength the circle needs to remain
             // fixed and only the strength indicator changes.
             else {
                 drawCircle(surfacePointAdjust, viewMat, sizeVal);
-                if (volumeVal && drawRangeVal)
+                if (volumeVal && drawRangeVal) {
                     drawCircle(surfacePointAdjust, viewMat, sizeVal * rangeVal);
+                }
 
                 // Drawing the strength line is not properly working in
                 // this implementation. But since the legacy viewport
@@ -74,20 +78,24 @@ MStatus SkinBrushContext::doDrag(MEvent &event) {
     return status;
 }
 
-void SkinBrushContext::drawCircle(MPoint point, MMatrix mat, double radius) {
+void SkinBrushContext::drawCircle(MPoint point, MMatrix mat, double radius)
+{
     unsigned int i;
     glBegin(GL_LINE_LOOP);
     for (i = 0; i < 360; i += 2) {
         double degInRad = i * DEGTORAD;
         MPoint circlePoint(cos(degInRad) * radius, sin(degInRad) * radius, 0.0);
         circlePoint *= mat.inverse();
-        glVertex3f(float(point.x + circlePoint.x), float(point.y + circlePoint.y),
-                   float(point.z + circlePoint.z));
+        glVertex3f(
+            float(point.x + circlePoint.x), float(point.y + circlePoint.y),
+            float(point.z + circlePoint.z)
+        );
     }
     glEnd();
 }
 
-MStatus SkinBrushContext::doRelease(MEvent &event) {
+MStatus SkinBrushContext::doRelease(MEvent &event)
+{
     doReleaseCommon(event);
     return MStatus::kSuccess;
 }

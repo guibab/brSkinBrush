@@ -7,8 +7,9 @@
 // MStatus would get returned an error can get listed in terminal on
 // Linux. But it's unnecessary and needs to be avoided. Therefore a
 // kSuccess is returned just for the sake of being invisible.
-#define CHECK_MSTATUS_AND_RETURN_SILENT(status) \
-    if (status != MStatus::kSuccess) return MStatus::kSuccess;
+#define CHECK_MSTATUS_AND_RETURN_SILENT(status)                                                    \
+    if (status != MStatus::kSuccess)                                                               \
+        return MStatus::kSuccess;
 
 // ---------------------------------------------------------------------
 // the tool
@@ -18,7 +19,8 @@
 // general methods for the tool command
 // ---------------------------------------------------------------------
 
-skinBrushTool::skinBrushTool() {
+skinBrushTool::skinBrushTool()
+{
     setCommandString("brSkinBrushCmd");
 
     colorVal = MColor(1.0, 0.0, 0.0);
@@ -42,19 +44,20 @@ skinBrushTool::skinBrushTool() {
     coverageVal = true;
 
     pruneWeights = 0.0001;
-    commandIndex = 0;      // add
-    soloColorTypeVal = 1;  // 1 lava
+    commandIndex = ModifierCommands::Add;
+    soloColorTypeVal = 1; // 1 lava
     soloColorVal = 0;
     postSetting = true;
 }
 
 skinBrushTool::~skinBrushTool() {}
 
-void* skinBrushTool::creator() { return new skinBrushTool; }
+void *skinBrushTool::creator() { return new skinBrushTool; }
 
 bool skinBrushTool::isUndoable() const { return true; }
 
-MSyntax skinBrushTool::newSyntax() {
+MSyntax skinBrushTool::newSyntax()
+{
     MSyntax syntax;
 
     syntax.addFlag(kColorRFlag, kColorRFlagLong, MSyntax::kDouble);
@@ -86,8 +89,9 @@ MSyntax skinBrushTool::newSyntax() {
 
     syntax.addFlag(kPaintMirrorToleranceFlag, kPaintMirrorToleranceFlagLong, MSyntax::kDouble);
     syntax.addFlag(kPaintMirrorFlag, kPaintMirrorFlagLong, MSyntax::kLong);
-    syntax.addFlag(kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong,
-                   MSyntax::kBoolean);
+    syntax.addFlag(
+        kUseColorSetWhilePaintingFlag, kUseColorSetWhilePaintingFlagLong, MSyntax::kBoolean
+    );
     syntax.addFlag(kMeshDragDrawTrianglesFlag, kMeshDragDrawTrianglesFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kMeshDragDrawEdgesFlag, kMeshDragDrawEdgesFlagLong, MSyntax::kBoolean);
     syntax.addFlag(kMeshDragDrawPointsFlag, kMeshDragDrawPointsFlagLong, MSyntax::kBoolean);
@@ -104,7 +108,8 @@ MSyntax skinBrushTool::newSyntax() {
     return syntax;
 }
 
-MStatus skinBrushTool::parseArgs(const MArgList& args) {
+MStatus skinBrushTool::parseArgs(const MArgList &args)
+{
     MStatus status = MStatus::kSuccess;
 
     MArgDatabase argData(syntax(), args);
@@ -254,7 +259,8 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
 // ---------------------------------------------------------------------
 // main methods for the tool command
 // ---------------------------------------------------------------------
-MStatus skinBrushTool::doIt(const MArgList& args) {
+MStatus skinBrushTool::doIt(const MArgList &args)
+{
     // MGlobal::displayInfo(MString("---------------- [skinBrushTool::doIt]------------------"));
     MStatus status = MStatus::kSuccess;
 
@@ -264,20 +270,26 @@ MStatus skinBrushTool::doIt(const MArgList& args) {
     return redoIt();
 }
 
-MStatus skinBrushTool::redoIt() {
-    MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") +
-                         this->commandIndex);
+MStatus skinBrushTool::redoIt()
+{
+    MGlobal::displayInfo(
+        MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") +
+        static_cast<int>(this->commandIndex)
+    );
     return setWeights(true);
 }
 
-MStatus skinBrushTool::setWeights(bool isUndo) {
+MStatus skinBrushTool::setWeights(bool isUndo)
+{
     MStatus status = MStatus::kSuccess;
 
     int theWeightsLength;
-    if (isUndo)
+    if (isUndo) {
         theWeightsLength = this->undoWeights.length();
-    else
+    }
+    else {
         theWeightsLength = this->redoWeights.length();
+    }
     if (theWeightsLength == 0) {
         return status;
     }
@@ -300,19 +312,23 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
         nrbsFn.setObject(nurbsDag);
     }
 
-    if (this->commandIndex < 6 && theWeightsLength > 0) {
+    if (this->commandIndex != ModifierCommands::LockVertices &&
+        this->commandIndex != ModifierCommands::UnlockVertices && theWeightsLength > 0) {
         MObject weightsObj;
         if (!isNurbs) {
             MFnSingleIndexedComponent compFn;
             weightsObj = compFn.create(MFn::kMeshVertComponent);
             compFn.addElements(this->undoVertices);
             if (isUndo) {
-                skinFn.setWeights(meshDag, weightsObj, influenceIndices, this->undoWeights, true,
-                                  &redoWeights);
-            } else {
+                skinFn.setWeights(
+                    meshDag, weightsObj, influenceIndices, this->undoWeights, true, &redoWeights
+                );
+            }
+            else {
                 skinFn.setWeights(meshDag, weightsObj, influenceIndices, this->redoWeights, true);
             }
-        } else {
+        }
+        else {
             MFnDoubleIndexedComponent doubleFn;
             weightsObj = doubleFn.create(MFn::kSurfaceCVComponent);
             // MFnSingleIndexedComponent theVertex;
@@ -323,19 +339,23 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
                 doubleFn.addElement(uVal, vVal);
             }
             if (isUndo) {
-                skinFn.setWeights(nurbsDag, weightsObj, influenceIndices, this->undoWeights, true,
-                                  &redoWeights);
-            } else {
+                skinFn.setWeights(
+                    nurbsDag, weightsObj, influenceIndices, this->undoWeights, true, &redoWeights
+                );
+            }
+            else {
                 skinFn.setWeights(nurbsDag, weightsObj, influenceIndices, this->redoWeights, true);
             }
             if (validMesh) {
-                transferPointNurbsToMesh(meshFn, nrbsFn);  // we transfer the points postions
-            } else {
+                transferPointNurbsToMesh(meshFn, nrbsFn); // we transfer the points postions
+            }
+            else {
                 MGlobal::displayInfo("mesh not valid need to clean it");
             }
         }
     }
-    if (this->commandIndex >= 6) {
+    if (this->commandIndex == ModifierCommands::LockVertices ||
+        this->commandIndex == ModifierCommands::UnlockVertices) {
         MGlobal::displayInfo("undo it with refresh: lock / unlock vertices");
 
         MObjectArray objectsDeformed;
@@ -351,13 +371,17 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
 
         MIntArray theArrayValues;
         for (unsigned int vtx = 0; vtx < undoLocks.length(); ++vtx) {
-            if (undoLocks[vtx] == 1) theArrayValues.append(vtx);
+            if (undoLocks[vtx] == 1) {
+                theArrayValues.append(vtx);
+            }
         }
-        status = lockedVerticesPlug.setValue(
-            tmpIntArray.create(theArrayValues));  // to set the attribute
+        status = lockedVerticesPlug.setValue(tmpIntArray.create(theArrayValues)); // to set the
+                                                                                  // attribute
         // we need a hard refresh of invalidate for the undo / redo ---
     }
-    if (this->commandIndex >= 6 || (isNurbs && validMesh)) {
+    if ((this->commandIndex == ModifierCommands::LockVertices ||
+         this->commandIndex == ModifierCommands::UnlockVertices) ||
+        (isNurbs && validMesh)) {
         meshFn.updateSurface();
     }
 
@@ -369,13 +393,17 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
     return status;
 }
 
-MStatus skinBrushTool::undoIt() {
-    MGlobal::displayInfo(MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
-                         this->commandIndex);
+MStatus skinBrushTool::undoIt()
+{
+    MGlobal::displayInfo(
+        MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
+        static_cast<int>(this->commandIndex)
+    );
     return setWeights(true);
 }
 
-MStatus skinBrushTool::callBrushRefresh() {
+MStatus skinBrushTool::callBrushRefresh()
+{
     /*
     ----------------
     ---------------- VERY IMPORTANT
@@ -405,7 +433,8 @@ MStatus skinBrushTool::callBrushRefresh() {
     return MStatus::kSuccess;
 }
 
-MStatus skinBrushTool::finalize() {
+MStatus skinBrushTool::finalize()
+{
     // Store the current settings as an option var. This way they are
     // properly available for the next usage.
     // MGlobal::displayInfo("skinBrushTool::finalize\n");
@@ -422,7 +451,7 @@ MStatus skinBrushTool::finalize() {
     cmd += curveVal;
 
     cmd += " " + MString(kCommandIndexFlag) + " ";
-    cmd += commandIndex;
+    cmd += static_cast<int>(commandIndex);
     cmd += " " + MString(kSoloColorFlag) + " ";
     cmd += soloColorVal;
 
@@ -553,7 +582,7 @@ void skinBrushTool::setUndersampling(int value) { undersamplingVal = value; }
 
 void skinBrushTool::setVolume(bool value) { volumeVal = value; }
 
-void skinBrushTool::setCommandIndex(int value) { commandIndex = value; }
+void skinBrushTool::setCommandIndex(ModifierCommands value) { commandIndex = value; }
 
 void skinBrushTool::setSmoothRepeat(int value) { smoothRepeat = value; }
 
@@ -572,7 +601,8 @@ void skinBrushTool::setDrawTransparency(bool value) { drawTransparency = value; 
 
 void skinBrushTool::setSoloColorType(int value) { soloColorTypeVal = value; }
 
-void skinBrushTool::setSoloColor(int value) {
+void skinBrushTool::setSoloColor(int value)
+{
     soloColorVal = value;
     // MGlobal::displayInfo(MString("setSoloColor [") + soloColorVal + MString("]"));
 }
@@ -589,13 +619,16 @@ void skinBrushTool::setInfluenceIndices(MIntArray indices) { influenceIndices = 
 
 void skinBrushTool::setInfluenceName(MString name) { influenceName = name; }
 
-MStatus skinBrushTool::getSkinClusterObj() {
+MStatus skinBrushTool::getSkinClusterObj()
+{
     MStatus status = MS::kSuccess;
 
     return status;
     MSelectionList selList;
     status = MGlobal::getSelectionListByName(skinName, selList);
-    if (status != MStatus::kSuccess) return status;
+    if (status != MStatus::kSuccess) {
+        return status;
+    }
     status = selList.getDependNode(0, skinObj);
 
     MFnDependencyNode nodeFn(skinObj);
