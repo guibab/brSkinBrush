@@ -524,6 +524,11 @@ MStatus skinBrushTool::finalize()
     cmd += " " + MString(kMaxColorFlag) + " ";
     cmd += maxSoloColor;
 
+    cmd += " " + MString(kSewVerticesFlagLong) + " ";
+    cmd += sewVertices;
+    cmd += " " + MString(kSewVerticesOffsetFlagLong) + " ";
+    cmd += sewVerticesMinDist;
+
     cmd += " brSkinBrushContext1;";
 
     MGlobal::setOptionVarValue("brSkinBrushContext1", cmd);
@@ -589,6 +594,10 @@ void skinBrushTool::setSmoothRepeat(int value) { smoothRepeat = value; }
 void skinBrushTool::setMirrorTolerance(double value) { mirrorMinDist = value; }
 
 void skinBrushTool::setPaintMirror(int value) { paintMirror = value; }
+
+void skinBrushTool::setSewTolerance(double value) { sewVerticesMinDist = value; }
+
+void skinBrushTool::setSewVertices(bool value) { sewVertices = value; }
 
 void skinBrushTool::setUseColorSetsWhilePainting(bool value) { useColorSetsWhilePainting = value; }
 

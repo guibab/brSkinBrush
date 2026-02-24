@@ -1530,6 +1530,7 @@ void SkinBrushContext::doTheAction()
     // The same goes for the select mode.
     MColorArray multiEditColors, soloEditColors;
     int nbVerticesPainted = (int)this->verticesPainted.size();
+
     MIntArray editVertsIndices(nbVerticesPainted, 0);
     MIntArray undoLocks, redoLocks;
 
@@ -1830,6 +1831,15 @@ MStatus SkinBrushContext::applyCommandMirror()
 
                 double theWeight = (double)biggestValue;
                 std::vector<int> vertsAround = getSurroundingVerticesPerVert(theVert);
+                
+                if (sewVertices){
+                    int sewnVert = this->vertToVertBorder[theVert];
+                    if (sewnVert!=-1){
+                        std::vector<int> v2 = getSurroundingVerticesPerVert(sewnVert);
+                        vertsAround.insert(vertsAround.end(), v2.begin(), v2.end());
+                    }
+                }
+                
                 status = setAverageWeight(
                     vertsAround, theVert, indexCurrVert, this->nbJoints, this->lockJoints,
                     this->skinWeightList, theWeights, this->smoothStrengthVal * theWeight
@@ -1928,8 +1938,39 @@ MStatus SkinBrushContext::applyCommandMirror()
 MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, float> &valuesToSet)
 {
     MStatus status;
+    /*
+    we need to edit this->verticesPainted for sew vertices, meaning addind the mirror verts
+    this->verticesPainted
+    */
+    if (sewVertices){
+        std::unordered_map<int, float> sewArr;
+        std::vector<int> processed;
+        bool foundOnce = false;
+        for (const auto &element : valuesToSet) {
+            int index = element.first;
+            if (std::find(processed.begin(), processed.end(), index) != processed.end()) {
+                continue;
+            }
+            float value = element.second;
+            int sewnVert = this->vertToVertBorder[index];
+            if (sewnVert != -1) {
+                if (valuesToSet.find(sewnVert) != valuesToSet.end()){
+                    sewArr.insert(std::make_pair(sewnVert, value));
+                    foundOnce = true;
+                }else{
+                    valuesToSet[sewnVert] = value;
+                    processed.push_back(sewnVert);
+                }
+            }
+        }
+        if (foundOnce){
+            valuesToSet.insert(sewArr.begin(), sewArr.end());
+        }
+    }
+    // ------------------------------------------
     // we need to sort all of that one way or another ---------------- here it is ------
     std::map<int, double> valuesToSetOrdered(valuesToSet.begin(), valuesToSet.end());
+
 
     ModifierCommands theCommandIndex = getCommandIndexModifiers();
     double multiplier = 1.0;
@@ -1958,7 +1999,14 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
                     int theVert = elem.first;
                     double theWeight = elem.second;
                     std::vector<int> vertsAround = getSurroundingVerticesPerVert(theVert);
-
+                    
+                    if (sewVertices) {
+                        int sewnVert = this->vertToVertBorder[theVert];
+                        if (sewnVert != -1) {
+                            std::vector<int> v2 = getSurroundingVerticesPerVert(sewnVert);
+                            vertsAround.insert(vertsAround.end(), v2.begin(), v2.end());
+                        }
+                    }                    
                     status = setAverageWeight(
                         vertsAround, theVert, i, this->nbJoints, this->lockJoints,
                         this->skinWeightList, theWeights, this->smoothStrengthVal * theWeight
@@ -1966,7 +2014,7 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
                     i++;
                 }
             }
-            else {
+            else {                                
                 if (verbose) {
                     MGlobal::displayInfo(
                         MString("-> applyCommand | before editArray this->ignoreLockVal is ") +
@@ -2525,12 +2573,19 @@ void SkinBrushContext::getConnectedVertices()
     this->perVertexEdges.resize(this->numVertices);
 
     unsigned int i = 0;
+    this->borderVertices.clear();
     for (; !edgeIter.isDone(); edgeIter.next()) {
         int pt0Index = edgeIter.index(0);
         int pt1Index = edgeIter.index(1);
         this->perVertexEdges[pt0Index].append(i);
         this->perVertexEdges[pt1Index].append(i);
         this->perEdgeVertices[i++] = std::make_pair(pt0Index, pt1Index);
+        bool isBorderEdge = edgeIter.onBoundary();
+        if (isBorderEdge){
+            //borderEges.append(i);
+            borderVertices.push_back(pt0Index);
+            borderVertices.push_back(pt1Index);
+        }
     }
 }
 void SkinBrushContext::getConnectedVerticesSecond()
@@ -2576,7 +2631,25 @@ void SkinBrushContext::getConnectedVerticesThird()
         }
     }
 }
-
+void SkinBrushContext::getConnectedBorderVertices()
+{    
+    this->vertToVertBorder = findClosestWithinThreshold(
+        borderVertices,
+        this->mayaOrigRawPoints,
+        sewVerticesMinDist,
+        this->numVertices);
+    // here print
+    if (verbose) {
+        for (size_t i = 0; i < this->vertToVertBorder.size(); ++i) {
+            if (this->vertToVertBorder[i] != -1) {
+                MGlobal::displayInfo(
+                    MString("vertex [") + i + MString("] with vertex [") + this->vertToVertBorder[i] +
+                    MString("] ;")
+                );
+            }
+        }
+    }
+}
 void SkinBrushContext::getConnectedVerticesTyler()
 {
     std::vector<std::unordered_set<int>> faceNeighbors, edgeNeighbors;
@@ -2671,6 +2744,17 @@ std::vector<int> SkinBrushContext::getSurroundingVerticesPerVert(int vertexIndex
     auto first = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex];
     auto last = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex + (int)1];
     std::vector<int> newVec(first, last);
+    /*
+    if (sewVertices) {
+        int sewnVert = this->vertToVertBorder[vertexIndex];
+        if (sewnVert != -1) {
+            auto firstSew = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[sewnVert];
+            auto lastSew = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[sewnVert + (int)1];
+            std::vector<int> v2(firstSew, lastSew);
+            newVec.insert(newVec.end(), v2.begin(), v2.end());
+        }
+    }
+    */
     return newVec;
 };
 
@@ -3777,4 +3861,86 @@ void SkinBrushContext::setInViewMessage(bool display)
     else {
         MGlobal::executeCommand("brSkinBrushHideInViewMessage");
     }
+}
+
+void SkinBrushContext::storeValuesInOptionVar(MString nameOptionVar)
+{
+    // Store the current settings as an option var. This way they are
+    // properly available for the next usage.
+    // MGlobal::displayInfo("skinBrushTool::finalize\n");
+    MString cmd;
+    cmd = "";
+    cmd += " " + MString(kCurveFlagLong) + " ";
+    cmd += getCurve();
+    cmd += " " + MString(kCommandIndexFlagLong) + " ";
+    cmd += static_cast<int>(commandIndex);
+    cmd += " " + MString(kSoloColorFlagLong) + " ";
+    cmd += getSoloColor();
+    cmd += " " + MString(kSoloColorTypeFlagLong) + " ";
+    cmd += getSoloColorType();
+    cmd += " " + MString(kCoverageLong) + " ";
+    cmd += getCoverage();
+    cmd += " " + MString(kMessageFlagLong) + " ";
+    cmd += getMessage();
+    cmd += " " + MString(kDrawBrushFlagLong) + " ";
+    cmd += getDrawBrush();
+    cmd += " " + MString(kDrawRangeFlagLong) + " ";
+    cmd += getDrawRange();
+    cmd += " " + MString(kFractionOversamplingFlagLong) + " ";
+    cmd += getFractionOversampling();
+    cmd += " " + MString(kIgnoreLockFlagLong) + " ";
+    cmd += getIgnoreLock();
+    cmd += " " + MString(kLineWidthFlagLong) + " ";
+    cmd += getLineWidth();
+    cmd += " " + MString(kOversamplingFlagLong) + " ";
+    cmd += getOversampling();
+    cmd += " " + MString(kRangeFlagLong) + " ";
+    cmd += getRange();
+    cmd += " " + MString(kSizeFlagLong) + " ";
+    cmd += getSize();
+    cmd += " " + MString(kStrengthFlagLong) + " ";
+    cmd += getStrength();
+    cmd += " " + MString(kSmoothStrengthFlagLong) + " ";
+    cmd += getSmoothStrength();
+    //cmd += " " + MString(kPruneWeightsFlagLong) + " ";
+    //cmd += pruneWeights;
+    cmd += " " + MString(kUndersamplingFlagLong) + " ";
+    cmd += getUndersampling();
+    cmd += " " + MString(kVolumeFlagLong) + " ";
+    cmd += getVolume();
+    cmd += " " + MString(kPostSettingFlagLong) + " ";
+    cmd += getPostSetting();
+    cmd += " " + MString(kInfluenceNameFlagLong) + " ";
+    cmd += getInfluenceName();
+    cmd += " " + MString(kSmoothRepeatFlagLong) + " ";
+    cmd += getSmoothRepeat();
+    cmd += " " + MString(kPaintMirrorFlagLong) + " ";
+    cmd += getPaintMirror();
+    cmd += " " + MString(kPaintMirrorToleranceFlagLong) + " ";
+    cmd += getMirrorTolerance();
+    cmd += " " + MString(kUseColorSetWhilePaintingFlagLong) + " ";
+    cmd += getUseColorSetsWhilePainting();
+    cmd += " " + MString(kMeshDragDrawTrianglesFlagLong) + " ";
+    cmd += getDrawTriangles();
+    cmd += " " + MString(kMeshDragDrawEdgesFlagLong) + " ";
+    cmd += getDrawEdges();
+    cmd += " " + MString(kMeshDragDrawPointsFlagLong) + " ";
+    cmd += getDrawPoints();
+    cmd += " " + MString(kMeshDragDrawTransFlagLong) + " ";
+    cmd += getDrawTransparency();
+    cmd += " " + MString(kMinColorFlagLong) + " ";
+    cmd += getMinColor();
+    cmd += " " + MString(kMaxColorFlagLong) + " ";
+    cmd += getMaxColor();
+    cmd += " " + MString(kSewVerticesFlagLong) + " ";
+    cmd += getSewVertices();
+    cmd += " " + MString(kSewVerticesOffsetFlagLong) + " ";
+    cmd += getSewVerticesOffset();
+    cmd += " " + MString(kSkinClusterNameFlagLong) + " ";
+    cmd += getSkinClusterName();
+    cmd += " " + MString(kMeshNameFlagLong) + " ";
+    cmd += getMeshName();
+
+
+    MGlobal::setOptionVarValue(nameOptionVar, cmd);
 }

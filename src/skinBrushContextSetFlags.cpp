@@ -205,6 +205,24 @@ void SkinBrushContext::setPaintMirror(int value)
     MToolsInfo::setDirtyFlag(*this);
 }
 
+
+void SkinBrushContext::setSewTolerance(double value)
+{
+    sewVerticesMinDist = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setSewVertices(bool value)
+{
+    sewVertices = value;
+    if (value) {
+        getConnectedBorderVertices();
+    }  
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+
+
 void SkinBrushContext::setUseColorSetsWhilePainting(bool value)
 {
     useColorSetsWhilePainting = value;
@@ -417,7 +435,7 @@ void SkinBrushContext::setInfluenceByName(MString value)
         setInfluenceIndex(indexInfluence, false);
     }
 }
-void SkinBrushContext::setSkinClusterByName(MString &value)
+void SkinBrushContext::setSkinClusterByName(MString& value)
 {
     if (verbose) {
         MGlobal::displayInfo("setSkinClusterByName CALLED \"" + value + "\"\n");
@@ -480,6 +498,10 @@ int SkinBrushContext::getSoloColor() { return soloColorVal; }
 
 double SkinBrushContext::getMirrorTolerance() { return mirrorMinDist; }
 int SkinBrushContext::getPaintMirror() { return paintMirror; }
+
+double SkinBrushContext::getSewVerticesOffset() { return sewVerticesMinDist; }
+bool SkinBrushContext::getSewVertices() { return sewVertices; }
+
 bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhilePainting; }
 bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
 bool SkinBrushContext::getDrawEdges() { return drawEdges; }

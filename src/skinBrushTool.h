@@ -103,7 +103,6 @@ class skinBrushTool : public MPxToolCommand {
     MStatus setWeights(bool isUndo);
     MStatus callBrushRefresh();
     MStatus finalize();
-
     bool isUndoable() const;
 
     // setting the attributes
@@ -153,6 +152,8 @@ class skinBrushTool : public MPxToolCommand {
 
     void setMirrorTolerance(double value);
     void setPaintMirror(int value);
+    void setSewTolerance(double value);
+    void setSewVertices(bool value);
     void setUseColorSetsWhilePainting(bool value);
     void setDrawTriangles(bool value);
     void setDrawEdges(bool value);
@@ -193,6 +194,9 @@ class skinBrushTool : public MPxToolCommand {
 
     int paintMirror = 0; // intValue
     double mirrorMinDist = 0.05;
+    bool sewVertices = false;
+    double sewVerticesMinDist = 0.1;
+
     bool useColorSetsWhilePainting = false;
     bool drawTriangles = true;
     bool drawEdges = true;
@@ -269,6 +273,7 @@ class SkinBrushContext : public MPxContext {
     MStatus swapSkinCluster();
     MStatus getTheOrigMeshForMirror();
 
+    void getConnectedBorderVertices();
     void getConnectedVertices();
     void getConnectedVerticesSecond();
     void getConnectedVerticesThird();
@@ -276,6 +281,8 @@ class SkinBrushContext : public MPxContext {
     void getConnectedVerticesFlatten();
     std::vector<int> getSurroundingVerticesPerVert(int vertexIndex);
     std::vector<int> getSurroundingVerticesPerFace(int vertexIndex);
+
+    void storeValuesInOptionVar(MString nameOptionVar);
 
     void getFromMeshNormals();
     MStatus getSelection(MDagPath &dagPath);
@@ -376,6 +383,8 @@ class SkinBrushContext : public MPxContext {
     void setVolume(bool value);
     void setMirrorTolerance(double value);
     void setPaintMirror(int value);
+    void setSewTolerance(double value);
+    void setSewVertices(bool value);
     void setUseColorSetsWhilePainting(bool value);
     void setDrawTriangles(bool value);
     void setDrawEdges(bool value);
@@ -435,6 +444,10 @@ class SkinBrushContext : public MPxContext {
 
     double getMirrorTolerance();
     int getPaintMirror();
+
+    double getSewVerticesOffset();
+    bool getSewVertices();
+
     bool getUseColorSetsWhilePainting();
     bool getDrawTriangles();
     bool getDrawEdges();
@@ -455,6 +468,7 @@ class SkinBrushContext : public MPxContext {
     bool getSkinFromName = false;
     bool getMeshFromName = false;
     MString passedSkinName, passedMeshName;
+    MString UiOptionVarNameName;
 
     bool firstPaintDone;
     bool performBrush;
@@ -465,6 +479,8 @@ class SkinBrushContext : public MPxContext {
     int paintMirror = 0;
     double mirrorMinDist = 0.05;
     bool useColorSetsWhilePainting = false;
+    bool sewVertices = false;
+    double sewVerticesMinDist = 0.1;
 
     bool drawTriangles = true;
     bool drawPoints = false;
@@ -631,6 +647,9 @@ class SkinBrushContext : public MPxContext {
         soloCurrentColors; // lock vertices color are not stored inside these arrays
 
     MIntArray VertexCountPerPolygon, fullVertexList;
+    //MIntArray borderEges; //border vertices and edges to keep gap closed
+    std::vector<int> borderVertices; // array of vertexBorders
+    std::vector<int> vertToVertBorder; // array of vertexBorders    
     std::vector<MIntArray> perVertexFaces;            // per vertex Faces
     std::vector<MIntArray> perFaceVertices;           // per face vertices
     std::vector<MIntArray> perVertexEdges;            // per face vertices
