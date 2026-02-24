@@ -62,6 +62,8 @@
 #define kPruneWeightsFlag "-pw"
 #define kPruneWeightsFlagLong "-pruneWeights"
 
+
+
 #define kSmoothStrengthFlag "-sst"
 #define kSmoothStrengthFlagLong "-smoothStrength"
 
@@ -159,6 +161,15 @@
 
 #define kImportPythonFlag "-imp"
 #define kImportPythonFlagLong "-importPython"
+
+#define kSewVerticesFlag "-sew"
+#define kSewVerticesFlagLong "-sewVertices"
+
+#define kSewVerticesOffsetFlag "-swf"
+#define kSewVerticesOffsetFlagLong "-sewVerticesOffset"
+
+#define kUiOptionVarFlag "-uio"
+#define kUiOptionVarFlagLong "-uiOptionVar"
 
 #define kVerboseFlag "-vrb"
 #define kVerboseFlagLong "-verbose"

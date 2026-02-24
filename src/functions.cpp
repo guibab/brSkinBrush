@@ -1,8 +1,8 @@
 #include "functions.h"
 
 #include <math.h>
-
 #include <limits>
+#include <vector>
 
 #include "enums.h"
 
@@ -1446,4 +1446,50 @@ void convertToCountIndex(
         counts.push_back(counts.back() + uSet.size());
         indices.insert(indices.end(), uSet.begin(), uSet.end());
     }
+}
+
+
+std::vector<int> findClosestWithinThreshold(
+    const std::vector<int>& indices,
+    const float* pos,
+    float threshold,
+    int nbVertices)
+{
+    std::vector<int> results(nbVertices, -1); // Initialize with -1 (no neighbor found)
+    const float thresholdSq = threshold * threshold; // Compare squared values
+
+    for (size_t i = 0; i < indices.size(); ++i) {
+        int idxA = indices[i];
+        if (results[idxA] != -1)
+            continue;
+        float ax = pos[idxA * 3], ay = pos[idxA * 3 + 1], az = pos[idxA * 3 + 2];
+
+        float min_dist_sq = thresholdSq;
+        int best_neighbor = -1;
+
+        //for (size_t j = 0; j < indices.size(); ++j) {
+        for (size_t j = i; j < indices.size(); ++j) {
+            if (i == j) continue;
+
+            int idxB = indices[j];
+            if (idxA == idxB) continue;
+
+            float dx = pos[idxB * 3] - ax;
+            // Early exit on X-axis if you sort your array by X first
+            if (dx * dx >= min_dist_sq) continue;
+
+            float dy = pos[idxB * 3 + 1] - ay;
+            float dz = pos[idxB * 3 + 2] - az;
+            float dist_sq = dx * dx + dy * dy + dz * dz;
+
+            if (dist_sq < min_dist_sq) {
+                min_dist_sq = dist_sq;
+                best_neighbor = idxB;
+            }
+        }
+        results[idxA] = best_neighbor;
+        if (best_neighbor != -1)
+            results[best_neighbor] = idxA;
+    }
+    return results;
 }

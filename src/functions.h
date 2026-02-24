@@ -118,4 +118,11 @@ void convertToCountIndex(
 float pack_float(float x, float y);
 int unpack_float(float f, float *x, float *y);
 
+std::vector<int> findClosestWithinThreshold(
+    const std::vector<int>& indices,
+    const float* pos,
+    float threshold,
+    int nbVertices);
+
+
 #endif
