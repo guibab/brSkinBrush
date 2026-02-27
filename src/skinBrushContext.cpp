@@ -201,6 +201,8 @@ void SkinBrushContext::toolOffCleanup()
         this->firstPaintDone = true;
         MGlobal::executePythonCommand("cleanCloseUndo()");
     }
+    getSkinFromName = false;
+    getMeshFromName = false;
 }
 
 void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }
