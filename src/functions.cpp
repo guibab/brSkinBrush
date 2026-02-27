@@ -1453,11 +1453,18 @@ std::vector<int> findClosestWithinThreshold(
     const std::vector<int>& indices,
     const float* pos,
     float threshold,
-    int nbVertices)
+    int nbVertices, 
+    int mirrorVal)
 {
     std::vector<int> results(nbVertices, -1); // Initialize with -1 (no neighbor found)
     const float thresholdSq = threshold * threshold; // Compare squared values
-
+    float XMult = 1.0f;
+    float YMult = 1.0f;
+    float ZMult = 1.0f;
+    if (mirrorVal == 1) XMult=-1.0f;
+    else if (mirrorVal == 2) YMult=-1.0f;
+    else if (mirrorVal == 3) ZMult=-1.0f;
+    
     for (size_t i = 0; i < indices.size(); ++i) {
         int idxA = indices[i];
         if (results[idxA] != -1)
