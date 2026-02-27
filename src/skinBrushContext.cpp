@@ -1528,6 +1528,70 @@ void SkinBrushContext::doTheAction()
     // If the smoothing has been performed send the current values to
     // the tool command along with the necessary data for undo and redo.
     // The same goes for the select mode.
+    // CHECK MIRROR
+    if (sewVertices) {
+        if (this->vertToVertBorder.size() != this->numVertices)
+            getConnectedBorderVertices();
+
+        std::unordered_map<int, float> sewArr;
+        std::set<int> processed;
+        bool foundOnce = false;
+        for (const auto& element : this->skinValuesToSet) {
+            int index = element.first;
+            //if (std::find(processed.begin(), processed.end(), index) != processed.end()) {
+            if (processed.find(index) != processed.end()) {
+                continue;
+            }
+            float value = element.second;
+            int sewnVert = this->vertToVertBorder[index];
+            if (sewnVert != -1) {
+                if (this->verticesPainted.find(sewnVert) == this->verticesPainted.end()) {
+                //if (this->skinValuesToSet.find(sewnVert) == this->skinValuesToSet.end()) {
+                    sewArr.insert(std::make_pair(sewnVert, value));
+                    foundOnce = true;
+                }
+                else {
+                    this->skinValuesToSet[sewnVert] = value;
+                    processed.insert(sewnVert);
+                }
+            }
+        }
+        if (foundOnce) {
+            this->skinValuesToSet.insert(sewArr.begin(), sewArr.end());
+            for (const auto& element : sewArr) {
+                this->verticesPainted.insert(element.first);
+            }
+        }
+        if (this->paintMirror != 0) {
+            std::unordered_map<int, float> sewArr;
+            std::set<int> processed;
+            bool foundOnce = false;
+            for (const auto& element : this->skinValuesMirrorToSet) {
+                int index = element.first;
+                if (processed.find(index) != processed.end()) {
+                    continue;
+                }
+                float value = element.second;
+                int sewnVert = this->vertToVertBorder[index];
+                if (sewnVert != -1) {
+                    if (this->verticesPainted.find(sewnVert) == this->verticesPainted.end()) {
+                        sewArr.insert(std::make_pair(sewnVert, value));
+                        foundOnce = true;
+                    }
+                    else {
+                        this->skinValuesMirrorToSet[sewnVert] = value;
+                        processed.insert(sewnVert);
+                    }
+                }
+            }
+            if (foundOnce) {
+                this->skinValuesMirrorToSet.insert(sewArr.begin(), sewArr.end());
+                for (const auto& element : sewArr) {
+                    this->verticesPainted.insert(element.first);
+                }
+            }
+        }
+    }
     MColorArray multiEditColors, soloEditColors;
     int nbVerticesPainted = (int)this->verticesPainted.size();
 
@@ -1942,31 +2006,7 @@ MStatus SkinBrushContext::applyCommand(int influence, std::unordered_map<int, fl
     we need to edit this->verticesPainted for sew vertices, meaning addind the mirror verts
     this->verticesPainted
     */
-    if (sewVertices){
-        std::unordered_map<int, float> sewArr;
-        std::vector<int> processed;
-        bool foundOnce = false;
-        for (const auto &element : valuesToSet) {
-            int index = element.first;
-            if (std::find(processed.begin(), processed.end(), index) != processed.end()) {
-                continue;
-            }
-            float value = element.second;
-            int sewnVert = this->vertToVertBorder[index];
-            if (sewnVert != -1) {
-                if (valuesToSet.find(sewnVert) != valuesToSet.end()){
-                    sewArr.insert(std::make_pair(sewnVert, value));
-                    foundOnce = true;
-                }else{
-                    valuesToSet[sewnVert] = value;
-                    processed.push_back(sewnVert);
-                }
-            }
-        }
-        if (foundOnce){
-            valuesToSet.insert(sewArr.begin(), sewArr.end());
-        }
-    }
+
     // ------------------------------------------
     // we need to sort all of that one way or another ---------------- here it is ------
     std::map<int, double> valuesToSetOrdered(valuesToSet.begin(), valuesToSet.end());
@@ -2376,7 +2416,6 @@ MStatus SkinBrushContext::getMesh()
 
     this->mayaRawPoints = meshFn.getRawPoints(&status);
     this->lockVertices = MIntArray(this->numVertices, 0);
-
     // -----------------------------------------------------------------
     // skin cluster
     // -----------------------------------------------------------------
@@ -2637,7 +2676,8 @@ void SkinBrushContext::getConnectedBorderVertices()
         borderVertices,
         this->mayaOrigRawPoints,
         sewVerticesMinDist,
-        this->numVertices);
+        this->numVertices,
+        0);
     // here print
     if (verbose) {
         for (size_t i = 0; i < this->vertToVertBorder.size(); ++i) {
@@ -2744,17 +2784,6 @@ std::vector<int> SkinBrushContext::getSurroundingVerticesPerVert(int vertexIndex
     auto first = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex];
     auto last = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex + (int)1];
     std::vector<int> newVec(first, last);
-    /*
-    if (sewVertices) {
-        int sewnVert = this->vertToVertBorder[vertexIndex];
-        if (sewnVert != -1) {
-            auto firstSew = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[sewnVert];
-            auto lastSew = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[sewnVert + (int)1];
-            std::vector<int> v2(firstSew, lastSew);
-            newVec.insert(newVec.end(), v2.begin(), v2.end());
-        }
-    }
-    */
     return newVec;
 };
 
@@ -3940,7 +3969,8 @@ void SkinBrushContext::storeValuesInOptionVar(MString nameOptionVar)
     cmd += getSkinClusterName();
     cmd += " " + MString(kMeshNameFlagLong) + " ";
     cmd += getMeshName();
-
+    cmd += " " + MString(kVerboseFlagLong) + " ";
+    cmd += verbose;
 
     MGlobal::setOptionVarValue(nameOptionVar, cmd);
 }

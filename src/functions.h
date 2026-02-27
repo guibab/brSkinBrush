@@ -122,7 +122,8 @@ std::vector<int> findClosestWithinThreshold(
     const std::vector<int>& indices,
     const float* pos,
     float threshold,
-    int nbVertices);
+    int nbVertices,
+    int mirrorVal);
 
 
 #endif
