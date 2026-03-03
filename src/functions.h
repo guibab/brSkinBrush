@@ -125,5 +125,6 @@ std::vector<int> findClosestWithinThreshold(
     int nbVertices,
     int mirrorVal);
 
-
+std::pair<unsigned int, unsigned int> infosSkinClusterPlugs(MObject skinCluster);
+bool areDagPathArraysEqual(const MDagPathArray& a, const MDagPathArray& b);
 #endif

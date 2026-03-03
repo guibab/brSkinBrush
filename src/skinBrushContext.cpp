@@ -102,9 +102,24 @@ void SkinBrushContext::toolOnSetup(MEvent &)
     // first clear a bit the air --------------
     bool skinReentry = meshReentry && reenterSkin && (!this->previousSkinMObject.isNull() && this->skinObj == this->previousSkinMObject);
     MIntArray editVertsIndices;
-
+    if (skinReentry) {
+        std::pair<unsigned int, unsigned int> infosPlugs = infosSkinClusterPlugs(this->skinObj);
+        skinReentry = infosPlugs == storedPlugCountSkinObj;
+        if (!skinReentry) MGlobal::displayInfo(MString("-- not same number of plugs--"));
+        else{
+            //catchTimeStamp();
+            MDagPathArray currentDagPaths;
+            MFnSkinCluster skinFn(this->skinObj);
+            skinFn.influenceObjects(currentDagPaths);
+            skinReentry = areDagPathArraysEqual(currentDagPaths, this->inflDagPaths);
+            if (!skinReentry) MGlobal::displayInfo(MString("-- not same dagPath for joints --"));
+            //endTimeStamp(MString("get joints dagPath for Check Objects"));
+        }
+        
+    }
     if (!skinReentry) {
         if (verbose) MGlobal::displayInfo(MString("-- skin FAIL reentry --"));
+        secondPartSkincluster();
         this->multiCurrentColors.clear();
         this->jointsColors.clear();
         this->soloCurrentColors.clear();
@@ -124,6 +139,8 @@ void SkinBrushContext::toolOnSetup(MEvent &)
             }
             getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
             getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
+            storedPlugCountSkinObj = infosSkinClusterPlugs(this->skinObj);
+
             if (!skinReentry)
                 status = fillArrayValues(skinObj, true); // WAY TOO SLOW ... but accurate ?
 
@@ -2470,11 +2487,12 @@ MStatus SkinBrushContext::getMesh()
 
     this->mayaRawPoints = meshFn.getRawPoints(&status);
     this->lockVertices = MIntArray(this->numVertices, 0);
-    // -----------------------------------------------------------------
-    // skin cluster
-    // -----------------------------------------------------------------
+    getTheOrigMeshForMirror();
+    return status;
+}
 
 
+void SkinBrushContext::secondPartSkincluster() {
     // Create a component object representing all vertices of the mesh.
     allVtxCompObj = allVertexComponents();
     MFnSingleIndexedComponent compFn;
@@ -2488,8 +2506,7 @@ MStatus SkinBrushContext::getMesh()
     if (normalizeValue > 0) {
         normalize = true;
     }
-    getTheOrigMeshForMirror();
-    return status;
+
 }
 
 

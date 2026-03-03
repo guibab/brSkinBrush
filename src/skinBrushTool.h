@@ -276,6 +276,7 @@ class SkinBrushContext : public MPxContext {
     MStatus getDagMesh();
     MStatus getObjSkinCluster();
     MStatus getMesh();
+    void secondPartSkincluster();
     MStatus swapSkinCluster();
     MStatus getTheOrigMeshForMirror();
 
@@ -617,6 +618,7 @@ class SkinBrushContext : public MPxContext {
     MIntArray influenceIndices;
     MDagPathArray inflDagPaths;
     std::vector<drawingDeformers> BBoxOfDeformers;
+    std::pair<unsigned int, unsigned int> storedPlugCountSkinObj; // to test if skin has not changed
 
     MStringArray inflNames;
     MIntArray inflNamePixelSize;
