@@ -713,7 +713,7 @@ MStatus editArray(
             double totalVtxUnlock = 0.0, totalVtxLock = 0.0;
             for (int j = 0; j < nbJoints; ++j) {
                 // check the zero val ----------
-                double currentW = fullWeightArray[theVert * nbJoints + j];
+                double currentW = std::max(0.0, fullWeightArray[theVert * nbJoints + j]);                
                 double targetW = std::pow(currentW, theVal);
                 targetW = std::max(0.0, std::min(1.0, targetW)); // clamp
                 producedWeigths.set(targetW, j);
