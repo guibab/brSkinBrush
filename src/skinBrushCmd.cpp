@@ -98,6 +98,8 @@ MStatus SkinBrushContextCmd::appendSyntax()
     syn.addFlag(kSewVerticesFlag, kSewVerticesFlagLong, MSyntax::kBoolean);
     syn.addFlag(kSewVerticesOffsetFlag, kSewVerticesOffsetFlagLong, MSyntax::kDouble);
 
+    syn.addFlag(kFastReEnterFlag, kFastReEnterFlagLong, MSyntax::kLong);
+
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
 
@@ -276,6 +278,11 @@ MStatus SkinBrushContextCmd::doEditFlags()
         bool value;
         status = argData.getFlagArgument(kPostSettingFlag, 0, value);
         smoothContext->setPostSetting(value);
+    }
+    if (argData.isFlagSet(kFastReEnterFlag)) {
+        int value;
+        status = argData.getFlagArgument(kFastReEnterFlag, 0, value);
+        smoothContext->setFastReenter(value);
     }
 
     if (argData.isFlagSet(kFractionOversamplingFlag)) {

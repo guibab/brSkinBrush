@@ -86,47 +86,66 @@ void SkinBrushContext::toolOnSetup(MEvent &)
     this->pickMaxInfluenceVal = false;
     this->pickInfluenceVal = false;
 
+    // read from selection or the input variables
+    getDagMesh();
+    getObjSkinCluster();
+
+    bool meshReentry = reenterMesh && (this->previousBrushDagPath.isValid() && this->meshDag == this->previousBrushDagPath);
+    if (meshReentry) {
+        if (verbose) MGlobal::displayInfo(" - MESH REENTRY TEST -");
+        refreshPointsNormals();
+    }else {
+        catchTimeStamp();
+        status = getMesh();
+        endTimeStamp(MString("getMesh"));
+    }    
     // first clear a bit the air --------------
-    this->multiCurrentColors.clear();
-    this->jointsColors.clear();
-    this->soloCurrentColors.clear();
-
-    status = getMesh();
+    bool skinReentry = meshReentry && reenterSkin && (!this->previousSkinMObject.isNull() && this->skinObj == this->previousSkinMObject);
     MIntArray editVertsIndices;
-    if (!skinObj.isNull()) {
-        getListColorsJoints(
-            skinObj, this->nbJoints, indicesForInfluenceObjects, jointsColors,
-            verbose
-        ); // get the joints colors
 
-        this->skinWeightList.clear();
-        this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-        if (this->mirrorInfluences.length() == 0) {
-            this->mirrorInfluences = MIntArray(this->nbJoints, 0);
-            for (unsigned int i = 0; i < this->nbJoints; ++i) {
-                this->mirrorInfluences.set(i, i);
+    if (!skinReentry) {
+        if (verbose) MGlobal::displayInfo(MString("-- skin FAIL reentry --"));
+        this->multiCurrentColors.clear();
+        this->jointsColors.clear();
+        this->soloCurrentColors.clear();
+
+        if (!skinObj.isNull()) {
+            getListColorsJoints(
+                skinObj, this->nbJoints, indicesForInfluenceObjects, jointsColors,
+                verbose
+            ); // get the joints colors
+            this->skinWeightList.clear();
+            this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
+            if (this->mirrorInfluences.length() == 0) {
+                this->mirrorInfluences = MIntArray(this->nbJoints, 0);
+                for (unsigned int i = 0; i < this->nbJoints; ++i) {
+                    this->mirrorInfluences.set(i, i);
+                }
+            }
+            getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
+            getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
+            if (!skinReentry)
+                status = fillArrayValues(skinObj, true); // WAY TOO SLOW ... but accurate ?
+
+            if (verbose) {
+                MGlobal::displayInfo(MString("nb found joints colors ") + jointsColors.length());
             }
         }
-
-        getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
-        getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
-
-        status = fillArrayValues(skinObj, true); // WAY TOO SLOW ... but accurate ?
-        if (verbose) {
-            MGlobal::displayInfo(MString("nb found joints colors ") + jointsColors.length());
+        else {
+            MGlobal::displayInfo(MString("FAILED toolOnSetup: skinObj.isNull"));
+            abortAction();
+            return;
         }
     }
     else {
-        MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
-        abortAction();
-        return;
+        if (verbose) MGlobal::displayInfo(MString("-- SKIN REENTRY --"));
+        getListLockVertices(skinObj, this->lockVertices, editVertsIndices);
     }
-    // get face color assignments ----------
 
     // solo colors -----------------------
     this->soloCurrentColors = MColorArray(this->numVertices, MColor(0.0, 0, 0.0));
     this->soloColorsValues = MDoubleArray(this->numVertices, 0.0);
-
+    
     MStringArray currentColorSets;
     meshFn.getColorSetNames(currentColorSets);
     if (currentColorSets.indexOf(this->fullColorSet) == -1) { // multiColor
@@ -157,6 +176,7 @@ void SkinBrushContext::toolOnSetup(MEvent &)
     meshFn.setColors(this->soloCurrentColors, &this->soloColorSet2); // set the solo assignation
     meshFn.assignColors(fullVertexList, &this->soloColorSet2);
 
+    
     MString currentColorSet = meshFn.currentColorSetName(); // set multiColor as current Color
     if (soloColorVal == 1) {                                // solo
         if (currentColorSet != this->soloColorSet) {
@@ -203,6 +223,9 @@ void SkinBrushContext::toolOffCleanup()
     }
     getSkinFromName = false;
     getMeshFromName = false;
+    //for reentry
+    this->previousBrushDagPath = this->meshDag;
+    this->previousSkinMObject = this->skinObj;
 }
 
 void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }
@@ -297,7 +320,7 @@ void SkinBrushContext::refreshDeformerColor(int deformerInd)
         ); // get the joints colors
     }
     else {
-        MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
+        MGlobal::displayInfo(MString("FAILED refreshDeformerColor: skinObj.isNull"));
         return;
     }
 
@@ -353,7 +376,7 @@ void SkinBrushContext::refresh()
         status = fillArrayValues(skinObj, true); // get the skin data and all the colors
     }
     else {
-        MGlobal::displayError(MString("FAILED : skinObj.isNull"));
+        MGlobal::displayError(MString("FAILED refresh: skinObj.isNull"));
         return;
     }
 
@@ -2314,13 +2337,12 @@ MColor SkinBrushContext::getASoloColor(double val)
 // ---------------------------------------------------------------------
 // brush methods
 // ---------------------------------------------------------------------
-MStatus SkinBrushContext::getMesh()
-{
+MStatus SkinBrushContext::getDagMesh() {
     MStatus status = MStatus::kSuccess;
     // Clear the previous data.
     this->meshDag = MDagPath();
     this->nurbsDag = MDagPath();
-    this->skinObj = MObject();
+    //this->skinObj = MObject();
     // -----------------------------------------------------------------
     // mesh
     // -----------------------------------------------------------------
@@ -2364,6 +2386,36 @@ MStatus SkinBrushContext::getMesh()
         MGlobal::displayInfo(MString(" is nurbs : ") + isNurbs);
         MGlobal::displayInfo(MString(" painting : ") + meshDag.fullPathName());
     }
+    return status;
+}
+MStatus SkinBrushContext::getObjSkinCluster() {
+    MStatus status = MStatus::kSuccess;
+    // Get the skin cluster node from the history of the mesh.
+    if (getSkinFromName) {
+        getMObject(passedSkinName, this->skinObj);
+        MString skinName = getSkinClusterName();
+        MGlobal::displayInfo(MString("direct passed skin: ") + skinName);
+    }
+    else {
+        MObject skinClusterObj;
+        if (isNurbs) {
+            status = getSkinCluster(nurbsDag, skinClusterObj);
+        }
+        else {
+            status = getSkinCluster(meshDag, skinClusterObj);
+        }
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+        // Store the skin cluster for undo.
+        skinObj = skinClusterObj;
+        MString skinName = getSkinClusterName();
+        MGlobal::displayInfo(MString("skinned found from shape : ") + skinName);
+    }
+    return status;
+}
+
+MStatus SkinBrushContext::getMesh()
+{
+    MStatus status = MStatus::kSuccess;
     // get the matrix
     MMatrix MIM = meshDag.inclusiveMatrix();
     MMatrix MIMI = meshDag.inclusiveMatrixInverse();
@@ -2421,26 +2473,7 @@ MStatus SkinBrushContext::getMesh()
     // -----------------------------------------------------------------
     // skin cluster
     // -----------------------------------------------------------------
-    // Get the skin cluster node from the history of the mesh.
-    if (getSkinFromName) {
-        getMObject(passedSkinName, this->skinObj);
-        MString skinName = getSkinClusterName();
-        MGlobal::displayInfo(MString("direct passed skin: ") + skinName);
-    }
-    else {
-        MObject skinClusterObj;
-        if (isNurbs) {
-            status = getSkinCluster(nurbsDag, skinClusterObj);
-        }
-        else {
-            status = getSkinCluster(meshDag, skinClusterObj);
-        }
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-        // Store the skin cluster for undo.
-        skinObj = skinClusterObj;
-        MString skinName = getSkinClusterName();
-        MGlobal::displayInfo(MString("skinned found from shape : ") + skinName);
-    }
+
 
     // Create a component object representing all vertices of the mesh.
     allVtxCompObj = allVertexComponents();
@@ -2455,7 +2488,6 @@ MStatus SkinBrushContext::getMesh()
     if (normalizeValue > 0) {
         normalize = true;
     }
-
     getTheOrigMeshForMirror();
     return status;
 }
@@ -2490,21 +2522,10 @@ MStatus SkinBrushContext::swapSkinCluster(){
     if (normalizeValue > 0) normalize = true;
 
     if (skinObj.isNull()) {
-        MGlobal::displayInfo(MString("FAILED : skinObj.isNull"));
+        MGlobal::displayInfo(MString("FAILED swapSkinCluster: skinObj.isNull"));
         abortAction();
         return MStatus::kFailure;
     }
-    /*
-    this->skinWeightList.clear();
-    this->ignoreLockJoints = MIntArray(this->nbJoints, 0);
-    if (this->mirrorInfluences.length() == 0) {
-        this->mirrorInfluences = MIntArray(this->nbJoints, 0);
-        for (unsigned int i = 0; i < this->nbJoints; ++i) this->mirrorInfluences.set(i, i);
-    }
-    this->previousPaint.clear();
-    this->previousMirrorPaint.clear();
-    */
-
     // first clear a bit the air --------------
     this->skinWeightList.clear();
     this->multiCurrentColors.clear();
@@ -2517,13 +2538,6 @@ MStatus SkinBrushContext::swapSkinCluster(){
     if (verbose) {
         MGlobal::displayInfo(MString("nbJoints after refresh: ") + this->nbJoints);
     }
-
-    //maya2019RefreshColors(true);
-    /*
-    if (!this->firstPaintDone) {
-        this->firstPaintDone = true;
-    }
-    */
 
     return status;
 }
@@ -2913,13 +2927,16 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors)
     MFnSkinCluster skinFn(skinCluster, &status);
     CHECK_MSTATUS_AND_RETURN_IT(status);
     unsigned int infCount;
-
+    catchTimeStamp();    
     if (!isNurbs) {
         status = skinFn.getWeights(meshDag, allVtxCompObj, this->skinWeightList, infCount);
     }
     else {
         status = skinFn.getWeights(nurbsDag, allVtxCompObj, this->skinWeightList, infCount);
     }
+    endTimeStamp(MString("skinFn.getWeights"));
+    catchTimeStamp();
+
     CHECK_MSTATUS_AND_RETURN_IT(status);
     this->nbJoints = infCount;
 
@@ -2971,6 +2988,8 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors)
             }
         }
     }
+    endTimeStamp(MString("fillArrayValues colors"));
+
     return status;
 }
 
@@ -3973,6 +3992,8 @@ void SkinBrushContext::storeValuesInOptionVar(MString nameOptionVar)
     cmd += getMeshName();
     cmd += " " + MString(kVerboseFlagLong) + " ";
     cmd += verbose;
+    cmd += " " + MString(kFastReEnterFlagLong) + " ";
+    cmd += getFastReenter();
 
     MGlobal::setOptionVarValue(nameOptionVar, cmd);
 }
