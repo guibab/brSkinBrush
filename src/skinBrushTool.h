@@ -63,6 +63,8 @@
 #include "enums.h"
 #include "functions.h"
 #include "setOverloads.h"
+#include <chrono>
+
 
 // Macro for the press/drag/release methods in case there is nothing
 // selected or the tool gets applied outside any geometry. If the actual
@@ -131,6 +133,7 @@ class skinBrushTool : public MPxToolCommand {
     void setSoloColorType(int value);
     void setCoverage(bool value);
     void setPostSetting(bool value);
+    void setFastReenter(int value);
 
     void setInfluenceIndices(MIntArray indices);
     void setInfluenceName(MString name);
@@ -190,6 +193,7 @@ class skinBrushTool : public MPxToolCommand {
     int smoothRepeat = 3;
     int soloColorTypeVal = 1; // 1 lava
     int soloColorVal = 0;
+    int fastReenter = 0;
     bool postSetting = true;
 
     int paintMirror = 0; // intValue
@@ -269,6 +273,8 @@ class SkinBrushContext : public MPxContext {
     MStatus doReleaseCommon(MEvent event);
     void doTheAction();
     ModifierCommands getCommandIndexModifiers();
+    MStatus getDagMesh();
+    MStatus getObjSkinCluster();
     MStatus getMesh();
     MStatus swapSkinCluster();
     MStatus getTheOrigMeshForMirror();
@@ -399,6 +405,7 @@ class SkinBrushContext : public MPxContext {
     void setSoloColorType(int value);
     void setInfluenceByName(MString value);
     void setPostSetting(bool value);
+    void setFastReenter(int value);
 
     void setSkinClusterByName(MString &value);
     void setMeshByName(MString &value);
@@ -441,6 +448,7 @@ class SkinBrushContext : public MPxContext {
     ModifierCommands getCommandIndex();
     int getSmoothRepeat();
     int getSoloColor();
+    int getFastReenter();
 
     double getMirrorTolerance();
     int getPaintMirror();
@@ -457,8 +465,12 @@ class SkinBrushContext : public MPxContext {
     bool getPostSetting();
     double getMinColor();
     double getMaxColor();
+    void catchTimeStamp();
+    void endTimeStamp(MString infos);
 
   private:
+    std::chrono::high_resolution_clock::time_point startTimeStamp;
+
     bool verbose = false;
     double interactiveValue = 1.0;  // for whateverUse in the code
     double interactiveValue1 = 1.0; // for whateverUse in the code
@@ -502,6 +514,10 @@ class SkinBrushContext : public MPxContext {
     int lineWidthVal;
     int messageVal;
     int oversamplingVal;
+    int fastReenter = 0;
+    bool reenterMesh = false;
+    bool reenterSkin = false;
+
     double rangeVal;
     double sizeVal;
     double strengthVal, smoothStrengthVal;
@@ -571,6 +587,9 @@ class SkinBrushContext : public MPxContext {
 
     MFloatMatrix inclusiveMatrix, inclusiveMatrixInverse;
     MDagPath meshDag, nurbsDag;
+    MDagPath previousBrushDagPath;
+    MObject previousSkinMObject;
+    
     MDagPath origMeshDag;
     unsigned int numVertices = 0, numFaces = 0;
 

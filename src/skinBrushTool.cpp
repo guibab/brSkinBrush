@@ -529,6 +529,9 @@ MStatus skinBrushTool::finalize()
     cmd += " " + MString(kSewVerticesOffsetFlagLong) + " ";
     cmd += sewVerticesMinDist;
 
+    cmd += " " + MString(kFastReEnterFlag) + " ";
+    cmd += fastReenter;
+
     cmd += " brSkinBrushContext1;";
 
     MGlobal::setOptionVarValue("brSkinBrushContext1", cmd);
@@ -619,6 +622,8 @@ void skinBrushTool::setSoloColor(int value)
 void skinBrushTool::setCoverage(bool value) { coverageVal = value; }
 
 void skinBrushTool::setPostSetting(bool value) { postSetting = value; }
+void skinBrushTool::setFastReenter(int value) { fastReenter = value; }
+
 
 // ---------------------------------------------------------------------
 // public methods for setting the undo/redo variables

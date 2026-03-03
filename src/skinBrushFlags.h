@@ -62,8 +62,6 @@
 #define kPruneWeightsFlag "-pw"
 #define kPruneWeightsFlagLong "-pruneWeights"
 
-
-
 #define kSmoothStrengthFlag "-sst"
 #define kSmoothStrengthFlagLong "-smoothStrength"
 
@@ -173,3 +171,6 @@
 
 #define kVerboseFlag "-vrb"
 #define kVerboseFlagLong "-verbose"
+
+#define kFastReEnterFlag "-fre"
+#define kFastReEnterFlagLong "-fastReenter"

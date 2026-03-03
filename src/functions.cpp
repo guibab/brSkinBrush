@@ -1500,3 +1500,79 @@ std::vector<int> findClosestWithinThreshold(
     }
     return results;
 }
+
+//https://rodolphe-vaillant.fr/entry/79/maya-c-api-set-skinning-weight-attributes
+
+//TO TEST
+
+//The fastest way to set multi attributes / array attributes is done through a DAG node. (100 times faster than MPlugs!)
+//const std::vector<std::map<int/*joint id*/, float/*skin weight*/> >& weights,
+/*
+void set_skinning_weights(
+        const std::vector<std::map<int, float> >& weights,
+        MDataBlock& block)
+{
+    MStatus status = MS::kSuccess;
+    MArrayDataHandle array_hdl = block.outputArrayValue(_s_skin_weights, &status);
+    mayaCheck(status);
+    for(unsigned i = 0; i < weights.size(); i++)
+    {
+        mayaCheck( array_hdl.jumpToArrayElement( i ) );
+ 
+        // weightList[i]
+        MDataHandle element_hdl = array_hdl.outputValue( &status );
+        mayaCheck(status);
+        // weightList[i].weight
+        MDataHandle child = element_hdl.child( _s_per_joint_weights );
+ 
+        MArrayDataHandle weight_list_hdl(child, &status);
+        mayaCheck(status);
+ 
+        MArrayDataBuilder weight_list_builder = weight_list_hdl.builder(&status);
+        mayaCheck(status);
+ 
+        unsigned handle_count = weight_list_hdl.elementCount(&status);
+        mayaCheck(status);
+ 
+        unsigned builder_count = weight_list_builder.elementCount(&status);
+        mayaCheck(status);
+        mayaAssert( builder_count == handle_count);
+ 
+        std::map<int, float> map = weights[i];
+        //std::map<int influence obj id / joint id, float> map = weights[i];
+ 
+        std::vector to_remove;
+        to_remove.reserve( map.size() );
+ 
+        // Scan array, update existing element, remove unsused ones
+        for(unsigned j = 0; j < handle_count; ++j)
+        {
+            // weightList[i].weight[j]
+            mayaCheck( weight_list_hdl.jumpToArrayElement(j) );
+            unsigned index = weight_list_hdl.elementIndex(&status);
+            mayaCheck(status);
+ 
+            auto elt = map.find( index );
+ 
+            if( elt != map.end() )
+            {
+                MDataHandle hdl = weight_list_builder.addElement(index, &status);
+                mayaCheck(status);
+                hdl.setDouble( (double)elt->second );
+                map.erase( elt );
+            }
+            else
+            {
+                to_remove.push_back( index );
+            }
+        }
+ 
+        for( unsigned idx : to_remove ){
+            mayaCheck( weight_list_builder.removeElement( idx ) );
+        }
+ 
+        mayaCheck( weight_list_hdl.set( weight_list_builder ) );
+    }
+ 
+}
+*/

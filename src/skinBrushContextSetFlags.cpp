@@ -371,6 +371,25 @@ void SkinBrushContext::setPostSetting(bool value)
     MToolsInfo::setDirtyFlag(*this);
 }
 
+void SkinBrushContext::setFastReenter(int value)
+{
+    MGlobal::displayInfo(MString("setFastReenter CALLED ") + value);
+    if (value <= 0) {
+        reenterMesh = false;
+        reenterSkin = false;
+    }
+    else if (value == 1) {
+        reenterMesh = true;
+        reenterSkin = false;
+    }else{
+        reenterMesh = true;
+        reenterSkin = true;
+    }
+    fastReenter = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+
 void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI)
 {
     if (verbose) {
@@ -495,6 +514,7 @@ bool SkinBrushContext::getVolume() { return volumeVal; }
 ModifierCommands SkinBrushContext::getCommandIndex() { return commandIndex; }
 int SkinBrushContext::getSmoothRepeat() { return smoothRepeat; }
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
+int SkinBrushContext::getFastReenter() { return fastReenter; }
 
 double SkinBrushContext::getMirrorTolerance() { return mirrorMinDist; }
 int SkinBrushContext::getPaintMirror() { return paintMirror; }
@@ -538,3 +558,22 @@ MString SkinBrushContext::getSkinClusterName()
 
 MString SkinBrushContext::getMeshName() { return this->meshDag.fullPathName(); }
 bool SkinBrushContext::getPostSetting() { return postSetting; }
+
+
+using namespace std::chrono;
+
+void SkinBrushContext::catchTimeStamp()
+{
+    startTimeStamp = high_resolution_clock::now();
+}
+void SkinBrushContext::endTimeStamp( MString infos)
+{
+    auto stop = high_resolution_clock::now();    
+    auto duration = duration_cast<microseconds>(stop - startTimeStamp);
+    float dura = float(duration.count() / 10000) * 0.01f;
+    MGlobal::displayInfo(infos+
+        MString(" executed in ") + dura + MString(" seconds")
+    );
+}
+
+
