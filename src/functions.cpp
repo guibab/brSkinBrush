@@ -1448,6 +1448,33 @@ void convertToCountIndex(
     }
 }
 
+std::pair<unsigned int, unsigned int> infosSkinClusterPlugs(MObject skinCluster)
+{
+
+    MFnDependencyNode skinClusterDep(skinCluster);
+
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
+    MPlug matrix_plug = skinClusterDep.findPlug("matrix", false);
+    unsigned int weightList_count = weight_list_plug.numElements();
+    unsigned int matrix_count = matrix_plug.numElements();
+
+    return std::make_pair(matrix_count, weightList_count);
+}
+
+bool areDagPathArraysEqual(const MDagPathArray& a, const MDagPathArray& b) {
+    // 1. Quick length check
+    if (a.length() != b.length()) {
+        return false;
+    }
+    // 2. Element-wise comparison
+    for (unsigned int i = 0; i < a.length(); ++i) {
+        // MDagPath has a built-in operator== that checks if paths are identical
+        if (!(a[i] == b[i])) {
+            return false;
+        }
+    }
+    return true;
+}
 
 std::vector<int> findClosestWithinThreshold(
     const std::vector<int>& indices,
