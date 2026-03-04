@@ -89,6 +89,7 @@ void SkinBrushContext::toolOnSetup(MEvent &)
     // read from selection or the input variables
     getDagMesh();
     getObjSkinCluster();
+    this->skipSkinValues = true;
 
     bool meshReentry = reenterMesh && (this->previousBrushDagPath.isValid() && this->meshDag == this->previousBrushDagPath);
     if (meshReentry) {
@@ -381,7 +382,6 @@ void SkinBrushContext::refresh()
     //
     refreshPointsNormals();
     MIntArray editVertsIndices;
-
     if (!skinObj.isNull()) {
         // Get the skin cluster node from the history of the mesh.
         getListLockJoints(skinObj, this->nbJoints, indicesForInfluenceObjects, this->lockJoints);
@@ -2951,6 +2951,7 @@ MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors)
     else {
         status = skinFn.getWeights(nurbsDag, allVtxCompObj, this->skinWeightList, infCount);
     }
+    this->skipSkinValues = false; // make sure we got the skin values
     endTimeStamp(MString("skinFn.getWeights"));
     catchTimeStamp();
 

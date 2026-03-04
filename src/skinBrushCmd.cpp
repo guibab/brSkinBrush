@@ -99,6 +99,7 @@ MStatus SkinBrushContextCmd::appendSyntax()
     syn.addFlag(kSewVerticesOffsetFlag, kSewVerticesOffsetFlagLong, MSyntax::kDouble);
 
     syn.addFlag(kFastReEnterFlag, kFastReEnterFlagLong, MSyntax::kLong);
+    syn.addFlag(kSkipSkinValuesFlag, kSkipSkinValuesFlagLong, MSyntax::kBoolean);
 
     syn.addFlag(kListVerticesIndicesFlag, kListVerticesIndicesFlagLong, MSyntax::kLong);
     syn.makeFlagMultiUse(kListVerticesIndicesFlag);
@@ -475,6 +476,10 @@ MStatus SkinBrushContextCmd::doEditFlags()
 MStatus SkinBrushContextCmd::doQueryFlags()
 {
     MArgParser argData = parser();
+
+    if (argData.isFlagSet(kSkipSkinValuesFlag)) {
+        setResult(smoothContext->getSkipSkinValues());
+    }
 
     if (argData.isFlagSet(kColorRFlag)) {
         setResult(smoothContext->getColorR());

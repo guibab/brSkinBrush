@@ -450,6 +450,7 @@ class SkinBrushContext : public MPxContext {
     int getSmoothRepeat();
     int getSoloColor();
     int getFastReenter();
+    bool getSkipSkinValues();
 
     double getMirrorTolerance();
     int getPaintMirror();
@@ -518,6 +519,7 @@ class SkinBrushContext : public MPxContext {
     int fastReenter = 0;
     bool reenterMesh = false;
     bool reenterSkin = false;
+    bool skipSkinValues = true;
 
     double rangeVal;
     double sizeVal;
