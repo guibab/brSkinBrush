@@ -174,3 +174,6 @@
 
 #define kFastReEnterFlag "-fre"
 #define kFastReEnterFlagLong "-fastReenter"
+
+#define kSkipSkinValuesFlag "-ssv"
+#define kSkipSkinValuesFlagLong "-skipSkinValues"

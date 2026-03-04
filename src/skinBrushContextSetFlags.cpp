@@ -518,6 +518,8 @@ int SkinBrushContext::getFastReenter() { return fastReenter; }
 
 double SkinBrushContext::getMirrorTolerance() { return mirrorMinDist; }
 int SkinBrushContext::getPaintMirror() { return paintMirror; }
+bool SkinBrushContext::getSkipSkinValues() { return skipSkinValues; }
+
 
 double SkinBrushContext::getSewVerticesOffset() { return sewVerticesMinDist; }
 bool SkinBrushContext::getSewVertices() { return sewVertices; }
