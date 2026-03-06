@@ -121,6 +121,7 @@ int unpack_float(float f, float *x, float *y);
 std::vector<int> findClosestWithinThreshold(
     const std::vector<int>& indices,
     const float* pos,
+    std::vector<std::vector<int>> connectedVertices,
     float threshold,
     int nbVertices,
     int mirrorVal);

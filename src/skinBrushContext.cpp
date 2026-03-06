@@ -2708,6 +2708,7 @@ void SkinBrushContext::getConnectedBorderVertices()
     this->vertToVertBorder = findClosestWithinThreshold(
         borderVertices,
         this->mayaOrigRawPoints,
+        this->perVertexVerticesSet,
         sewVerticesMinDist,
         this->numVertices,
         0);
