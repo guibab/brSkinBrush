@@ -658,6 +658,8 @@ MStatus SkinBrushContextCmd::doQueryFlags()
     if (argData.isFlagSet(kMaxColorFlag)) {
         setResult(smoothContext->getMaxColor());
     }
-
+    if (argData.isFlagSet(kFastReEnterFlag)) {
+        setResult(smoothContext->getFastReenter());
+    }
     return MStatus::kSuccess;
 }

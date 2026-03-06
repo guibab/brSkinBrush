@@ -1479,6 +1479,7 @@ bool areDagPathArraysEqual(const MDagPathArray& a, const MDagPathArray& b) {
 std::vector<int> findClosestWithinThreshold(
     const std::vector<int>& indices,
     const float* pos,
+    std::vector<std::vector<int>> connectedVertices,
     float threshold,
     int nbVertices, 
     int mirrorVal)
@@ -1501,12 +1502,16 @@ std::vector<int> findClosestWithinThreshold(
         float min_dist_sq = thresholdSq;
         int best_neighbor = -1;
 
+        auto edgeConnectedVerts = connectedVertices[idxA];
         //for (size_t j = 0; j < indices.size(); ++j) {
         for (size_t j = i; j < indices.size(); ++j) {
             if (i == j) continue;
 
             int idxB = indices[j];
             if (idxA == idxB) continue;
+            if (std::find(edgeConnectedVerts.begin(), edgeConnectedVerts.end(), idxB) != edgeConnectedVerts.end()) {
+                continue;
+            }
 
             float dx = pos[idxB * 3] - ax;
             // Early exit on X-axis if you sort your array by X first
