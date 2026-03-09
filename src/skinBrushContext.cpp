@@ -3931,8 +3931,7 @@ void SkinBrushContext::setInViewMessage(bool display)
         MGlobal::executeCommand("brSkinBrushHideInViewMessage");
     }
 }
-
-void SkinBrushContext::storeValuesInOptionVar(MString nameOptionVar)
+MString SkinBrushContext::getValuesForOptionVar()
 {
     // Store the current settings as an option var. This way they are
     // properly available for the next usage.
@@ -4014,5 +4013,12 @@ void SkinBrushContext::storeValuesInOptionVar(MString nameOptionVar)
     cmd += " " + MString(kFastReEnterFlagLong) + " ";
     cmd += getFastReenter();
 
+    return cmd;
+}
+
+
+void SkinBrushContext::storeValuesInOptionVar(MString nameOptionVar)
+{
+    MString cmd = getValuesForOptionVar();
     MGlobal::setOptionVarValue(nameOptionVar, cmd);
 }
