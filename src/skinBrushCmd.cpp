@@ -661,5 +661,10 @@ MStatus SkinBrushContextCmd::doQueryFlags()
     if (argData.isFlagSet(kFastReEnterFlag)) {
         setResult(smoothContext->getFastReenter());
     }
+
+    if (argData.isFlagSet(kUiOptionVarFlag)) {
+        setResult(smoothContext->getValuesForOptionVar());
+    }
+
     return MStatus::kSuccess;
 }

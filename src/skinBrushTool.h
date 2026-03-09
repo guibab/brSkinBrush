@@ -289,6 +289,7 @@ class SkinBrushContext : public MPxContext {
     std::vector<int> getSurroundingVerticesPerVert(int vertexIndex);
     std::vector<int> getSurroundingVerticesPerFace(int vertexIndex);
 
+    MString getValuesForOptionVar();
     void storeValuesInOptionVar(MString nameOptionVar);
 
     void getFromMeshNormals();
